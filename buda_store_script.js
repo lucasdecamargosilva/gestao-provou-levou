@@ -193,12 +193,14 @@
             } catch (e) { }
         }
 
+        window.OpenProvadorBuda = function () {
+            checkLimit();
+            populateProductPicker();
+            document.getElementById('q-modal-ia').style.display = 'flex';
+        };
+
         if (OPEN_BTN) {
-            OPEN_BTN.onclick = function () {
-                checkLimit();
-                populateProductPicker();
-                document.getElementById('q-modal-ia').style.display = 'flex';
-            };
+            OPEN_BTN.onclick = window.OpenProvadorBuda;
         }
 
         var phoneInput = document.getElementById('q-phone');
