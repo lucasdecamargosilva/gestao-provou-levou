@@ -104,25 +104,17 @@ aside {
     align-items: center;
     gap: 12px;
     margin-bottom: 48px;
-    padding: 0 12px;
+    padding: 0 4px;
 }
 
-.logo-icon {
-    width: 32px;
-    height: 32px;
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 0 15px var(--primary-glow);
-}
-
-.logo-text {
-    font-family: 'Outfit', sans-serif;
-    font-size: 20px;
-    font-weight: 700;
-    letter-spacing: -0.5px;
+.logo-img {
+    width: 100%;
+    max-width: 180px;
+    height: auto;
+    object-fit: contain;
+    /* Inverte para branco pois o logo tem partes pretas que ficam invisíveis no fundo escuro */
+    filter: brightness(0) invert(1);
+    transition: var(--transition);
 }
 
 .nav-menu {
@@ -172,11 +164,16 @@ aside {
 .user-info {
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 
 .user-name {
     font-size: 14px;
     font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
 }
 
 .user-role {
@@ -452,7 +449,6 @@ main {
         --sidebar-width: 80px;
     }
 
-    .logo-text,
     .nav-item span,
     .user-info,
     .user-role {
@@ -462,6 +458,12 @@ main {
     .logo {
         padding: 0;
         justify-content: center;
+    }
+
+    .logo-img {
+        max-width: 44px;
+        /* No modo compacto, mostra apenas a parte do ícone (cabide) */
+        object-position: left;
     }
 
     .nav-item {
@@ -500,17 +502,20 @@ main {
     height: 100%;
     background: rgba(0, 0, 0, 0.8);
     backdrop-filter: blur(8px);
-    display: none;
+    display: flex;
     align-items: center;
     justify-content: center;
     z-index: 1000;
     opacity: 0;
-    transition: opacity 0.3s ease;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
 .modal-overlay.active {
-    display: flex;
     opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
 }
 
 .modal-content {
@@ -629,4 +634,50 @@ main {
     border-top: 1px solid var(--card-border);
     font-size: 14px;
     color: var(--text-muted);
+}
+
+/* Login Screen Classes */
+.login-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100vh;
+    background: radial-gradient(circle at center, var(--bg-main) 0%, var(--bg-darker) 100%);
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 9999;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 420px;
+    padding: 40px;
+    border-radius: var(--border-radius);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.login-logo {
+    width: 180px;
+    filter: brightness(0) invert(1);
+    margin-bottom: 24px;
+}
+
+.login-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 32px;
+    color: var(--text-main);
+    text-align: center;
+    width: 100%;
+    border-bottom: 1px solid var(--card-border);
+    padding-bottom: 16px;
+}
+
+#login-form {
+    width: 100%;
 }

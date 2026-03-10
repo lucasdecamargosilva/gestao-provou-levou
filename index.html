@@ -11,261 +11,403 @@
 
 <body>
 
-    <!-- Sidebar -->
-    <aside>
-        <div class="logo">
-            <img src="logo.png" alt="Provou Levou" class="logo-img">
+    <!-- Login View -->
+    <div id="login-view" class="login-container">
+        <div class="login-card glass-premium">
+            <img src="logo.png" alt="Provou Levou" class="login-logo">
+            <h2 class="login-title">Acesso Restrito</h2>
+            <form id="login-form">
+                <div id="login-error"
+                    style="display: none; background: rgba(239,68,68,0.1); color: #ef4444; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 14px; text-align: center; border: 1px solid rgba(239,68,68,0.2);">
+                </div>
+                <div class="form-group">
+                    <label for="login-email">E-mail Administrativo</label>
+                    <input type="email" id="login-email" class="form-control" placeholder="admin@provoulevou.com"
+                        required>
+                </div>
+                <div class="form-group" style="margin-top: 16px;">
+                    <label for="login-password">Senha</label>
+                    <input type="password" id="login-password" class="form-control" placeholder="••••••••" required>
+                </div>
+                <button type="submit" id="btn-login" class="btn-primary"
+                    style="width: 100%; margin-top: 24px; padding: 14px;">
+                    <i class="fas fa-sign-in-alt" style="margin-right: 8px;"></i> Entrar
+                </button>
+            </form>
         </div>
+    </div>
 
-        <ul class="nav-menu">
-            <li>
-                <a href="#" class="nav-item active" data-view="dashboard">
-                    <i class="fas fa-chart-line"></i>
-                    <span>Provou Levou</span>
+    <!-- App View - initially hidden -->
+    <div id="app-view" style="display: none; width: 100%; height: 100vh;">
+
+        <!-- Sidebar -->
+        <aside>
+            <div class="logo">
+                <img src="logo.png" alt="Provou Levou" class="logo-img">
+            </div>
+
+            <ul class="nav-menu">
+                <li>
+                    <a href="#" class="nav-item active" data-view="dashboard">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Provou Levou</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="nav-item" data-view="tryons">
+                        <i class="fas fa-tshirt"></i>
+                        <span>Provas Virtuais</span>
+                    </a>
+                </li>
+            </ul>
+
+            <div class="user-profile">
+                <div class="user-info">
+                    <span class="user-role">Bem vindo,</span>
+                    <span class="user-name">lucas_admin</span>
+                </div>
+                <a href="#" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Fazer Logout</span>
                 </a>
-            </li>
-        </ul>
-
-        <div class="user-profile">
-            <div class="user-info">
-                <span class="user-role">Bem vindo,</span>
-                <span class="user-name">lucas_admin</span>
             </div>
-            <a href="#" class="logout-btn">
-                <i class="fas fa-sign-out-alt"></i>
-                <span>Fazer Logout</span>
-            </a>
+        </aside>
+
+        <!-- Main Content -->
+        <main>
+
+            <!-- Dashboard View -->
+            <section id="dashboard" class="view active">
+                <div class="page-header">
+                    <h1 class="page-title">Painel de Clientes Ativos</h1>
+                </div>
+
+                <!-- KPI Cards -->
+                <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr);">
+                    <div class="stat-card glass">
+                        <div class="stat-label">Clientes Ativos</div>
+                        <div id="stat-active-clients" class="stat-value">0</div>
+                        <div class="stat-trend trend-up">
+                            <i class="fas fa-users"></i> Status: Ativo
+                        </div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-label">Faturamento Mensal (MRR)</div>
+                        <div id="stat-total-mrr" class="stat-value">R$ 0</div>
+                        <div class="stat-trend trend-up">
+                            <i class="fas fa-dollar-sign"></i> Recorrente
+                        </div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-label">Faturamento Potencial</div>
+                        <div id="stat-potential-mrr" class="stat-value">R$ 0</div>
+                        <div class="stat-trend trend-up" style="color: var(--accent);">
+                            <i class="fas fa-chart-bar"></i> Inclui Testes
+                        </div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-label">Evolução do Mês</div>
+                        <div id="stat-growth" class="stat-value">12%</div>
+                        <div class="stat-trend trend-up">
+                            <i class="fas fa-chart-line"></i> Crescimento
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Package Breakdown -->
+                <h2 style="font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 600; margin-bottom: 4px;">
+                    Pacotes Contratados</h2>
+                <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr);">
+                    <div class="stat-card glass package-card">
+                        <div class="package-badge" style="background: rgba(100,116,139,0.15); color: #94a3b8;">STARTER
+                        </div>
+                        <div class="package-price">R$ 97<span>/mês</span></div>
+                        <div class="package-feature"><i class="fas fa-image"></i> 50 fotos/mês</div>
+                        <div class="package-stats">
+                            <div><span id="pkg-starter-count">0</span> assinantes</div>
+                            <div id="pkg-starter-total" style="color: var(--success); font-weight: 600;">R$ 0</div>
+                        </div>
+                    </div>
+                    <div class="stat-card glass package-card">
+                        <div class="package-badge" style="background: rgba(6,182,212,0.15); color: #22d3ee;">INICIAL
+                        </div>
+                        <div class="package-price">R$ 197<span>/mês</span></div>
+                        <div class="package-feature"><i class="fas fa-image"></i> 100 fotos/mês</div>
+                        <div class="package-stats">
+                            <div><span id="pkg-inicial-count">0</span> assinantes</div>
+                            <div id="pkg-inicial-total" style="color: var(--success); font-weight: 600;">R$ 0</div>
+                        </div>
+                    </div>
+                    <div class="stat-card glass package-card">
+                        <div class="package-badge" style="background: rgba(124,58,237,0.15); color: #a78bfa;">MÉDIO
+                        </div>
+                        <div class="package-price">R$ 397<span>/mês</span></div>
+                        <div class="package-feature"><i class="fas fa-image"></i> 500 fotos/mês</div>
+                        <div class="package-stats">
+                            <div><span id="pkg-medio-count">0</span> assinantes</div>
+                            <div id="pkg-medio-total" style="color: var(--success); font-weight: 600;">R$ 0</div>
+                        </div>
+                    </div>
+                    <div class="stat-card glass package-card">
+                        <div class="package-badge" style="background: rgba(245,158,11,0.15); color: #fbbf24;">PREMIUM
+                        </div>
+                        <div class="package-price">R$ 797<span>/mês</span></div>
+                        <div class="package-feature"><i class="fas fa-image"></i> 1200 fotos/mês</div>
+                        <div class="package-stats">
+                            <div><span id="pkg-premium-count">0</span> assinantes</div>
+                            <div id="pkg-premium-total" style="color: var(--success); font-weight: 600;">R$ 0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dashboard Client Table -->
+                <div class="section-container glass">
+                    <div class="table-header">
+                        <h2 class="table-title">Clientes</h2>
+                        <!-- ID adicionado: btn-novo-cliente -->
+                        <button id="btn-novo-cliente" class="btn-primary">
+                            <i class="fas fa-plus"></i> Novo Cliente
+                        </button>
+                    </div>
+                    <table class="client-table">
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Empresa</th>
+                                <th>Plano</th>
+                                <th>Valor Mensal</th>
+                                <th>Último Pagamento</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dashboard-client-table-body">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Try-ons View -->
+            <section id="tryons" class="view">
+                <div class="page-header">
+                    <h1 class="page-title">Acompanhamento de Provas Virtuais</h1>
+                    <p style="color: var(--text-dim); margin-top: 5px;">Custo por prova: <strong>R$ 0,30</strong></p>
+                </div>
+
+                <!-- KPI Cards Try-ons -->
+                <div class="stats-grid">
+                    <div class="stat-card glass">
+                        <div class="stat-label">Total de Provas</div>
+                        <div id="stat-total-tryons" class="stat-value">0</div>
+                        <div class="stat-trend trend-up">
+                            <i class="fas fa-tshirt"></i> Provas Realizadas
+                        </div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-label">Custo Total</div>
+                        <div id="stat-total-tryons-cost" class="stat-value">R$ 0,00</div>
+                        <div class="stat-trend trend-down">
+                            <i class="fas fa-money-bill-wave"></i> Custo Acumulado
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Try-ons Table -->
+                <div class="section-container glass">
+                    <div class="table-header">
+                        <h2 class="table-title">Uso por Cliente</h2>
+                        <button id="btn-refresh-tryons" class="btn-primary"
+                            style="background: rgba(100,116,139,0.15); color: var(--text); border: 1px solid rgba(255,255,255,0.1);">
+                            <i class="fas fa-sync-alt"></i> Atualizar
+                        </button>
+                    </div>
+                    <table class="client-table">
+                        <thead>
+                            <tr>
+                                <th>Domínio (URL)</th>
+                                <th>Qntd. de Provas</th>
+                                <th>Custo Estimado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tryons-table-body">
+                            <tr>
+                                <td colspan="3" style="text-align: center; color: var(--text-dim);">Carregando dados...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+
+        </main>
+
+        <!-- Modal: Novo Cliente -->
+        <div id="registration-modal" class="modal-overlay">
+            <div class="modal-content glass-premium" style="max-width: 700px;">
+                <div class="modal-header">
+                    <h2 id="reg-modal-title">Novo Cliente</h2>
+                    <!-- ID adicionado: btn-close-registration -->
+                    <button type="button" id="btn-close-registration" class="close-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="client-form">
+                        <input type="hidden" id="client_id">
+                        <div id="form-error-message"
+                            style="display: none; background: #fee2e2; color: #b91c1c; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 14px; border: 1px solid #f87171;">
+                        </div>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="name">Nome do Responsável</label>
+                                <input type="text" id="name" class="form-control" placeholder="Ex: João Silva" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="company">Nome da Empresa</label>
+                                <input type="text" id="company" class="form-control" placeholder="Ex: Fashion Store"
+                                    required>
+                            </div>
+                            <div class="form-group">
+                                <label for="email">E-mail de Contato</label>
+                                <input type="email" id="email" class="form-control" placeholder="contato@empresa.com"
+                                    required>
+                            </div>
+                            <div class="form-group">
+                                <label for="phone">Telefone / WhatsApp</label>
+                                <input type="text" id="phone" class="form-control" placeholder="(11) 99999-9999"
+                                    required>
+                            </div>
+                            <div class="form-group">
+                                <label for="plan">Plano</label>
+                                <select id="plan" class="form-control">
+                                    <option value="Starter">Starter - R$ 97/mês</option>
+                                    <option value="Inicial">Inicial - R$ 197/mês</option>
+                                    <option value="Médio">Médio - R$ 397/mês</option>
+                                    <option value="Premium">Premium - R$ 797/mês</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="status">Status</label>
+                                <select id="status" class="form-control">
+                                    <option value="Ativo">Ativo</option>
+                                    <option value="Inativo">Inativo</option>
+                                    <option value="Teste Gratuito">Teste Gratuito</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="implementation-date-wrapper" style="display: none;">
+                                <label for="implementation_date">Data de Implementação</label>
+                                <input type="date" id="implementation_date" class="form-control">
+                            </div>
+                            <div class="form-group" style="grid-column: span 2;">
+                                <label for="website">Site (URL de Implementação)</label>
+                                <input type="url" id="website" class="form-control"
+                                    placeholder="https://www.lojaexemplo.com.br">
+                            </div>
+                        </div>
+                        <div style="margin-top: 24px; display: flex; gap: 16px; justify-content: flex-end;">
+                            <button type="submit" class="btn-primary"><i class="fas fa-user-plus"></i>
+                                Cadastrar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
-    </aside>
 
-    <!-- Main Content -->
-    <main>
-
-        <!-- Dashboard View -->
-        <section id="dashboard" class="view active">
-            <div class="page-header">
-                <h1 class="page-title">Painel de Clientes Ativos</h1>
-            </div>
-
-            <!-- KPI Cards -->
-            <div class="stats-grid">
-                <div class="stat-card glass">
-                    <div class="stat-label">Clientes Ativos</div>
-                    <div id="stat-active-clients" class="stat-value">0</div>
-                    <div class="stat-trend trend-up">
-                        <i class="fas fa-users"></i> Status: Ativo
+        <!-- Modal: Detalhes do Cliente -->
+        <div id="client-modal" class="modal-overlay">
+            <div class="modal-content glass-premium">
+                <div class="modal-header">
+                    <h2 id="modal-title">Detalhes do Cliente</h2>
+                    <!-- ID adicionado: btn-close-client -->
+                    <button id="btn-close-client" class="close-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <label>Responsável</label>
+                            <span id="modal-name">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Empresa</label>
+                            <span id="modal-company">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>E-mail</label>
+                            <span id="modal-email">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Telefone</label>
+                            <span id="modal-phone">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Plano</label>
+                            <span id="modal-plan" class="status-badge">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Status</label>
+                            <span id="modal-status" class="status-badge">-</span>
+                        </div>
+                        <div class="detail-item" id="modal-test-days-wrapper" style="display: none;">
+                            <label>Dias de Teste</label>
+                            <span id="modal-test-days" style="font-weight: 600;">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Data de Adesão</label>
+                            <span id="modal-date">-</span>
+                        </div>
+                        <div class="detail-item" style="grid-column: span 2;">
+                            <label>Site Implementado</label>
+                            <a id="modal-website" href="#" target="_blank" style="color: var(--accent);">-</a>
+                        </div>
                     </div>
                 </div>
-                <div class="stat-card glass">
-                    <div class="stat-label">Faturamento Mensal (MRR)</div>
-                    <div id="stat-total-mrr" class="stat-value">R$ 0</div>
-                    <div class="stat-trend trend-up">
-                        <i class="fas fa-dollar-sign"></i> Recorrente
-                    </div>
-                </div>
-                <div class="stat-card glass">
-                    <div class="stat-label">Evolução do Mês</div>
-                    <div id="stat-growth" class="stat-value">12%</div>
-                    <div class="stat-trend trend-up">
-                        <i class="fas fa-chart-line"></i> Crescimento
-                    </div>
-                </div>
-            </div>
-
-            <!-- Package Breakdown -->
-            <h2 style="font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 600; margin-bottom: 4px;">
-                Pacotes Contratados</h2>
-            <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr);">
-                <div class="stat-card glass package-card">
-                    <div class="package-badge" style="background: rgba(100,116,139,0.15); color: #94a3b8;">STARTER</div>
-                    <div class="package-price">R$ 97<span>/mês</span></div>
-                    <div class="package-feature"><i class="fas fa-image"></i> 50 fotos/mês</div>
-                    <div class="package-stats">
-                        <div><span id="pkg-starter-count">0</span> assinantes</div>
-                        <div id="pkg-starter-total" style="color: var(--success); font-weight: 600;">R$ 0</div>
-                    </div>
-                </div>
-                <div class="stat-card glass package-card">
-                    <div class="package-badge" style="background: rgba(6,182,212,0.15); color: #22d3ee;">INICIAL</div>
-                    <div class="package-price">R$ 197<span>/mês</span></div>
-                    <div class="package-feature"><i class="fas fa-image"></i> 100 fotos/mês</div>
-                    <div class="package-stats">
-                        <div><span id="pkg-inicial-count">0</span> assinantes</div>
-                        <div id="pkg-inicial-total" style="color: var(--success); font-weight: 600;">R$ 0</div>
-                    </div>
-                </div>
-                <div class="stat-card glass package-card">
-                    <div class="package-badge" style="background: rgba(124,58,237,0.15); color: #a78bfa;">MÉDIO</div>
-                    <div class="package-price">R$ 397<span>/mês</span></div>
-                    <div class="package-feature"><i class="fas fa-image"></i> 500 fotos/mês</div>
-                    <div class="package-stats">
-                        <div><span id="pkg-medio-count">0</span> assinantes</div>
-                        <div id="pkg-medio-total" style="color: var(--success); font-weight: 600;">R$ 0</div>
-                    </div>
-                </div>
-                <div class="stat-card glass package-card">
-                    <div class="package-badge" style="background: rgba(245,158,11,0.15); color: #fbbf24;">PREMIUM</div>
-                    <div class="package-price">R$ 797<span>/mês</span></div>
-                    <div class="package-feature"><i class="fas fa-image"></i> 1200 fotos/mês</div>
-                    <div class="package-stats">
-                        <div><span id="pkg-premium-count">0</span> assinantes</div>
-                        <div id="pkg-premium-total" style="color: var(--success); font-weight: 600;">R$ 0</div>
-                    </div>
+                <div class="modal-footer">
+                    <!-- ID adicionado: btn-fechar-detalhes -->
+                    <button id="btn-fechar-detalhes" class="logout-btn">Fechar</button>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <!-- Dashboard Client Table -->
-            <div class="section-container glass">
-                <div class="table-header">
-                    <h2 class="table-title">Clientes</h2>
-                    <!-- ID adicionado: btn-novo-cliente -->
-                    <button id="btn-novo-cliente" class="btn-primary">
-                        <i class="fas fa-plus"></i> Novo Cliente
+    <!-- Modal: API Key Recebida -->
+    <div id="apikey-modal" class="modal-overlay">
+        <div class="modal-content glass-premium" style="max-width: 500px; text-align: center; padding-top: 32px;">
+            <div class="modal-header" style="justify-content: center; border-bottom: none; padding-bottom: 0;">
+                <h2 style="color: var(--accent); font-size: 24px;"><i class="fas fa-key"></i> Key Gerada com Sucesso!
+                </h2>
+            </div>
+            <div class="modal-body">
+                <div
+                    style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); padding: 14px; border-radius: 8px; margin-bottom: 24px;">
+                    <p style="color: #ef4444; font-size: 14px; font-weight: 500; margin: 0; line-height: 1.4;">
+                        <i class="fas fa-exclamation-triangle"></i> <strong>IMPORTANTE:</strong> Salve esta chave em um
+                        local seguro agora mesmo.<br><br>
+                        Por questões de segurança, ela <strong>nunca mais será exibida</strong> após o fechamento desta
+                        janela.
+                    </p>
+                </div>
+
+                <div style="position: relative; margin-bottom: 24px;">
+                    <input type="password" id="revealed-api-key" class="form-control" readonly
+                        style="text-align: center; font-family: monospace; font-size: 18px; padding-right: 45px; letter-spacing: 1px; color: var(--text);">
+                    <button type="button" id="btn-toggle-key"
+                        style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 18px; padding: 5px;">
+                        <i class="fas fa-eye" id="icon-toggle-key"></i>
                     </button>
                 </div>
-                <table class="client-table">
-                    <thead>
-                        <tr>
-                            <th>Cliente</th>
-                            <th>Empresa</th>
-                            <th>Plano</th>
-                            <th>Valor Mensal</th>
-                            <th>Último Pagamento</th>
-                            <th>Status</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="dashboard-client-table-body">
-                    </tbody>
-                </table>
-            </div>
-        </section>
 
-
-    </main>
-
-    <!-- Modal: Novo Cliente -->
-    <div id="registration-modal" class="modal-overlay">
-        <div class="modal-content glass-premium" style="max-width: 700px;">
-            <div class="modal-header">
-                <h2 id="reg-modal-title">Novo Cliente</h2>
-                <!-- ID adicionado: btn-close-registration -->
-                <button type="button" id="btn-close-registration" class="close-modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <form id="client-form">
-                    <input type="hidden" id="client_id">
-                    <div id="form-error-message"
-                        style="display: none; background: #fee2e2; color: #b91c1c; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 14px; border: 1px solid #f87171;">
-                    </div>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="name">Nome do Responsável</label>
-                            <input type="text" id="name" class="form-control" placeholder="Ex: João Silva" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="company">Nome da Empresa</label>
-                            <input type="text" id="company" class="form-control" placeholder="Ex: Fashion Store"
-                                required>
-                        </div>
-                        <div class="form-group">
-                            <label for="email">E-mail de Contato</label>
-                            <input type="email" id="email" class="form-control" placeholder="contato@empresa.com"
-                                required>
-                        </div>
-                        <div class="form-group">
-                            <label for="phone">Telefone / WhatsApp</label>
-                            <input type="text" id="phone" class="form-control" placeholder="(11) 99999-9999" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="plan">Plano</label>
-                            <select id="plan" class="form-control">
-                                <option value="Starter">Starter - R$ 97/mês</option>
-                                <option value="Inicial">Inicial - R$ 197/mês</option>
-                                <option value="Médio">Médio - R$ 397/mês</option>
-                                <option value="Premium">Premium - R$ 797/mês</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="status">Status</label>
-                            <select id="status" class="form-control">
-                                <option value="Ativo">Ativo</option>
-                                <option value="Inativo">Inativo</option>
-                                <option value="Teste Gratuito">Teste Gratuito</option>
-                            </select>
-                        </div>
-                        <div class="form-group" id="implementation-date-wrapper" style="display: none;">
-                            <label for="implementation_date">Data de Implementação</label>
-                            <input type="date" id="implementation_date" class="form-control">
-                        </div>
-                        <div class="form-group" style="grid-column: span 2;">
-                            <label for="website">Site (URL de Implementação)</label>
-                            <input type="url" id="website" class="form-control"
-                                placeholder="https://www.lojaexemplo.com.br">
-                        </div>
-                    </div>
-                    <div style="margin-top: 24px; display: flex; gap: 16px; justify-content: flex-end;">
-                        <button type="submit" class="btn-primary"><i class="fas fa-user-plus"></i> Cadastrar</button>
-                    </div>
-                </form>
+                <button type="button" id="btn-copy-key" class="btn-primary"
+                    style="width: 100%; margin-bottom: 12px; padding: 14px; font-size: 16px;">
+                    <i class="fas fa-copy" style="margin-right: 8px;"></i> Copiar Chave
+                </button>
+                <button type="button" id="btn-close-apikey" class="logout-btn"
+                    style="width: 100%; justify-content: center; padding: 14px; font-size: 15px; cursor: pointer;">
+                    Já salvei a chave, fechar sem copiar
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- Modal: Detalhes do Cliente -->
-    <div id="client-modal" class="modal-overlay">
-        <div class="modal-content glass-premium">
-            <div class="modal-header">
-                <h2 id="modal-title">Detalhes do Cliente</h2>
-                <!-- ID adicionado: btn-close-client -->
-                <button id="btn-close-client" class="close-modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="detail-grid">
-                    <div class="detail-item">
-                        <label>Responsável</label>
-                        <span id="modal-name">-</span>
-                    </div>
-                    <div class="detail-item">
-                        <label>Empresa</label>
-                        <span id="modal-company">-</span>
-                    </div>
-                    <div class="detail-item">
-                        <label>E-mail</label>
-                        <span id="modal-email">-</span>
-                    </div>
-                    <div class="detail-item">
-                        <label>Telefone</label>
-                        <span id="modal-phone">-</span>
-                    </div>
-                    <div class="detail-item">
-                        <label>Plano</label>
-                        <span id="modal-plan" class="status-badge">-</span>
-                    </div>
-                    <div class="detail-item">
-                        <label>Status</label>
-                        <span id="modal-status" class="status-badge">-</span>
-                    </div>
-                    <div class="detail-item" id="modal-test-days-wrapper" style="display: none;">
-                        <label>Dias de Teste</label>
-                        <span id="modal-test-days" style="font-weight: 600;">-</span>
-                    </div>
-                    <div class="detail-item">
-                        <label>Data de Adesão</label>
-                        <span id="modal-date">-</span>
-                    </div>
-                    <div class="detail-item" style="grid-column: span 2;">
-                        <label>Site Implementado</label>
-                        <a id="modal-website" href="#" target="_blank" style="color: var(--accent);">-</a>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <!-- ID adicionado: btn-fechar-detalhes -->
-                <button id="btn-fechar-detalhes" class="logout-btn">Fechar</button>
-            </div>
-        </div>
-    </div>
+    </div> <!-- End of App View -->
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="script.js"></script>

@@ -40,6 +40,32 @@ window.closeRegistrationModal = () => {
     if (wrapper) wrapper.style.display = 'none';
 };
 window.closeModal = () => hideModal('client-modal');
+
+window.showApiKeyModal = (key) => {
+    const modal = document.getElementById('apikey-modal');
+    if (!modal) return;
+
+    const input = document.getElementById('revealed-api-key');
+    const toggleBtn = document.getElementById('btn-toggle-key');
+    const copyBtn = document.getElementById('btn-copy-key');
+    const iconToggle = document.getElementById('icon-toggle-key');
+
+    input.value = key;
+    input.type = 'password';
+    iconToggle.className = 'fas fa-eye';
+
+    copyBtn.innerHTML = '<i class="fas fa-copy" style="margin-right: 8px;"></i> Copiar Chave';
+    copyBtn.style.background = '';
+
+    modal.classList.add('active');
+};
+
+window.closeApiKeyModal = () => {
+    hideModal('apikey-modal');
+    const input = document.getElementById('revealed-api-key');
+    if (input) input.value = '';
+};
+
 window.setFilter = (range, btn) => {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');
@@ -134,8 +160,60 @@ async function addClient(event) {
             const { error } = await db.from('provou_levou_stores').update(payload).eq('id', clientId);
             if (error) throw error;
         } else {
-            const { error } = await db.from('provou_levou_stores').insert([payload]);
-            if (error) throw error;
+            // Delega a criação/inserção do cliente totalmente para o n8n via Webhook
+            // Generate API Key via Webhook right after insertion for new clients
+            try {
+                const webhookPayload = {
+                    name: payload.name,
+                    domain: payload.domain,
+                    email: payload.email,
+                    active: payload.status === 'Ativo',
+                    company: payload.company,
+                    phone: payload.phone,
+                    plan: payload.plan,
+                    status: payload.status,
+                    last_payment: payload.last_payment,
+                    implementation_date: payload.implementation_date
+                };
+
+                const response = await fetch('https://n8n.segredosdodrop.com/webhook/cadastro-lojista', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(webhookPayload)
+                });
+
+                if (response.ok) {
+                    const textData = await response.text();
+                    let returnedVal = textData;
+
+                    try {
+                        const jsonData = JSON.parse(textData);
+                        // Se o n8n retornou um array
+                        if (Array.isArray(jsonData) && jsonData.length > 0) {
+                            returnedVal = jsonData[0].api_key || JSON.stringify(jsonData[0], null, 2);
+                        }
+                        // Se o n8n retornou um objeto
+                        else if (jsonData && jsonData.api_key) {
+                            returnedVal = jsonData.api_key;
+                        }
+                    } catch (e) {
+                        // Se não for JSON, mantém o texto puro
+                    }
+
+                    if (returnedVal) {
+                        window.showApiKeyModal(returnedVal);
+                    } else {
+                        alert('Cliente cadastrado com sucesso! Porém a API Key recebida estava vazia.');
+                    }
+                } else {
+                    alert('Cliente cadastrado com sucesso. Porém, erro ao acionar o webhook no n8n. Status: ' + response.status);
+                }
+            } catch (webhookErr) {
+                console.error('Erro no webhook de criação:', webhookErr);
+                alert('Cliente cadastrado com sucesso. Porém, falha ao conectar no webhook do n8n para gerar a chave.');
+            }
         }
         window.closeRegistrationModal();
         await loadClients();
@@ -231,6 +309,8 @@ function showClientDetailsById(id) {
         const diffDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
         const daysRemaining = Math.max(0, 7 - diffDays);
         if (diffDays > 7) {
+            statusBadge.textContent = 'Teste Expirado';
+            statusBadge.className = 'status-badge status-inactive';
             document.getElementById('modal-test-days').textContent = `Expirado (${diffDays} dias)`;
             document.getElementById('modal-test-days').style.color = '#ef4444'; // red
         } else {
@@ -249,6 +329,88 @@ function showClientDetailsById(id) {
     openModal('client-modal');
 }
 
+
+async function loadTryons() {
+    if (!db) return;
+
+    const tbody = document.getElementById('tryons-table-body');
+    if (!tbody) return;
+
+    try {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-dim); padding: 30px 0;"><i class="fas fa-spinner fa-spin" style="margin-right: 8px;"></i> Carregando dados...</td></tr>';
+
+        // Fetch tryons
+        const { data: tryons, error: tryonsError } = await db
+            .from('geracoes_provou_levou')
+            .select('*');
+
+        if (tryonsError) throw tryonsError;
+
+        // Group by origin
+        const tryonCounts = {};
+        if (tryons) {
+            for (const t of tryons) {
+                let origin = t.origin;
+                if (origin) {
+                    // Normalize origin
+                    origin = origin.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
+                    if (origin) {
+                        tryonCounts[origin] = (tryonCounts[origin] || 0) + 1;
+                    }
+                }
+            }
+        }
+
+        const tableData = [];
+        let totalTryons = 0;
+
+        for (const [origin, count] of Object.entries(tryonCounts)) {
+            totalTryons += count;
+
+            tableData.push({
+                origin: origin,
+                count: count
+            });
+        }
+
+        tableData.sort((a, b) => b.count - a.count);
+
+        // Update stats
+        const statTotal = document.getElementById('stat-total-tryons');
+        if (statTotal) statTotal.textContent = totalTryons.toLocaleString('pt-BR');
+
+        const statCost = document.getElementById('stat-total-tryons-cost');
+        if (statCost) statCost.textContent = `R$ ${(totalTryons * 0.3).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+        tbody.innerHTML = '';
+
+        if (tableData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-dim); padding: 30px 0;">Nenhuma geração encontrada.</td></tr>';
+            return;
+        }
+
+        for (const item of tableData) {
+            const tr = document.createElement('tr');
+
+            const cost = item.count * 0.3;
+
+            tr.innerHTML = `
+                <td>
+                    <div style="font-weight:600"><a href="https://${item.origin}" target="_blank" style="color:var(--text); text-decoration: none;">${item.origin} <i class="fas fa-external-link-alt" style="font-size:10px;margin-left:4px;color:var(--accent)"></i></a></div>
+                </td>
+                <td><span class="status-badge" style="background: rgba(124,58,237,0.15); color: #a78bfa; font-weight: 600;">${item.count.toLocaleString('pt-BR')} provas</span></td>
+                <td style="color: #ef4444; font-weight: 600;">R$ ${cost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            `;
+
+            tbody.appendChild(tr);
+        }
+
+    } catch (err) {
+        console.error('Erro ao carregar provas virtuais:', err);
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #ef4444; padding: 30px 0;">Erro ao carregar os dados.</td></tr>';
+    }
+}
+
 // ─── Render ────────────────────────────────────────────────────────────────────
 function renderTable() {
     const tbody = document.getElementById('dashboard-client-table-body');
@@ -262,7 +424,7 @@ function renderTable() {
         const tr = document.createElement('tr');
         tr.style.cursor = 'pointer';
 
-        const cls = statusClass(client.status);
+        let cls = statusClass(client.status);
         const value = PLAN_VALUES[client.plan]
             ? `R$ ${PLAN_VALUES[client.plan].toLocaleString('pt-BR')}`
             : '-';
@@ -274,6 +436,7 @@ function renderTable() {
             const diffDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
             if (diffDays > 7) {
                 statusDisplay = `Teste Expirado`;
+                cls = 'status-inactive'; // Red tag
             } else {
                 statusDisplay = `Teste Gratuito (${diffDays}/7 dias)`;
             }
@@ -291,9 +454,9 @@ function renderTable() {
             <td><span class="status-badge ${cls}">${statusDisplay}</span></td>
             <td>
                 <div style="display:flex;gap:10px">
-                    <button data-action="edit"   data-id="${client.id}" style="background:none;border:none;color:var(--text-dim);cursor:pointer"><i class="fas fa-edit"></i></button>
-                    <button data-action="delete" data-id="${client.id}" style="background:none;border:none;color:var(--text-dim);cursor:pointer"><i class="fas fa-trash"></i></button>
-                    <button data-action="view"   data-id="${client.id}" style="background:none;border:none;color:var(--text-dim);cursor:pointer"><i class="fas fa-eye"></i></button>
+                    <button data-action="edit"   data-id="${client.id}" style="background:none;border:none;color:var(--text-dim);cursor:pointer" title="Editar"><i class="fas fa-edit"></i></button>
+                    <button data-action="delete" data-id="${client.id}" style="background:none;border:none;color:var(--text-dim);cursor:pointer" title="Excluir"><i class="fas fa-trash"></i></button>
+                    <button data-action="view"   data-id="${client.id}" style="background:none;border:none;color:var(--text-dim);cursor:pointer" title="Ver Detalhes"><i class="fas fa-eye"></i></button>
                 </div>
             </td>
         `;
@@ -321,11 +484,16 @@ function renderTable() {
 
 function updateStats() {
     const active = clients.filter(c => c.status === 'Ativo');
+    const potential = clients.filter(c => c.status === 'Ativo' || c.status === 'Teste Gratuito');
+
     const mrr = active.reduce((sum, c) => sum + (PLAN_VALUES[c.plan] || 0), 0);
+    const potentialMrr = potential.reduce((sum, c) => sum + (PLAN_VALUES[c.plan] || 0), 0);
+
     const growth = active.length > 0 ? '12%' : '0%';
 
     setText('stat-active-clients', active.length);
     setText('stat-total-mrr', `R$ ${mrr.toLocaleString('pt-BR')}`);
+    setText('stat-potential-mrr', `R$ ${potentialMrr.toLocaleString('pt-BR')}`);
     setText('stat-growth', growth);
 
     ['Starter', 'Inicial', 'Médio', 'Premium'].forEach(plan => {
@@ -344,6 +512,7 @@ function switchView(viewId) {
         el.classList.toggle('active', el.id === viewId);
     });
     if (viewId === 'dashboard') { updateStats(); renderTable(); }
+    if (viewId === 'tryons') { loadTryons(); }
 }
 
 // ─── Utilitários ───────────────────────────────────────────────────────────────
@@ -364,7 +533,7 @@ function statusClass(status) {
 }
 
 // ─── Inicialização ─────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
 
     // 1. Inicializa Supabase (usando `db` para não conflitar com window.supabase do SDK CDN)
     try {
@@ -378,6 +547,87 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) {
         console.error('❌ Falha ao inicializar Supabase:', e);
     }
+
+    // --- Autenticação ---
+    const loginView = document.getElementById('login-view');
+    const appView = document.getElementById('app-view');
+    const loginForm = document.getElementById('login-form');
+    const logoutBtns = document.querySelectorAll('.logout-btn');
+
+    async function checkAuth() {
+        if (!db) {
+            // Em modo offline, ignora o login para visualizar o template
+            loginView.style.display = 'none';
+            appView.style.display = 'flex';
+            loadClients();
+            return;
+        }
+
+        const { data: { session }, error } = await db.auth.getSession();
+
+        if (session) {
+            loginView.style.display = 'none';
+            appView.style.display = 'flex';
+
+            // Atualiza o email na sidebar
+            const userEmailEl = document.querySelector('.user-name');
+            if (userEmailEl) userEmailEl.textContent = session.user.email;
+
+            loadClients();
+        } else {
+            loginView.style.display = 'flex';
+            appView.style.display = 'none';
+        }
+    }
+
+    // Escuta mudanças na autenticação
+    if (db) {
+        db.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+                checkAuth();
+            }
+        });
+    }
+
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const errorDiv = document.getElementById('login-error');
+            const btn = document.getElementById('btn-login');
+
+            errorDiv.style.display = 'none';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Entrando...';
+            btn.disabled = true;
+
+            const { data, error } = await db.auth.signInWithPassword({
+                email: email,
+                password: password,
+            });
+
+            if (error) {
+                errorDiv.textContent = 'Credenciais inválidas. Tente novamente.';
+                errorDiv.style.display = 'block';
+                btn.innerHTML = '<i class="fas fa-sign-in-alt" style="margin-right: 8px;"></i> Entrar';
+                btn.disabled = false;
+            }
+            // Se der certo, onAuthStateChange vai capturar o evento SIGNED_IN
+        });
+    }
+
+    logoutBtns.forEach(btn => {
+        // Ignorar os botões de fechar modais (eles usam .logout-btn de classe tbm)
+        if (btn.id === 'btn-fechar-detalhes' || btn.id === 'btn-close-apikey') return;
+
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            if (db) await db.auth.signOut();
+        });
+    });
+
+    // Checa autenticação inicial
+    await checkAuth();
 
     // 2. Botão "Novo Cliente"
     const btnNovoCliente = document.getElementById('btn-novo-cliente');
@@ -450,6 +700,61 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 8. Carrega dados
-    loadClients();
+    // 9. Botão atualizar provas
+    const btnRefreshTryons = document.getElementById('btn-refresh-tryons');
+    if (btnRefreshTryons) {
+        btnRefreshTryons.addEventListener('click', loadTryons);
+    }
+
+    // 10. Lógica do Modal da API Key Gerada
+    const btnCloseApiKey = document.getElementById('btn-close-apikey');
+    if (btnCloseApiKey) btnCloseApiKey.addEventListener('click', window.closeApiKeyModal);
+
+    const btnToggleKey = document.getElementById('btn-toggle-key');
+    if (btnToggleKey) {
+        btnToggleKey.addEventListener('click', () => {
+            const input = document.getElementById('revealed-api-key');
+            const icon = document.getElementById('icon-toggle-key');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fas fa-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'fas fa-eye';
+            }
+        });
+    }
+
+    const btnCopyKey = document.getElementById('btn-copy-key');
+    if (btnCopyKey) {
+        btnCopyKey.addEventListener('click', () => {
+            const input = document.getElementById('revealed-api-key');
+            const wasPassword = input.type === 'password';
+
+            // Para copiar, precisamos tornar o input tipo text temporariamente
+            input.type = 'text';
+            input.select();
+            input.setSelectionRange(0, 99999); // Para mobile
+
+            try {
+                navigator.clipboard.writeText(input.value).then(() => {
+                    btnCopyKey.innerHTML = '<i class="fas fa-check" style="margin-right: 8px;"></i> Chave Copiada!';
+                    btnCopyKey.style.background = 'var(--success)';
+
+                    setTimeout(() => {
+                        btnCopyKey.innerHTML = '<i class="fas fa-copy" style="margin-right: 8px;"></i> Copiar Chave';
+                        btnCopyKey.style.background = '';
+                    }, 3000);
+                }).catch(err => {
+                    document.execCommand('copy');
+                });
+            } catch (err) {
+                document.execCommand('copy');
+            }
+
+            // Volta pro que estava antes
+            if (wasPassword) input.type = 'password';
+        });
+    }
+
 });
