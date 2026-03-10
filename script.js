@@ -1,6 +1,6 @@
 // ─── Configuração Supabase ─────────────────────────────────────────────────────
-const SUPABASE_URL = window.LOCAL_SUPABASE_URL || '%%SUPABASE_URL%%';
-const SUPABASE_KEY = window.LOCAL_SUPABASE_KEY || '%%SUPABASE_KEY%%';
+const SUPABASE_URL = window.LOCAL_SUPABASE_URL;
+const SUPABASE_KEY = window.LOCAL_SUPABASE_KEY;
 
 // ─── Estado Global ─────────────────────────────────────────────────────────────
 const PLAN_VALUES = {
@@ -608,14 +608,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             btn.disabled = true;
 
             if (!db) {
-                // Modo offline: permite entrar com qualquer coisa
-                console.log('Login offline simulado');
-                localStorage.setItem('local_auth_test', 'true');
-                setTimeout(() => {
-                    checkAuth();
-                    btn.innerHTML = '<i class="fas fa-sign-in-alt" style="margin-right: 8px;"></i> Entrar';
-                    btn.disabled = false;
-                }, 500);
+                // Modo offline: apenas para teste local real (quando LOCAL_SUPABASE_URL está vazio)
+                if (!SUPABASE_URL || SUPABASE_URL === 'undefined') {
+                    console.log('Login offline simulado');
+                    localStorage.setItem('local_auth_test', 'true');
+                    setTimeout(() => {
+                        checkAuth();
+                        btn.innerHTML = '<i class="fas fa-sign-in-alt" style="margin-right: 8px;"></i> Entrar';
+                        btn.disabled = false;
+                    }, 500);
+                    return;
+                }
+
+                errorDiv.textContent = 'Erro de conexão com o banco de dados. Verifique as configurações.';
+                errorDiv.style.display = 'block';
+                btn.innerHTML = '<i class="fas fa-sign-in-alt" style="margin-right: 8px;"></i> Entrar';
+                btn.disabled = false;
                 return;
             }
 
