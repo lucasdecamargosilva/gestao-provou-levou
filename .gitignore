@@ -1,5 +1,5 @@
 node_modules
-env-config.js/
+env-config.js
 .DS_Store
 diff.txt
 test_jsdom.js
