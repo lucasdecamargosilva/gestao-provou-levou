@@ -1,6 +1,6 @@
 // ─── Configuração Supabase ─────────────────────────────────────────────────────
-const SUPABASE_URL = '%%SUPABASE_URL%%';
-const SUPABASE_KEY = '%%SUPABASE_KEY%%';
+const SUPABASE_URL = window.LOCAL_SUPABASE_URL || '%%SUPABASE_URL%%';
+const SUPABASE_KEY = window.LOCAL_SUPABASE_KEY || '%%SUPABASE_KEY%%';
 
 // ─── Estado Global ─────────────────────────────────────────────────────────────
 const PLAN_VALUES = {
