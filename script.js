@@ -2,6 +2,10 @@
 const SUPABASE_URL = window.LOCAL_SUPABASE_URL;
 const SUPABASE_KEY = window.LOCAL_SUPABASE_KEY;
 
+console.log('Tentando conectar ao Supabase...');
+if (!SUPABASE_URL || SUPABASE_URL === 'undefined') console.error('❌ SUPABASE_URL não encontrada!');
+if (!SUPABASE_KEY || SUPABASE_KEY === 'undefined') console.error('❌ SUPABASE_KEY não encontrada!');
+
 // ─── Estado Global ─────────────────────────────────────────────────────────────
 const PLAN_VALUES = {
     'Starter': 97,
