@@ -1,10 +1,11 @@
 // ─── Configuração Supabase ─────────────────────────────────────────────────────
-const SUPABASE_URL = window.LOCAL_SUPABASE_URL;
-const SUPABASE_KEY = window.LOCAL_SUPABASE_KEY;
+// Tenta buscar de variáveis globais (Easypanel/Local) ou placeholders
+const SUPABASE_URL = window.LOCAL_SUPABASE_URL || '';
+const SUPABASE_KEY = window.LOCAL_SUPABASE_KEY || '';
 
-console.log('Tentando conectar ao Supabase...');
-if (!SUPABASE_URL || SUPABASE_URL === 'undefined') console.error('❌ SUPABASE_URL não encontrada!');
-if (!SUPABASE_KEY || SUPABASE_KEY === 'undefined') console.error('❌ SUPABASE_KEY não encontrada!');
+console.log('--- Diagnóstico de Conexão ---');
+console.log('URL configurada:', SUPABASE_URL ? '✅ OK' : '❌ VAZIA');
+console.log('Key configurada:', SUPABASE_KEY ? '✅ OK' : '❌ VAZIA');
 
 // ─── Estado Global ─────────────────────────────────────────────────────────────
 const PLAN_VALUES = {
@@ -539,14 +540,19 @@ function statusClass(status) {
 // ─── Inicialização ─────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
 
-    // 1. Inicializa Supabase (usando `db` para não conflitar com window.supabase do SDK CDN)
+    // 1. Inicializa Supabase
     try {
-        const sdk = window.supabase; // o SDK expõe window.supabase
-        if (sdk && typeof sdk.createClient === 'function') {
+        const sdk = window.supabase;
+        if (sdk && typeof sdk.createClient === 'function' && SUPABASE_URL && SUPABASE_KEY) {
             db = sdk.createClient(SUPABASE_URL, SUPABASE_KEY);
-            console.log('✅ Supabase conectado.');
+            console.log('✅ Supabase conectado com sucesso.');
         } else {
-            console.warn('⚠️ Supabase SDK não encontrado. Modo offline.');
+            const errorDiv = document.getElementById('login-error');
+            if (errorDiv) {
+                errorDiv.innerHTML = `<strong>Erro de Configuração:</strong><br>As chaves do Supabase não foram encontradas.<br>Verifique as variáveis de ambiente no Easypanel.`;
+                errorDiv.style.display = 'block';
+            }
+            console.warn('⚠️ Credenciais do Supabase incompletas ou SDK ausente.');
         }
     } catch (e) {
         console.error('❌ Falha ao inicializar Supabase:', e);
