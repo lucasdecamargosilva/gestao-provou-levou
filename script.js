@@ -556,10 +556,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function checkAuth() {
         if (!db) {
-            // Em modo offline, ignora o login para visualizar o template
-            loginView.style.display = 'none';
-            appView.style.display = 'flex';
-            loadClients();
+            // Em modo offline, checa se o usuário "logou" localmente para teste
+            const isLocalAuth = localStorage.getItem('local_auth_test');
+            if (isLocalAuth) {
+                loginView.style.display = 'none';
+                appView.style.display = 'flex';
+                loadClients();
+            } else {
+                loginView.style.display = 'flex';
+                appView.style.display = 'none';
+            }
             return;
         }
 
@@ -601,6 +607,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Entrando...';
             btn.disabled = true;
 
+            if (!db) {
+                // Modo offline: permite entrar com qualquer coisa
+                console.log('Login offline simulado');
+                localStorage.setItem('local_auth_test', 'true');
+                setTimeout(() => {
+                    checkAuth();
+                    btn.innerHTML = '<i class="fas fa-sign-in-alt" style="margin-right: 8px;"></i> Entrar';
+                    btn.disabled = false;
+                }, 500);
+                return;
+            }
+
             const { data, error } = await db.auth.signInWithPassword({
                 email: email,
                 password: password,
@@ -622,7 +640,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         btn.addEventListener('click', async (e) => {
             e.preventDefault();
-            if (db) await db.auth.signOut();
+            console.log('Saindo...');
+
+            if (db) {
+                const { error } = await db.auth.signOut();
+                if (error) {
+                    console.error('Erro ao sair:', error.message);
+                    alert('Erro ao sair: ' + error.message);
+                }
+                localStorage.removeItem('local_auth_test');
+                window.location.reload();
+            } else {
+                // Modo offline: apenas recarrega para voltar à tela inicial
+                localStorage.removeItem('local_auth_test');
+                window.location.reload();
+            }
         });
     });
 
