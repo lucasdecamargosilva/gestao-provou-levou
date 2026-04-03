@@ -617,6 +617,56 @@ function renderTable() {
     });
 }
 
+var lastGrowthLevel = 0;
+var lastRevenueLevel = 0;
+
+function updateProvinha() {
+    var active = clients.filter(function(c) { return c.status === 'Ativo'; });
+    var activeCount = active.length;
+    var mrr = active.reduce(function(sum, c) { return sum + (PLAN_VALUES[c.plan] || 0); }, 0);
+
+    var growthLevel = getLevel(activeCount, GROWTH_LEVELS);
+    var revenueLevel = getLevel(mrr, REVENUE_LEVELS);
+
+    // Update SVG — buildProvinhaSVG returns hardcoded SVG strings only (no user input)
+    var avatarEl = document.getElementById('provinha-avatar');
+    if (avatarEl) {
+        // Safe: buildProvinhaSVG only returns hardcoded SVG markup, never user-supplied data
+        avatarEl.innerHTML = buildProvinhaSVG(growthLevel.level, revenueLevel.level);
+
+        // Level-up animation
+        if ((growthLevel.level > lastGrowthLevel || revenueLevel.level > lastRevenueLevel) && lastGrowthLevel > 0) {
+            avatarEl.classList.add('level-up');
+            setTimeout(function() { avatarEl.classList.remove('level-up'); }, 1000);
+        }
+        lastGrowthLevel = growthLevel.level;
+        lastRevenueLevel = revenueLevel.level;
+    }
+
+    // Stage name
+    setText('provinha-stage-name', getStageName(growthLevel, revenueLevel));
+
+    // Growth bar
+    var growthPercent = getBarPercent(activeCount, growthLevel);
+    var growthNext = getNextThreshold(growthLevel);
+    var growthBar = document.getElementById('provinha-growth-bar');
+    if (growthBar) growthBar.style.width = growthPercent + '%';
+    setText('provinha-growth-text', activeCount + '/' + growthNext + ' lojistas (Nv.' + growthLevel.level + ')');
+
+    // Revenue bar
+    var revenuePercent = getBarPercent(mrr, revenueLevel);
+    var revenueNext = getNextThreshold(revenueLevel);
+    var revenueBar = document.getElementById('provinha-revenue-bar');
+    if (revenueBar) revenueBar.style.width = revenuePercent + '%';
+    var nextFormatted = revenueNext === 'MAX' ? 'MAX' : 'R$' + revenueNext.toLocaleString('pt-BR');
+    setText('provinha-revenue-text', 'R$' + mrr.toLocaleString('pt-BR') + '/' + nextFormatted + ' (Nv.' + revenueLevel.level + ')');
+
+    // Indicators
+    setText('provinha-ind-stores', activeCount);
+    setText('provinha-ind-mrr', 'R$ ' + mrr.toLocaleString('pt-BR'));
+    setText('provinha-ind-affiliates', '-');
+}
+
 function updateStats() {
     const active = clients.filter(c => c.status === 'Ativo');
     const potential = clients.filter(c => c.status === 'Ativo' || c.status === 'Teste Gratuito');
@@ -637,6 +687,8 @@ function updateStats() {
         setText(`pkg-${key}-count`, group.length);
         setText(`pkg-${key}-total`, `R$ ${(group.length * (PLAN_VALUES[plan] || 0)).toLocaleString('pt-BR')}`);
     });
+
+    updateProvinha();
 }
 
 function switchView(viewId) {
