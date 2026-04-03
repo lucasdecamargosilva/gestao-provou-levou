@@ -15,6 +15,136 @@ const PLAN_VALUES = {
     'Premium': 797
 };
 
+// --- Tamagotchi Provinha ---
+const GROWTH_LEVELS = [
+    { min: 0, max: 3, name: 'Ovo', level: 1 },
+    { min: 4, max: 10, name: 'Mini Cabide', level: 2 },
+    { min: 11, max: 25, name: 'Cabide Medio', level: 3 },
+    { min: 26, max: 50, name: 'Manequim', level: 4 },
+    { min: 51, max: Infinity, name: 'Manequim Premium', level: 5 },
+];
+
+const REVENUE_LEVELS = [
+    { min: 0, max: 200, name: 'Pelado', level: 1 },
+    { min: 201, max: 1000, name: 'Camiseta', level: 2 },
+    { min: 1001, max: 5000, name: 'Casual', level: 3 },
+    { min: 5001, max: 15000, name: 'Elegante', level: 4 },
+    { min: 15001, max: Infinity, name: 'Dourado', level: 5 },
+];
+
+function getLevel(value, levels) {
+    for (const l of levels) {
+        if (value >= l.min && value <= l.max) return l;
+    }
+    return levels[0];
+}
+
+function getBarPercent(value, levelObj) {
+    if (levelObj.max === Infinity) return 100;
+    const range = levelObj.max - levelObj.min + 1;
+    const progress = value - levelObj.min;
+    return Math.min(100, Math.max(0, Math.round((progress / range) * 100)));
+}
+
+function getNextThreshold(levelObj) {
+    if (levelObj.max === Infinity) return 'MAX';
+    return levelObj.max + 1;
+}
+
+function getStageName(growthLevel, revenueLevel) {
+    if (growthLevel.level === 1 && revenueLevel.level === 1) return 'Ovo Pelado';
+    if (growthLevel.level === 1) return 'Ovo de ' + revenueLevel.name;
+    if (revenueLevel.level === 1) return growthLevel.name + ' Pelado';
+    return growthLevel.name + ' ' + revenueLevel.name;
+}
+
+function buildProvinhaSVG(growthLvl, revenueLvl) {
+    const bodies = {
+        1: '<ellipse cx="80" cy="110" rx="35" ry="45" fill="#2d1f4e" stroke="#7c3aed" stroke-width="2"/>'
+         + '<ellipse cx="80" cy="110" rx="28" ry="38" fill="#3b2766" opacity="0.5"/>'
+         + '<circle cx="70" cy="102" r="5" fill="white"/><circle cx="70" cy="102" r="3" fill="#1a1a2e"/>'
+         + '<circle cx="90" cy="102" r="5" fill="white"/><circle cx="90" cy="102" r="3" fill="#1a1a2e"/>'
+         + '<ellipse cx="80" cy="115" rx="4" ry="2" fill="#c084fc" opacity="0.6"/>',
+        2: '<line x1="80" y1="40" x2="80" y2="55" stroke="#7c3aed" stroke-width="4" stroke-linecap="round"/>'
+         + '<circle cx="80" cy="36" r="6" fill="none" stroke="#7c3aed" stroke-width="3"/>'
+         + '<path d="M50 70 Q80 55 110 70" stroke="#7c3aed" stroke-width="5" fill="none" stroke-linecap="round"/>'
+         + '<line x1="50" y1="70" x2="50" y2="80" stroke="#7c3aed" stroke-width="4" stroke-linecap="round"/>'
+         + '<line x1="110" y1="70" x2="110" y2="80" stroke="#7c3aed" stroke-width="4" stroke-linecap="round"/>'
+         + '<circle cx="70" cy="90" r="5" fill="white"/><circle cx="70" cy="90" r="3" fill="#1a1a2e"/>'
+         + '<circle cx="90" cy="90" r="5" fill="white"/><circle cx="90" cy="90" r="3" fill="#1a1a2e"/>'
+         + '<path d="M73 100 Q80 105 87 100" stroke="#c084fc" stroke-width="2" fill="none" stroke-linecap="round"/>',
+        3: '<line x1="80" y1="30" x2="80" y2="50" stroke="#9333ea" stroke-width="4" stroke-linecap="round"/>'
+         + '<circle cx="80" cy="26" r="7" fill="none" stroke="#9333ea" stroke-width="3"/>'
+         + '<path d="M40 65 Q80 45 120 65" stroke="#9333ea" stroke-width="6" fill="none" stroke-linecap="round"/>'
+         + '<line x1="40" y1="65" x2="40" y2="80" stroke="#9333ea" stroke-width="4" stroke-linecap="round"/>'
+         + '<line x1="120" y1="65" x2="120" y2="80" stroke="#9333ea" stroke-width="4" stroke-linecap="round"/>'
+         + '<line x1="40" y1="80" x2="35" y2="110" stroke="#9333ea" stroke-width="3" stroke-linecap="round"/>'
+         + '<line x1="120" y1="80" x2="125" y2="110" stroke="#9333ea" stroke-width="3" stroke-linecap="round"/>'
+         + '<circle cx="68" cy="88" r="6" fill="white"/><circle cx="68" cy="88" r="3.5" fill="#1a1a2e"/>'
+         + '<circle cx="92" cy="88" r="6" fill="white"/><circle cx="92" cy="88" r="3.5" fill="#1a1a2e"/>'
+         + '<path d="M72 102 Q80 108 88 102" stroke="#c084fc" stroke-width="2" fill="none" stroke-linecap="round"/>',
+        4: '<ellipse cx="80" cy="45" rx="22" ry="26" fill="#2d1f4e" stroke="#9333ea" stroke-width="2"/>'
+         + '<rect x="65" y="70" width="30" height="55" rx="8" fill="#2d1f4e" stroke="#9333ea" stroke-width="2"/>'
+         + '<line x1="65" y1="85" x2="40" y2="100" stroke="#9333ea" stroke-width="4" stroke-linecap="round"/>'
+         + '<line x1="95" y1="85" x2="120" y2="100" stroke="#9333ea" stroke-width="4" stroke-linecap="round"/>'
+         + '<rect x="70" y="125" width="8" height="35" rx="4" fill="#2d1f4e" stroke="#9333ea" stroke-width="2"/>'
+         + '<rect x="82" y="125" width="8" height="35" rx="4" fill="#2d1f4e" stroke="#9333ea" stroke-width="2"/>'
+         + '<circle cx="72" cy="40" r="5" fill="white"/><circle cx="72" cy="40" r="3" fill="#1a1a2e"/>'
+         + '<circle cx="88" cy="40" r="5" fill="white"/><circle cx="88" cy="40" r="3" fill="#1a1a2e"/>'
+         + '<path d="M75 52 Q80 56 85 52" stroke="#c084fc" stroke-width="2" fill="none" stroke-linecap="round"/>',
+        5: '<defs><linearGradient id="gold-grad" x1="0%" y1="0%" x2="100%" y2="100%">'
+         + '<stop offset="0%" style="stop-color:#fbbf24"/><stop offset="100%" style="stop-color:#f59e0b"/>'
+         + '</linearGradient></defs>'
+         + '<ellipse cx="80" cy="42" rx="24" ry="28" fill="#3b2766" stroke="url(#gold-grad)" stroke-width="3"/>'
+         + '<rect x="62" y="68" width="36" height="58" rx="10" fill="#3b2766" stroke="url(#gold-grad)" stroke-width="3"/>'
+         + '<line x1="62" y1="85" x2="35" y2="98" stroke="url(#gold-grad)" stroke-width="5" stroke-linecap="round"/>'
+         + '<line x1="98" y1="85" x2="125" y2="98" stroke="url(#gold-grad)" stroke-width="5" stroke-linecap="round"/>'
+         + '<rect x="68" y="126" width="10" height="38" rx="5" fill="#3b2766" stroke="url(#gold-grad)" stroke-width="3"/>'
+         + '<rect x="82" y="126" width="10" height="38" rx="5" fill="#3b2766" stroke="url(#gold-grad)" stroke-width="3"/>'
+         + '<circle cx="72" cy="37" r="5.5" fill="white"/><circle cx="72" cy="37" r="3.5" fill="#1a1a2e"/>'
+         + '<circle cx="88" cy="37" r="5.5" fill="white"/><circle cx="88" cy="37" r="3.5" fill="#1a1a2e"/>'
+         + '<path d="M74 50 Q80 55 86 50" stroke="#fbbf24" stroke-width="2" fill="none" stroke-linecap="round"/>'
+         + '<circle cx="80" cy="20" r="3" fill="#fbbf24" opacity="0.8"/>'
+         + '<circle cx="68" cy="24" r="2" fill="#fbbf24" opacity="0.5"/>'
+         + '<circle cx="92" cy="24" r="2" fill="#fbbf24" opacity="0.5"/>'
+    };
+
+    const clothes = {
+        1: '<ellipse cx="72" cy="48" rx="6" ry="3" fill="#ef4444" opacity="0.3"/>'
+         + '<ellipse cx="88" cy="48" rx="6" ry="3" fill="#ef4444" opacity="0.3"/>',
+        2: '<rect x="63" y="70" width="34" height="30" rx="4" fill="#7c3aed" opacity="0.7"/>'
+         + '<line x1="80" y1="70" x2="80" y2="100" stroke="#9333ea" stroke-width="1" opacity="0.5"/>',
+        3: '<rect x="63" y="70" width="34" height="25" rx="4" fill="#3b82f6" opacity="0.7"/>'
+         + '<path d="M73 70 L80 65 L87 70" fill="#3b82f6" stroke="#60a5fa" stroke-width="1"/>'
+         + '<rect x="66" y="95" width="12" height="30" rx="3" fill="#1e3a5f" opacity="0.8"/>'
+         + '<rect x="82" y="95" width="12" height="30" rx="3" fill="#1e3a5f" opacity="0.8"/>',
+        4: '<rect x="61" y="70" width="38" height="28" rx="4" fill="#1e293b" opacity="0.9"/>'
+         + '<path d="M70 70 L80 62 L90 70" fill="#334155" stroke="#64748b" stroke-width="1"/>'
+         + '<rect x="78" y="72" width="4" height="24" rx="2" fill="#7c3aed" opacity="0.8"/>'
+         + '<rect x="64" y="98" width="14" height="28" rx="3" fill="#0f172a" opacity="0.9"/>'
+         + '<rect x="82" y="98" width="14" height="28" rx="3" fill="#0f172a" opacity="0.9"/>'
+         + '<circle cx="80" cy="73" r="2.5" fill="#c084fc"/>',
+        5: '<rect x="59" y="68" width="42" height="30" rx="5" fill="#1a1a2e" opacity="0.95" stroke="#fbbf24" stroke-width="1"/>'
+         + '<path d="M68 68 L80 58 L92 68" fill="#1a1a2e" stroke="#fbbf24" stroke-width="1"/>'
+         + '<rect x="78" y="70" width="4" height="26" rx="2" fill="#fbbf24" opacity="0.8"/>'
+         + '<rect x="62" y="98" width="15" height="30" rx="4" fill="#0f0f13" opacity="0.95" stroke="#fbbf24" stroke-width="0.5"/>'
+         + '<rect x="83" y="98" width="15" height="30" rx="4" fill="#0f0f13" opacity="0.95" stroke="#fbbf24" stroke-width="0.5"/>'
+         + '<circle cx="80" cy="71" r="3" fill="#fbbf24"/>'
+         + '<rect x="35" y="95" width="10" height="3" rx="1.5" fill="#fbbf24" opacity="0.6"/>'
+         + '<rect x="115" y="95" width="10" height="3" rx="1.5" fill="#fbbf24" opacity="0.6"/>'
+    };
+
+    var bodyKey = Math.min(growthLvl, 5);
+    var clothesKey = Math.min(revenueLvl, 5);
+    // Only show clothes on bodies level 2+ (ovo has no body to dress)
+    var clothesSvg = bodyKey >= 2 ? clothes[clothesKey] : clothes[1];
+
+    return '<svg viewBox="0 0 160 180" width="160" height="200" xmlns="http://www.w3.org/2000/svg">'
+        + bodies[bodyKey]
+        + clothesSvg
+        + '</svg>';
+}
+
 let clients = [];
 let db = null; // cliente Supabase (nome diferente para não conflitar com window.supabase do SDK)
 
