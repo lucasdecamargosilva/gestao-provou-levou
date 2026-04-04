@@ -54,6 +54,12 @@
                     </a>
                 </li>
                 <li>
+                    <a href="#" class="nav-item" data-view="provinha">
+                        <i class="fas fa-gamepad"></i>
+                        <span>Provinha</span>
+                    </a>
+                </li>
+                <li>
                     <a href="#" class="nav-item" data-view="tryons">
                         <i class="fas fa-tshirt"></i>
                         <span>Provas Virtuais</span>
@@ -110,55 +116,6 @@
                         <div id="stat-growth" class="stat-value">12%</div>
                         <div class="stat-trend trend-up">
                             <i class="fas fa-chart-line"></i> Crescimento
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tamagotchi Provinha -->
-                <div class="provinha-section">
-                    <div class="provinha-card glass">
-                        <div class="provinha-header">
-                            <h2 class="provinha-title">Provinha Status</h2>
-                        </div>
-                        <div class="provinha-body">
-                            <div class="provinha-avatar" id="provinha-avatar">
-                                <!-- SVG layers injected by JS -->
-                            </div>
-                            <div class="provinha-stage-name" id="provinha-stage-name">Carregando...</div>
-                        </div>
-                        <div class="provinha-bars">
-                            <div class="provinha-bar-group">
-                                <div class="provinha-bar-label">
-                                    <span><i class="fas fa-store"></i> Crescimento</span>
-                                    <span id="provinha-growth-text">0/4 lojistas (Nv.1)</span>
-                                </div>
-                                <div class="provinha-bar-track">
-                                    <div class="provinha-bar-fill provinha-bar-growth" id="provinha-growth-bar" style="width: 0%"></div>
-                                </div>
-                            </div>
-                            <div class="provinha-bar-group">
-                                <div class="provinha-bar-label">
-                                    <span><i class="fas fa-dollar-sign"></i> Receita</span>
-                                    <span id="provinha-revenue-text">R$0/R$201 (Nv.1)</span>
-                                </div>
-                                <div class="provinha-bar-track">
-                                    <div class="provinha-bar-fill provinha-bar-revenue" id="provinha-revenue-bar" style="width: 0%"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="provinha-indicators">
-                            <div class="provinha-indicator">
-                                <div class="provinha-indicator-value" id="provinha-ind-stores">0</div>
-                                <div class="provinha-indicator-label">Lojistas Ativos</div>
-                            </div>
-                            <div class="provinha-indicator">
-                                <div class="provinha-indicator-value" id="provinha-ind-mrr">R$ 0</div>
-                                <div class="provinha-indicator-label">MRR</div>
-                            </div>
-                            <div class="provinha-indicator">
-                                <div class="provinha-indicator-value" id="provinha-ind-affiliates">0</div>
-                                <div class="provinha-indicator-label">Afiliados</div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -233,6 +190,93 @@
                         <tbody id="dashboard-client-table-body">
                         </tbody>
                     </table>
+                </div>
+            </section>
+
+            <!-- Provinha View -->
+            <section id="provinha" class="view">
+                <div class="page-header">
+                    <h1 class="page-title">Provinha Status</h1>
+                    <p style="color: var(--text-dim); margin-top: 5px;">Seu mascote evolui com o crescimento do negocio</p>
+                </div>
+
+                <div class="provinha-section">
+                    <div class="provinha-card glass">
+                        <div class="provinha-body">
+                            <div class="provinha-avatar" id="provinha-avatar">
+                                <!-- SVG layers injected by JS -->
+                            </div>
+                            <div class="provinha-stage-name" id="provinha-stage-name">Carregando...</div>
+                        </div>
+                        <div class="provinha-bars">
+                            <div class="provinha-bar-group">
+                                <div class="provinha-bar-label">
+                                    <span><i class="fas fa-store"></i> Crescimento</span>
+                                    <span id="provinha-growth-text">0/4 lojistas (Nv.1)</span>
+                                </div>
+                                <div class="provinha-bar-track">
+                                    <div class="provinha-bar-fill provinha-bar-growth" id="provinha-growth-bar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <div class="provinha-bar-group">
+                                <div class="provinha-bar-label">
+                                    <span><i class="fas fa-dollar-sign"></i> Receita</span>
+                                    <span id="provinha-revenue-text">R$0/R$201 (Nv.1)</span>
+                                </div>
+                                <div class="provinha-bar-track">
+                                    <div class="provinha-bar-fill provinha-bar-revenue" id="provinha-revenue-bar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="provinha-indicators">
+                            <div class="provinha-indicator">
+                                <div class="provinha-indicator-value" id="provinha-ind-stores">0</div>
+                                <div class="provinha-indicator-label">Lojistas Ativos</div>
+                            </div>
+                            <div class="provinha-indicator">
+                                <div class="provinha-indicator-value" id="provinha-ind-mrr">R$ 0</div>
+                                <div class="provinha-indicator-label">MRR</div>
+                            </div>
+                            <div class="provinha-indicator">
+                                <div class="provinha-indicator-value" id="provinha-ind-affiliates">0</div>
+                                <div class="provinha-indicator-label">Afiliados</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Level Guide -->
+                <div class="stats-grid" style="grid-template-columns: repeat(5, 1fr);">
+                    <div class="stat-card glass" style="text-align: center;">
+                        <div class="stat-label">Nivel 1</div>
+                        <div style="font-size: 14px; font-weight: 600; color: var(--text-muted);">Ovo</div>
+                        <div style="font-size: 12px; color: var(--text-dim); margin-top: 4px;">0-3 lojistas</div>
+                        <div style="font-size: 12px; color: var(--text-dim);">R$0-200</div>
+                    </div>
+                    <div class="stat-card glass" style="text-align: center;">
+                        <div class="stat-label">Nivel 2</div>
+                        <div style="font-size: 14px; font-weight: 600; color: var(--primary);">Mini Cabide</div>
+                        <div style="font-size: 12px; color: var(--text-dim); margin-top: 4px;">4-10 lojistas</div>
+                        <div style="font-size: 12px; color: var(--text-dim);">R$201-1k</div>
+                    </div>
+                    <div class="stat-card glass" style="text-align: center;">
+                        <div class="stat-label">Nivel 3</div>
+                        <div style="font-size: 14px; font-weight: 600; color: var(--secondary);">Cabide Medio</div>
+                        <div style="font-size: 12px; color: var(--text-dim); margin-top: 4px;">11-25 lojistas</div>
+                        <div style="font-size: 12px; color: var(--text-dim);">R$1k-5k</div>
+                    </div>
+                    <div class="stat-card glass" style="text-align: center;">
+                        <div class="stat-label">Nivel 4</div>
+                        <div style="font-size: 14px; font-weight: 600; color: var(--accent);">Manequim</div>
+                        <div style="font-size: 12px; color: var(--text-dim); margin-top: 4px;">26-50 lojistas</div>
+                        <div style="font-size: 12px; color: var(--text-dim);">R$5k-15k</div>
+                    </div>
+                    <div class="stat-card glass" style="text-align: center;">
+                        <div class="stat-label">Nivel 5</div>
+                        <div style="font-size: 14px; font-weight: 600; color: #fbbf24;">Premium</div>
+                        <div style="font-size: 12px; color: var(--text-dim); margin-top: 4px;">51+ lojistas</div>
+                        <div style="font-size: 12px; color: var(--text-dim);">R$15k+</div>
+                    </div>
                 </div>
             </section>
 

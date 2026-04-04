@@ -699,6 +699,7 @@ function switchView(viewId) {
         el.classList.toggle('active', el.id === viewId);
     });
     if (viewId === 'dashboard') { updateStats(); renderTable(); }
+    if (viewId === 'provinha') { updateProvinha(); }
     if (viewId === 'tryons') { loadTryons(); }
 }
 
