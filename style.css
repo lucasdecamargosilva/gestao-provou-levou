@@ -335,6 +335,11 @@ main {
     color: var(--warning);
 }
 
+.status-permuta {
+    background: rgba(6, 182, 212, 0.1);
+    color: #22d3ee;
+}
+
 /* Form Styling */
 .form-grid {
     display: grid;

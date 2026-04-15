@@ -12,7 +12,8 @@ const PLAN_VALUES = {
     'Starter': 97,
     'Inicial': 197,
     'Médio': 397,
-    'Premium': 797
+    'Premium': 797,
+    'Ultra Power': 2200
 };
 
 // --- Tamagotchi Provinha ---
@@ -261,12 +262,9 @@ async function addClient(event) {
         plan: document.getElementById('plan').value,
         status: document.getElementById('status').value,
         implementation_date: document.getElementById('status').value === 'Teste Gratuito' ? document.getElementById('implementation_date').value : null,
-        domain: document.getElementById('website').value.trim() || `loja-${Date.now()}.com`
+        domain: document.getElementById('website').value.trim() || `loja-${Date.now()}.com`,
+        last_payment: document.getElementById('last_payment').value || null
     };
-
-    if (!clientId) {
-        payload.last_payment = null;
-    }
 
     if (!db) {
         // Modo offline: salva localmente
@@ -409,6 +407,7 @@ function editClientById(id) {
     document.getElementById('plan').value = c.plan || 'Starter';
     document.getElementById('status').value = c.status || 'Ativo';
     document.getElementById('website').value = c.website || '';
+    document.getElementById('last_payment').value = c.lastPayment && c.lastPayment !== '-' ? c.lastPayment : '';
 
     const impWrapper = document.getElementById('implementation-date-wrapper');
     if (c.status === 'Teste Gratuito') {
@@ -681,8 +680,8 @@ function updateStats() {
     setText('stat-potential-mrr', `R$ ${potentialMrr.toLocaleString('pt-BR')}`);
     setText('stat-growth', growth);
 
-    ['Starter', 'Inicial', 'Médio', 'Premium'].forEach(plan => {
-        const key = plan.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    ['Starter', 'Inicial', 'Médio', 'Premium', 'Ultra Power'].forEach(plan => {
+        const key = plan.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '-');
         const group = clients.filter(c => c.plan === plan && c.status === 'Ativo');
         setText(`pkg-${key}-count`, group.length);
         setText(`pkg-${key}-total`, `R$ ${(group.length * (PLAN_VALUES[plan] || 0)).toLocaleString('pt-BR')}`);
@@ -717,6 +716,7 @@ function formatDate(str) {
 function statusClass(status) {
     if (status === 'Ativo') return 'status-active';
     if (status === 'Teste Gratuito') return 'status-pending';
+    if (status === 'Permuta') return 'status-permuta';
     return 'status-inactive';
 }
 
