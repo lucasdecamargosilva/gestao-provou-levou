@@ -710,7 +710,8 @@ function setText(id, value) {
 
 function formatDate(str) {
     if (!str || str === '-') return '-';
-    return new Date(str).toLocaleDateString('pt-BR', { year: 'numeric', month: 'short', day: 'numeric' });
+    const [y, m, d] = str.split('T')[0].split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString('pt-BR', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 function statusClass(status) {
