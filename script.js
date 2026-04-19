@@ -26,7 +26,8 @@ function normalizePhone(p) {
 
 function normalizeDomain(o) {
     let s = String(o || '').toLowerCase().trim();
-    s = s.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
+    s = s.replace(/^https?:\/\//, '').replace(/^www\./, '');
+    s = s.split('/')[0].split('?')[0];
     return s;
 }
 
@@ -37,7 +38,8 @@ function isOrderAfterProva(orderTs, ph, minDateMap, minTsMap) {
     const orderDate = String(orderTs).slice(0, 10);
     const hasRealTime = String(orderTs).includes('T') && !String(orderTs).includes('T00:00:00');
     if (hasRealTime) {
-        const provaTs = minTsMap[ph] || '';
+        const provaTs = minTsMap[ph];
+        if (!provaTs) return false;
         return String(orderTs) >= provaTs;
     }
     return orderDate >= provaDate;
