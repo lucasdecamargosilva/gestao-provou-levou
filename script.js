@@ -193,6 +193,69 @@ async function computeFaturamentoPosProva() {
     };
 }
 
+// --- Faturamento Cache + DOM Render ---
+const FATURAMENTO_CACHE_KEY = 'faturamentoPosProvaCache';
+
+function readFaturamentoCache() {
+    try {
+        const raw = localStorage.getItem(FATURAMENTO_CACHE_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch {
+        return null;
+    }
+}
+
+function writeFaturamentoCache(data) {
+    try {
+        localStorage.setItem(FATURAMENTO_CACHE_KEY, JSON.stringify(data));
+    } catch (e) {
+        console.warn('Falha ao salvar cache de faturamento:', e);
+    }
+}
+
+function setUpdatedLine(el, iconClass, text) {
+    if (!el) return;
+    while (el.firstChild) el.removeChild(el.firstChild);
+    const i = document.createElement('i');
+    i.className = iconClass;
+    el.appendChild(i);
+    el.appendChild(document.createTextNode(' ' + text));
+}
+
+function renderFaturamentoCard(cache) {
+    const valEl = document.getElementById('stat-faturamento-provador');
+    const updEl = document.getElementById('stat-faturamento-updated');
+    if (!valEl || !updEl) return;
+
+    if (!cache) {
+        valEl.textContent = 'R$ 0';
+        setUpdatedLine(updEl, 'fas fa-clock', 'Clique para calcular');
+        return;
+    }
+    valEl.textContent = formatBRL(cache.totalGeral);
+    setUpdatedLine(updEl, 'fas fa-clock', 'Atualizado ' + formatRelativeTime(cache.updatedAt));
+}
+
+async function refreshFaturamentoPosProva() {
+    const btn = document.getElementById('btn-refresh-faturamento');
+    const icon = btn ? btn.querySelector('i') : null;
+    const updEl = document.getElementById('stat-faturamento-updated');
+    if (icon) icon.classList.add('fa-spin');
+    setUpdatedLine(updEl, 'fas fa-spinner fa-spin', 'Calculando...');
+
+    try {
+        const result = await computeFaturamentoPosProva();
+        writeFaturamentoCache(result);
+        renderFaturamentoCard(result);
+        renderTable();
+    } catch (err) {
+        console.error('Erro ao calcular faturamento:', err);
+        setUpdatedLine(updEl, 'fas fa-exclamation-triangle', 'Erro — ver console');
+    } finally {
+        if (icon) icon.classList.remove('fa-spin');
+    }
+}
+
 // --- Tamagotchi Provinha ---
 const GROWTH_LEVELS = [
     { min: 0, max: 3, name: 'Ovo', level: 1 },
