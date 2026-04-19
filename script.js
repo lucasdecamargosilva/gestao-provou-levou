@@ -92,10 +92,15 @@ async function computeFaturamentoPosProva() {
     const { data: lojistas, error: lojErr } = await db
         .from('lojistas')
         .select('email, origem, tabela_pedidos, campo_telefone_pedido, campo_total_pedido, campo_data_pedido, campo_status_pedido, valores_status_pago')
-        .neq('tabela_pedidos', '');
+        .neq('tabela_pedidos', '')
+        .not('tabela_pedidos', 'is', null);
     if (lojErr) throw lojErr;
     const validLojistas = (lojistas || []).filter(l =>
-        l.tabela_pedidos && l.valores_status_pago && l.valores_status_pago.length > 0
+        l.tabela_pedidos &&
+        l.campo_telefone_pedido &&
+        l.campo_total_pedido &&
+        l.campo_status_pedido &&
+        l.valores_status_pago && l.valores_status_pago.length > 0
     );
 
     // 2. Carregar todas as provas paginadas
@@ -123,7 +128,7 @@ async function computeFaturamentoPosProva() {
             const lojOrigem = normalizeDomain(loj.origem);
             const lojProvas = [];
             for (const [dom, ps] of Object.entries(provasPorOrigem)) {
-                if (dom === lojOrigem || dom.includes(lojOrigem) || lojOrigem.includes(dom)) {
+                if (dom === lojOrigem || dom.endsWith('.' + lojOrigem)) {
                     lojProvas.push(...ps);
                 }
             }
