@@ -794,6 +794,9 @@ function renderTable() {
 
     const sorted = [...clients].sort((a, b) => new Date(b.date) - new Date(a.date));
 
+    const fatCache = readFaturamentoCache();
+    const fatPorEmail = (fatCache && fatCache.porEmail) || {};
+
     sorted.forEach(client => {
         const tr = document.createElement('tr');
         tr.style.cursor = 'pointer';
@@ -826,6 +829,7 @@ function renderTable() {
             <td style="color:var(--success);font-weight:600">${value}</td>
             <td style="color:var(--text-dim)">${client.lastPayment && client.lastPayment !== '-' ? formatDate(client.lastPayment) : '—'}</td>
             <td><span class="status-badge ${cls}">${statusDisplay}</span></td>
+            <td class="cell-faturamento"></td>
             <td>
                 <div style="display:flex;gap:10px">
                     <button data-action="edit"   data-id="${client.id}" style="background:none;border:none;color:var(--text-dim);cursor:pointer" title="Editar"><i class="fas fa-edit"></i></button>
@@ -834,6 +838,14 @@ function renderTable() {
                 </div>
             </td>
         `;
+
+        const fatValue = fatPorEmail[client.email];
+        const fatCell = tr.querySelector('.cell-faturamento');
+        if (fatCell) {
+            fatCell.textContent = (typeof fatValue === 'number') ? formatBRL(fatValue) : '—';
+            fatCell.style.color = (typeof fatValue === 'number') ? 'var(--accent)' : 'var(--text-dim)';
+            fatCell.style.fontWeight = '600';
+        }
 
         // Clique na linha → abre detalhes (exceto em botão)
         tr.addEventListener('click', e => {
