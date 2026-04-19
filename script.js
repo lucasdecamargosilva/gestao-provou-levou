@@ -16,6 +16,50 @@ const PLAN_VALUES = {
     'Ultra Power': 2200
 };
 
+// ─── Helpers para Faturamento Pós-Prova ─────────────────────────────────────
+function normalizePhone(p) {
+    let n = String(p || '').replace(/\D/g, '');
+    if (n.startsWith('55') && n.length > 11) n = n.slice(2);
+    if (n.startsWith('0')) n = n.slice(1);
+    return n;
+}
+
+function normalizeDomain(o) {
+    let s = String(o || '').toLowerCase().trim();
+    s = s.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
+    return s;
+}
+
+function isOrderAfterProva(orderTs, ph, minDateMap, minTsMap) {
+    if (!orderTs || !ph) return false;
+    const provaDate = minDateMap[ph];
+    if (!provaDate) return false;
+    const orderDate = String(orderTs).slice(0, 10);
+    const hasRealTime = String(orderTs).includes('T') && !String(orderTs).includes('T00:00:00');
+    if (hasRealTime) {
+        const provaTs = minTsMap[ph] || '';
+        return String(orderTs) >= provaTs;
+    }
+    return orderDate >= provaDate;
+}
+
+function formatRelativeTime(iso) {
+    if (!iso) return 'Nunca calculado';
+    const diff = Date.now() - new Date(iso).getTime();
+    const sec = Math.floor(diff / 1000);
+    if (sec < 60) return 'agora';
+    const min = Math.floor(sec / 60);
+    if (min < 60) return `${min} min atrás`;
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return `${hr} h atrás`;
+    const days = Math.floor(hr / 24);
+    return `${days} dia${days > 1 ? 's' : ''} atrás`;
+}
+
+function formatBRL(n) {
+    return `R$ ${(Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 // --- Tamagotchi Provinha ---
 const GROWTH_LEVELS = [
     { min: 0, max: 3, name: 'Ovo', level: 1 },
