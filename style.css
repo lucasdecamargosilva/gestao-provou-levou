@@ -858,3 +858,19 @@ main {
         height: 150px;
     }
 }
+
+.btn-icon {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    transition: color 0.15s, background 0.15s;
+}
+
+.btn-icon:hover {
+    color: var(--accent);
+    background: rgba(124, 58, 237, 0.1);
+}
