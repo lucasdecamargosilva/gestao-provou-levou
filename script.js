@@ -62,6 +62,132 @@ function formatBRL(n) {
     return `R$ ${(Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+async function fetchAllPaginated(table, selectFields, filters = []) {
+    if (!db) return [];
+    const all = [];
+    const pageSize = 1000;
+    let from = 0;
+    while (true) {
+        let q = db.from(table).select(selectFields).range(from, from + pageSize - 1);
+        for (const f of filters) {
+            q = q[f.method](...f.args);
+        }
+        const { data, error } = await q;
+        if (error) {
+            console.warn(`Pagination error on ${table}:`, error);
+            break;
+        }
+        if (!data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < pageSize) break;
+        from += pageSize;
+    }
+    return all;
+}
+
+async function computeFaturamentoPosProva() {
+    if (!db) throw new Error('Supabase não conectado');
+
+    // 1. Configs dos lojistas com tabela_pedidos preenchida
+    const { data: lojistas, error: lojErr } = await db
+        .from('lojistas')
+        .select('email, origem, tabela_pedidos, campo_telefone_pedido, campo_total_pedido, campo_data_pedido, campo_status_pedido, valores_status_pago')
+        .neq('tabela_pedidos', '');
+    if (lojErr) throw lojErr;
+    const validLojistas = (lojistas || []).filter(l =>
+        l.tabela_pedidos && l.valores_status_pago && l.valores_status_pago.length > 0
+    );
+
+    // 2. Carregar todas as provas paginadas
+    const provas = await fetchAllPaginated(
+        'geracoes_provou_levou',
+        'telefone_cliente, created_at, origin',
+        [{ method: 'order', args: ['created_at', { ascending: false }] }]
+    );
+
+    // 3. Indexar provas por origem normalizada
+    const provasPorOrigem = {};
+    for (const p of provas) {
+        const dom = normalizeDomain(p.origin);
+        if (!dom) continue;
+        if (!provasPorOrigem[dom]) provasPorOrigem[dom] = [];
+        provasPorOrigem[dom].push(p);
+    }
+
+    const porEmail = {};
+    let totalGeral = 0;
+
+    // 4. Para cada lojista, calcular pós-prova
+    for (const loj of validLojistas) {
+        try {
+            const lojOrigem = normalizeDomain(loj.origem);
+            const lojProvas = [];
+            for (const [dom, ps] of Object.entries(provasPorOrigem)) {
+                if (dom === lojOrigem || dom.includes(lojOrigem) || lojOrigem.includes(dom)) {
+                    lojProvas.push(...ps);
+                }
+            }
+            if (lojProvas.length === 0) {
+                porEmail[loj.email] = 0;
+                continue;
+            }
+
+            const minDateMap = {};
+            const minTsMap = {};
+            const provaPhones = new Set();
+            let earliestProvaDate = '';
+
+            for (const p of lojProvas) {
+                const ph = normalizePhone(p.telefone_cliente);
+                if (!ph) continue;
+                const ts = p.created_at || '';
+                const date = ts.slice(0, 10);
+                if (!minDateMap[ph] || date < minDateMap[ph]) minDateMap[ph] = date;
+                if (!minTsMap[ph] || ts < minTsMap[ph]) minTsMap[ph] = ts;
+                provaPhones.add(ph);
+                if (date && (!earliestProvaDate || date < earliestProvaDate)) earliestProvaDate = date;
+            }
+
+            // 5. Pedidos pagos da loja (paginar)
+            const fPhone = loj.campo_telefone_pedido;
+            const fTotal = loj.campo_total_pedido;
+            const fDate = loj.campo_data_pedido || 'created_at';
+            const fStatus = loj.campo_status_pedido;
+            const select = `${fPhone}, ${fTotal}, ${fDate}, ${fStatus}`;
+
+            const filters = [
+                { method: 'in', args: [fStatus, loj.valores_status_pago] }
+            ];
+            if (earliestProvaDate) {
+                filters.push({ method: 'gte', args: [fDate, earliestProvaDate + 'T00:00:00-03:00'] });
+            }
+
+            const orders = await fetchAllPaginated(loj.tabela_pedidos, select, filters);
+
+            let lojaTotal = 0;
+            for (const o of orders) {
+                const ph = normalizePhone(o[fPhone]);
+                if (!ph || !provaPhones.has(ph)) continue;
+                if (!isOrderAfterProva(o[fDate], ph, minDateMap, minTsMap)) continue;
+                const val = parseFloat(o[fTotal]) || 0;
+                lojaTotal += val;
+            }
+
+            porEmail[loj.email] = lojaTotal;
+            totalGeral += lojaTotal;
+        } catch (err) {
+            console.warn(`Erro calculando faturamento para ${loj.email}:`, err);
+            porEmail[loj.email] = 0;
+        }
+    }
+
+    return {
+        updatedAt: new Date().toISOString(),
+        totalGeral,
+        porEmail
+    };
+}
+
 // --- Tamagotchi Provinha ---
 const GROWTH_LEVELS = [
     { min: 0, max: 3, name: 'Ovo', level: 1 },
