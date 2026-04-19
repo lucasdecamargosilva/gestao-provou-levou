@@ -89,7 +89,7 @@
                 </div>
 
                 <!-- KPI Cards -->
-                <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr);">
+                <div class="stats-grid" style="grid-template-columns: repeat(5, 1fr);">
                     <div class="stat-card glass">
                         <div class="stat-label">Clientes Ativos</div>
                         <div id="stat-active-clients" class="stat-value">0</div>
@@ -116,6 +116,18 @@
                         <div id="stat-growth" class="stat-value">12%</div>
                         <div class="stat-trend trend-up">
                             <i class="fas fa-chart-line"></i> Crescimento
+                        </div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-label" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                            <span>Faturamento via Provador</span>
+                            <button id="btn-refresh-faturamento" class="btn-icon" title="Atualizar">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                        <div id="stat-faturamento-provador" class="stat-value">R$ 0</div>
+                        <div id="stat-faturamento-updated" class="stat-trend trend-up">
+                            <i class="fas fa-clock"></i> Nunca calculado
                         </div>
                     </div>
                 </div>
