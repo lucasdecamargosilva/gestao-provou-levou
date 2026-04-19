@@ -1243,4 +1243,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // ─── Faturamento via Provador wiring ──────────────────────────────────
+    renderFaturamentoCard(readFaturamentoCache());
+
+    const btnRefreshFat = document.getElementById('btn-refresh-faturamento');
+    if (btnRefreshFat) {
+        btnRefreshFat.addEventListener('click', refreshFaturamentoPosProva);
+    }
+
 });
