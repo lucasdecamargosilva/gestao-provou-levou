@@ -293,20 +293,38 @@ function renderFaturamentoCard(cache) {
 function renderLucroLiquido(mrr) {
     const valEl = document.getElementById('stat-lucro-liquido');
     const subEl = document.getElementById('stat-lucro-sub');
-    if (!valEl || !subEl) return;
-
     const cache = readProvasCustoCache();
     const totalCusto = (cache && typeof cache.totalCusto === 'number') ? cache.totalCusto : null;
 
-    if (totalCusto == null) {
-        valEl.textContent = formatBRL(mrr);
-        subEl.textContent = 'Custo não calculado · clique 🔄';
-        return;
+    if (valEl && subEl) {
+        if (totalCusto == null) {
+            valEl.textContent = formatBRL(mrr);
+            subEl.textContent = 'Custo não calculado · clique 🔄';
+        } else {
+            valEl.textContent = formatBRL(mrr - totalCusto);
+            subEl.textContent = `MRR ${formatBRL(mrr)} − Custo ${formatBRL(totalCusto)}`;
+        }
     }
 
-    const lucro = mrr - totalCusto;
-    valEl.textContent = formatBRL(lucro);
-    subEl.textContent = `MRR ${formatBRL(mrr)} − Custo ${formatBRL(totalCusto)}`;
+    // Cost breakdown cards
+    const setCostCard = (valId, subId, custo, provas, ratePerLabel) => {
+        const v = document.getElementById(valId);
+        const s = document.getElementById(subId);
+        if (v) v.textContent = (custo == null) ? '—' : formatBRL(custo);
+        if (s) s.textContent = (provas == null)
+            ? '—'
+            : `${provas.toLocaleString('pt-BR')} provas${ratePerLabel ? ' · ' + ratePerLabel : ''}`;
+    };
+
+    if (cache) {
+        setCostCard('stat-dash-custo-oculos', 'stat-dash-custo-oculos-sub', cache.custoOculos, cache.provasOculos, 'R$ 0,20/prova');
+        setCostCard('stat-dash-custo-roupa', 'stat-dash-custo-roupa-sub', cache.custoRoupa, cache.provasRoupa, 'R$ 0,35/prova');
+        setCostCard('stat-dash-custo-total', 'stat-dash-custo-total-sub', cache.totalCusto, cache.totalProvas, '');
+    } else {
+        setCostCard('stat-dash-custo-oculos', 'stat-dash-custo-oculos-sub', 0, 0, 'R$ 0,20/prova');
+        setCostCard('stat-dash-custo-roupa', 'stat-dash-custo-roupa-sub', 0, 0, 'R$ 0,35/prova');
+        setCostCard('stat-dash-custo-total', 'stat-dash-custo-total-sub', 0, 0, '');
+    }
 }
 
 async function refreshLucroLiquido() {
