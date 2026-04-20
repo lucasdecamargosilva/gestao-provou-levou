@@ -106,6 +106,12 @@ async function computeFaturamentoPosProva() {
         .select('email, origem, categoria, tabela_pedidos, campo_telefone_pedido, campo_total_pedido, campo_data_pedido, campo_status_pedido, valores_status_pago')
         .neq('tabela_pedidos', '')
         .not('tabela_pedidos', 'is', null);
+
+    const { data: stores } = await db.from('provou_levou_stores').select('email, categoria');
+    const storeCategoriaMap = {};
+    for (const s of (stores || [])) {
+        if (s.email) storeCategoriaMap[s.email.toLowerCase()] = s.categoria || 'oculos';
+    }
     if (lojErr) throw lojErr;
     const validLojistas = (lojistas || []).filter(l =>
         l.tabela_pedidos &&
@@ -144,7 +150,7 @@ async function computeFaturamentoPosProva() {
                     lojProvas.push(...ps);
                 }
             }
-            const categoria = loj.categoria || 'oculos';
+            const categoria = storeCategoriaMap[(loj.email || '').toLowerCase()] || loj.categoria || 'oculos';
             if (lojProvas.length === 0) {
                 porEmail[loj.email] = { faturamento: 0, provas: 0, custo: 0, categoria };
                 continue;
@@ -198,7 +204,8 @@ async function computeFaturamentoPosProva() {
             totalGeral += lojaTotal;
         } catch (err) {
             console.warn(`Erro calculando faturamento para ${loj.email}:`, err);
-            porEmail[loj.email] = { faturamento: 0, provas: 0, custo: 0, categoria: loj.categoria || 'oculos' };
+            const fallbackCat = storeCategoriaMap[(loj.email || '').toLowerCase()] || loj.categoria || 'oculos';
+            porEmail[loj.email] = { faturamento: 0, provas: 0, custo: 0, categoria: fallbackCat };
         }
     }
 
@@ -523,7 +530,8 @@ async function loadClients() {
             website: s.domain || '',
             date: new Date(s.created_at).toISOString().split('T')[0],
             lastPayment: s.last_payment || '-',
-            implementationDate: s.implementation_date || null
+            implementationDate: s.implementation_date || null,
+            categoria: s.categoria || 'oculos'
         }));
     } catch (err) {
         console.error('Erro ao carregar clientes:', err);
@@ -550,7 +558,8 @@ async function addClient(event) {
         status: document.getElementById('status').value,
         implementation_date: document.getElementById('status').value === 'Teste Gratuito' ? document.getElementById('implementation_date').value : null,
         domain: document.getElementById('website').value.trim() || `loja-${Date.now()}.com`,
-        last_payment: document.getElementById('last_payment').value || null
+        last_payment: document.getElementById('last_payment').value || null,
+        categoria: document.getElementById('categoria').value || 'oculos'
     };
 
     if (!db) {
@@ -695,6 +704,7 @@ function editClientById(id) {
     document.getElementById('status').value = c.status || 'Ativo';
     document.getElementById('website').value = c.website || '';
     document.getElementById('last_payment').value = c.lastPayment && c.lastPayment !== '-' ? c.lastPayment : '';
+    document.getElementById('categoria').value = c.categoria || 'oculos';
 
     const impWrapper = document.getElementById('implementation-date-wrapper');
     if (c.status === 'Teste Gratuito') {
@@ -775,11 +785,19 @@ async function loadTryons() {
     try {
         renderTryonsMessage(tbody, 4, 'Carregando dados...', 'var(--text-dim)');
 
-        const { data: lojistas } = await db.from('lojistas').select('origem, categoria');
+        const [lojistasRes, storesRes] = await Promise.all([
+            db.from('lojistas').select('origem, categoria'),
+            db.from('provou_levou_stores').select('domain, categoria')
+        ]);
         const categoriaMap = {};
-        for (const l of (lojistas || [])) {
+        for (const l of (lojistasRes.data || [])) {
             const dom = normalizeDomain(l.origem);
             if (dom) categoriaMap[dom] = l.categoria || 'oculos';
+        }
+        // provou_levou_stores takes precedence (where users edit categoria)
+        for (const s of (storesRes.data || [])) {
+            const dom = normalizeDomain(s.domain);
+            if (dom) categoriaMap[dom] = s.categoria || 'oculos';
         }
 
         const tryons = await fetchAllPaginated(
