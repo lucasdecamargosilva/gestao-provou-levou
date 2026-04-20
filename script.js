@@ -235,15 +235,20 @@ function setUpdatedLine(el, iconClass, text) {
 function renderFaturamentoCard(cache) {
     const valEl = document.getElementById('stat-faturamento-provador');
     const updEl = document.getElementById('stat-faturamento-updated');
-    if (!valEl || !updEl) return;
+    const custoEl = document.getElementById('stat-custo-geracoes');
+    const provasEl = document.getElementById('stat-custo-provas');
 
     if (!cache) {
-        valEl.textContent = 'R$ 0';
-        setUpdatedLine(updEl, 'fas fa-clock', 'Clique para calcular');
+        if (valEl) valEl.textContent = 'R$ 0';
+        if (updEl) setUpdatedLine(updEl, 'fas fa-clock', 'Clique para calcular');
+        if (custoEl) custoEl.textContent = 'R$ 0';
+        if (provasEl) setUpdatedLine(provasEl, 'fas fa-image', '0 provas');
         return;
     }
-    valEl.textContent = formatBRL(cache.totalGeral);
-    setUpdatedLine(updEl, 'fas fa-clock', 'Atualizado ' + formatRelativeTime(cache.updatedAt));
+    if (valEl) valEl.textContent = formatBRL(cache.totalGeral);
+    if (updEl) setUpdatedLine(updEl, 'fas fa-clock', 'Atualizado ' + formatRelativeTime(cache.updatedAt));
+    if (custoEl) custoEl.textContent = formatBRL(cache.totalCusto || 0);
+    if (provasEl) setUpdatedLine(provasEl, 'fas fa-image', (cache.totalProvas || 0).toLocaleString('pt-BR') + ' provas');
 }
 
 async function refreshFaturamentoPosProva() {
@@ -840,6 +845,7 @@ function renderTable() {
             <td style="color:var(--text-dim)">${client.lastPayment && client.lastPayment !== '-' ? formatDate(client.lastPayment) : '—'}</td>
             <td><span class="status-badge ${cls}">${statusDisplay}</span></td>
             <td class="cell-faturamento"></td>
+            <td class="cell-custo-geracoes"></td>
             <td>
                 <div style="display:flex;gap:10px">
                     <button data-action="edit"   data-id="${client.id}" style="background:none;border:none;color:var(--text-dim);cursor:pointer" title="Editar"><i class="fas fa-edit"></i></button>
@@ -849,12 +855,21 @@ function renderTable() {
             </td>
         `;
 
-        const fatValue = fatPorEmail[client.email];
+        const fatEntry = fatPorEmail[client.email];
+        const fatValue = (fatEntry && typeof fatEntry === 'object') ? fatEntry.faturamento : (typeof fatEntry === 'number' ? fatEntry : undefined);
+        const custoValue = (fatEntry && typeof fatEntry === 'object') ? fatEntry.custo : undefined;
+
         const fatCell = tr.querySelector('.cell-faturamento');
         if (fatCell) {
             fatCell.textContent = (typeof fatValue === 'number') ? formatBRL(fatValue) : '—';
             fatCell.style.color = (typeof fatValue === 'number') ? 'var(--accent)' : 'var(--text-dim)';
             fatCell.style.fontWeight = '600';
+        }
+        const custoCell = tr.querySelector('.cell-custo-geracoes');
+        if (custoCell) {
+            custoCell.textContent = (typeof custoValue === 'number') ? formatBRL(custoValue) : '—';
+            custoCell.style.color = (typeof custoValue === 'number') ? '#ef4444' : 'var(--text-dim)';
+            custoCell.style.fontWeight = '600';
         }
 
         // Clique na linha → abre detalhes (exceto em botão)
