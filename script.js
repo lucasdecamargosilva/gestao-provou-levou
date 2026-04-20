@@ -327,25 +327,6 @@ function renderLucroLiquido(mrr) {
     }
 }
 
-async function refreshLucroLiquido() {
-    const btn = document.getElementById('btn-refresh-lucro');
-    const icon = btn ? btn.querySelector('i') : null;
-    const subEl = document.getElementById('stat-lucro-sub');
-    if (icon) icon.classList.add('fa-spin');
-    if (subEl) subEl.textContent = 'Calculando custo…';
-    try {
-        await computeProvasCustoTotal();
-        const active = clients.filter(c => c.status === 'Ativo');
-        const mrr = active.reduce((sum, c) => sum + (PLAN_VALUES[c.plan] || 0), 0);
-        renderLucroLiquido(mrr);
-    } catch (err) {
-        console.error('Erro ao recalcular lucro líquido:', err);
-        if (subEl) subEl.textContent = 'Erro — ver console';
-    } finally {
-        if (icon) icon.classList.remove('fa-spin');
-    }
-}
-
 async function refreshFaturamentoPosProva() {
     const btn = document.getElementById('btn-refresh-faturamento');
     const icon = btn ? btn.querySelector('i') : null;
@@ -595,6 +576,23 @@ async function loadClients() {
 
     updateStats();
     renderTable();
+    autoRefreshLucroLiquido();
+}
+
+let lucroAutoRefreshing = false;
+async function autoRefreshLucroLiquido() {
+    if (lucroAutoRefreshing || !db) return;
+    lucroAutoRefreshing = true;
+    try {
+        await computeProvasCustoTotal();
+        const active = clients.filter(c => c.status === 'Ativo');
+        const mrr = active.reduce((sum, c) => sum + (PLAN_VALUES[c.plan] || 0), 0);
+        renderLucroLiquido(mrr);
+    } catch (err) {
+        console.warn('Auto-refresh lucro falhou:', err);
+    } finally {
+        lucroAutoRefreshing = false;
+    }
 }
 
 async function addClient(event) {
@@ -1460,11 +1458,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Volta pro que estava antes
             if (wasPassword) input.type = 'password';
         });
-    }
-
-    const btnRefreshLucro = document.getElementById('btn-refresh-lucro');
-    if (btnRefreshLucro) {
-        btnRefreshLucro.addEventListener('click', refreshLucroLiquido);
     }
 
 });
