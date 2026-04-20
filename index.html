@@ -92,7 +92,7 @@
                 </div>
 
                 <!-- KPI Cards -->
-                <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr);">
+                <div class="stats-grid" style="grid-template-columns: repeat(5, 1fr);">
                     <div class="stat-card glass">
                         <div class="stat-label">Clientes Ativos</div>
                         <div id="stat-active-clients" class="stat-value">0</div>
@@ -120,6 +120,16 @@
                         <div class="stat-trend trend-up">
                             <i class="fas fa-chart-line"></i> Crescimento
                         </div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-label" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                            <span>Lucro Líquido</span>
+                            <button id="btn-refresh-lucro" class="btn-icon" title="Recalcular">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                        <div id="stat-lucro-liquido" class="stat-value">R$ 0</div>
+                        <div id="stat-lucro-sub" class="stat-sub">MRR − Custo Gerações</div>
                     </div>
                 </div>
 

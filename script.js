@@ -290,6 +290,45 @@ function renderFaturamentoCard(cache) {
     if (provasEl) setUpdatedLine(provasEl, 'fas fa-image', (cache.totalProvas || 0).toLocaleString('pt-BR') + ' provas');
 }
 
+function renderLucroLiquido(mrr) {
+    const valEl = document.getElementById('stat-lucro-liquido');
+    const subEl = document.getElementById('stat-lucro-sub');
+    if (!valEl || !subEl) return;
+
+    const cache = readFaturamentoCache();
+    const totalCusto = (cache && typeof cache.totalCusto === 'number') ? cache.totalCusto : null;
+
+    if (totalCusto == null) {
+        valEl.textContent = formatBRL(mrr);
+        subEl.textContent = 'Custo não calculado · clique 🔄';
+        return;
+    }
+
+    const lucro = mrr - totalCusto;
+    valEl.textContent = formatBRL(lucro);
+    subEl.textContent = `MRR ${formatBRL(mrr)} − Custo ${formatBRL(totalCusto)}`;
+}
+
+async function refreshLucroLiquido() {
+    const btn = document.getElementById('btn-refresh-lucro');
+    const icon = btn ? btn.querySelector('i') : null;
+    const subEl = document.getElementById('stat-lucro-sub');
+    if (icon) icon.classList.add('fa-spin');
+    if (subEl) subEl.textContent = 'Calculando custo…';
+    try {
+        const result = await computeFaturamentoPosProva();
+        writeFaturamentoCache(result);
+        const active = clients.filter(c => c.status === 'Ativo');
+        const mrr = active.reduce((sum, c) => sum + (PLAN_VALUES[c.plan] || 0), 0);
+        renderLucroLiquido(mrr);
+    } catch (err) {
+        console.error('Erro ao recalcular lucro líquido:', err);
+        if (subEl) subEl.textContent = 'Erro — ver console';
+    } finally {
+        if (icon) icon.classList.remove('fa-spin');
+    }
+}
+
 async function refreshFaturamentoPosProva() {
     const btn = document.getElementById('btn-refresh-faturamento');
     const icon = btn ? btn.querySelector('i') : null;
@@ -1052,6 +1091,8 @@ function updateStats() {
     setText('stat-potential-mrr', `R$ ${potentialMrr.toLocaleString('pt-BR')}`);
     setText('stat-growth', growth);
 
+    renderLucroLiquido(mrr);
+
     ['Starter', 'Inicial', 'Médio', 'Premium', 'Ultra Power'].forEach(plan => {
         const key = plan.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '-');
         const group = clients.filter(c => c.plan === plan && c.status === 'Ativo');
@@ -1361,6 +1402,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Volta pro que estava antes
             if (wasPassword) input.type = 'password';
         });
+    }
+
+    const btnRefreshLucro = document.getElementById('btn-refresh-lucro');
+    if (btnRefreshLucro) {
+        btnRefreshLucro.addEventListener('click', refreshLucroLiquido);
     }
 
 });
