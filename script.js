@@ -16,6 +16,8 @@ const PLAN_VALUES = {
     'Ultra Power': 2200
 };
 
+const COST_PER_PROVA = 0.20;
+
 // ─── Helpers para Faturamento Pós-Prova ─────────────────────────────────────
 function normalizePhone(p) {
     let n = String(p || '').replace(/\D/g, '');
@@ -754,7 +756,7 @@ async function loadTryons() {
         if (statTotal) statTotal.textContent = totalTryons.toLocaleString('pt-BR');
 
         const statCost = document.getElementById('stat-total-tryons-cost');
-        if (statCost) statCost.textContent = `R$ ${(totalTryons * 0.3).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        if (statCost) statCost.textContent = `R$ ${(totalTryons * COST_PER_PROVA).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
         tbody.innerHTML = '';
 
@@ -766,7 +768,7 @@ async function loadTryons() {
         for (const item of tableData) {
             const tr = document.createElement('tr');
 
-            const cost = item.count * 0.3;
+            const cost = item.count * COST_PER_PROVA;
 
             tr.innerHTML = `
                 <td>
