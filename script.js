@@ -135,7 +135,7 @@ async function computeFaturamentoPosProva() {
                 }
             }
             if (lojProvas.length === 0) {
-                porEmail[loj.email] = 0;
+                porEmail[loj.email] = { faturamento: 0, provas: 0, custo: 0 };
                 continue;
             }
 
@@ -180,17 +180,25 @@ async function computeFaturamentoPosProva() {
                 lojaTotal += val;
             }
 
-            porEmail[loj.email] = lojaTotal;
+            const provasCount = lojProvas.length;
+            const custo = provasCount * COST_PER_PROVA;
+            porEmail[loj.email] = { faturamento: lojaTotal, provas: provasCount, custo };
             totalGeral += lojaTotal;
         } catch (err) {
             console.warn(`Erro calculando faturamento para ${loj.email}:`, err);
-            porEmail[loj.email] = 0;
+            porEmail[loj.email] = { faturamento: 0, provas: 0, custo: 0 };
         }
     }
+
+    let totalProvas = 0;
+    for (const v of Object.values(porEmail)) totalProvas += v.provas || 0;
+    const totalCusto = totalProvas * COST_PER_PROVA;
 
     return {
         updatedAt: new Date().toISOString(),
         totalGeral,
+        totalProvas,
+        totalCusto,
         porEmail
     };
 }
