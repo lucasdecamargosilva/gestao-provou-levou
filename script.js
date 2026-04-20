@@ -295,7 +295,7 @@ function renderLucroLiquido(mrr) {
     const subEl = document.getElementById('stat-lucro-sub');
     if (!valEl || !subEl) return;
 
-    const cache = readFaturamentoCache();
+    const cache = readProvasCustoCache();
     const totalCusto = (cache && typeof cache.totalCusto === 'number') ? cache.totalCusto : null;
 
     if (totalCusto == null) {
@@ -316,8 +316,7 @@ async function refreshLucroLiquido() {
     if (icon) icon.classList.add('fa-spin');
     if (subEl) subEl.textContent = 'Calculando custo…';
     try {
-        const result = await computeFaturamentoPosProva();
-        writeFaturamentoCache(result);
+        await computeProvasCustoTotal();
         const active = clients.filter(c => c.status === 'Ativo');
         const mrr = active.reduce((sum, c) => sum + (PLAN_VALUES[c.plan] || 0), 0);
         renderLucroLiquido(mrr);
@@ -800,6 +799,88 @@ function showClientDetailsById(id) {
 }
 
 
+const PROVAS_CUSTO_CACHE_KEY = 'provasVirtuaisCustoCache';
+
+function readProvasCustoCache() {
+    try {
+        const raw = localStorage.getItem(PROVAS_CUSTO_CACHE_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+}
+
+function writeProvasCustoCache(data) {
+    try { localStorage.setItem(PROVAS_CUSTO_CACHE_KEY, JSON.stringify(data)); }
+    catch (e) { console.warn('Falha ao salvar cache de provas:', e); }
+}
+
+async function computeProvasCustoTotal() {
+    if (!db) throw new Error('Supabase não conectado');
+
+    const [lojistasRes, storesRes] = await Promise.all([
+        db.from('lojistas').select('origem, categoria'),
+        db.from('provou_levou_stores').select('domain, categoria')
+    ]);
+    const categoriaMap = {};
+    for (const l of (lojistasRes.data || [])) {
+        const dom = normalizeDomain(l.origem);
+        if (dom) categoriaMap[dom] = l.categoria || 'oculos';
+    }
+    for (const s of (storesRes.data || [])) {
+        const dom = normalizeDomain(s.domain);
+        if (dom) categoriaMap[dom] = s.categoria || 'oculos';
+    }
+
+    const tryons = await fetchAllPaginated(
+        'geracoes_provou_levou',
+        'origin, created_at',
+        [{ method: 'order', args: ['created_at', { ascending: false }] }]
+    );
+
+    const tryonCounts = {};
+    for (const t of tryons) {
+        const dom = normalizeDomain(t.origin);
+        if (!dom) continue;
+        tryonCounts[dom] = (tryonCounts[dom] || 0) + 1;
+    }
+
+    let totalProvas = 0;
+    let provasOculos = 0, custoOculos = 0;
+    let provasRoupa = 0, custoRoupa = 0;
+    let custoRoupaPendente = false;
+    const tableData = [];
+
+    for (const [origin, count] of Object.entries(tryonCounts)) {
+        const categoria = categoriaMap[origin] || 'oculos';
+        const rate = getCategoryCost(categoria);
+        const cost = rate != null ? count * rate : null;
+        totalProvas += count;
+        if (categoria === 'roupa') {
+            provasRoupa += count;
+            if (cost != null) custoRoupa += cost;
+            else if (count > 0) custoRoupaPendente = true;
+        } else {
+            provasOculos += count;
+            custoOculos += cost || 0;
+        }
+        tableData.push({ origin, count, categoria, cost });
+    }
+
+    const totalCusto = custoOculos + custoRoupa;
+    const result = {
+        updatedAt: new Date().toISOString(),
+        totalProvas,
+        totalCusto,
+        provasOculos,
+        custoOculos,
+        provasRoupa,
+        custoRoupa,
+        custoRoupaPendente,
+        tableData
+    };
+    writeProvasCustoCache(result);
+    return result;
+}
+
 function clearChildren(el) {
     while (el && el.firstChild) el.removeChild(el.firstChild);
 }
@@ -824,55 +905,14 @@ async function loadTryons() {
     try {
         renderTryonsMessage(tbody, 4, 'Carregando dados...', 'var(--text-dim)');
 
-        const [lojistasRes, storesRes] = await Promise.all([
-            db.from('lojistas').select('origem, categoria'),
-            db.from('provou_levou_stores').select('domain, categoria')
-        ]);
-        const categoriaMap = {};
-        for (const l of (lojistasRes.data || [])) {
-            const dom = normalizeDomain(l.origem);
-            if (dom) categoriaMap[dom] = l.categoria || 'oculos';
-        }
-        // provou_levou_stores takes precedence (where users edit categoria)
-        for (const s of (storesRes.data || [])) {
-            const dom = normalizeDomain(s.domain);
-            if (dom) categoriaMap[dom] = s.categoria || 'oculos';
-        }
-
-        const tryons = await fetchAllPaginated(
-            'geracoes_provou_levou',
-            'origin, created_at',
-            [{ method: 'order', args: ['created_at', { ascending: false }] }]
-        );
-
-        const tryonCounts = {};
-        for (const t of tryons) {
-            const dom = normalizeDomain(t.origin);
-            if (!dom) continue;
-            tryonCounts[dom] = (tryonCounts[dom] || 0) + 1;
-        }
-
-        const tableData = [];
-        let totalTryons = 0;
-        let provasOculos = 0, custoOculos = 0;
-        let provasRoupa = 0, custoRoupa = 0;
-        let custoRoupaPendente = false;
-
-        for (const [origin, count] of Object.entries(tryonCounts)) {
-            const categoria = categoriaMap[origin] || 'oculos';
-            const rate = getCategoryCost(categoria);
-            const cost = rate != null ? count * rate : null;
-            totalTryons += count;
-            if (categoria === 'roupa') {
-                provasRoupa += count;
-                if (cost != null) custoRoupa += cost;
-                else if (count > 0) custoRoupaPendente = true;
-            } else {
-                provasOculos += count;
-                custoOculos += cost || 0;
-            }
-            tableData.push({ origin, count, categoria, cost });
-        }
+        const r = await computeProvasCustoTotal();
+        const totalTryons = r.totalProvas;
+        const provasOculos = r.provasOculos;
+        const custoOculos = r.custoOculos;
+        const provasRoupa = r.provasRoupa;
+        const custoRoupa = r.custoRoupa;
+        const custoRoupaPendente = r.custoRoupaPendente;
+        const tableData = r.tableData.slice();
 
         tableData.sort((a, b) => b.count - a.count);
 
