@@ -315,16 +315,16 @@
             <section id="tryons" class="view">
                 <div class="page-header">
                     <h1 class="page-title">Acompanhamento de Provas Virtuais</h1>
-                    <p style="color: var(--text-dim); margin-top: 5px;">Custo por prova: <strong>R$ 0,20</strong></p>
+                    <p style="color: var(--text-dim); margin-top: 5px;">Custo por prova — <strong>Óculos: R$ 0,20</strong> · <strong>Roupa: pendente</strong></p>
                 </div>
 
                 <!-- KPI Cards Try-ons -->
-                <div class="stats-grid">
+                <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr);">
                     <div class="stat-card glass">
                         <div class="stat-label">Total de Provas</div>
                         <div id="stat-total-tryons" class="stat-value">0</div>
                         <div class="stat-trend trend-up">
-                            <i class="fas fa-tshirt"></i> Provas Realizadas
+                            <i class="fas fa-tshirt"></i> Todas as categorias
                         </div>
                     </div>
                     <div class="stat-card glass">
@@ -332,6 +332,20 @@
                         <div id="stat-total-tryons-cost" class="stat-value">R$ 0,00</div>
                         <div class="stat-trend trend-down">
                             <i class="fas fa-money-bill-wave"></i> Custo Acumulado
+                        </div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-label">Óculos</div>
+                        <div id="stat-tryons-oculos" class="stat-value" style="font-size: 18px;">0 provas · R$ 0,00</div>
+                        <div class="stat-trend trend-up" style="color: #a78bfa;">
+                            <i class="fas fa-glasses"></i> R$ 0,20 / prova
+                        </div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-label">Roupa</div>
+                        <div id="stat-tryons-roupa" class="stat-value" style="font-size: 18px;">0 provas · custo pendente</div>
+                        <div class="stat-trend trend-up" style="color: #34d399;">
+                            <i class="fas fa-tshirt"></i> Custo a definir
                         </div>
                     </div>
                 </div>
@@ -349,13 +363,14 @@
                         <thead>
                             <tr>
                                 <th>Domínio (URL)</th>
+                                <th>Categoria</th>
                                 <th>Qntd. de Provas</th>
                                 <th>Custo Estimado</th>
                             </tr>
                         </thead>
                         <tbody id="tryons-table-body">
                             <tr>
-                                <td colspan="3" style="text-align: center; color: var(--text-dim);">Carregando dados...
+                                <td colspan="4" style="text-align: center; color: var(--text-dim);">Carregando dados...
                                 </td>
                             </tr>
                         </tbody>

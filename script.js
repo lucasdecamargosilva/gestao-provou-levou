@@ -18,6 +18,16 @@ const PLAN_VALUES = {
 
 const COST_PER_PROVA = 0.20;
 
+const COST_PER_CATEGORIA = {
+    'oculos': 0.20,
+    'roupa': null
+};
+
+function getCategoryCost(categoria) {
+    const cat = categoria || 'oculos';
+    return COST_PER_CATEGORIA.hasOwnProperty(cat) ? COST_PER_CATEGORIA[cat] : null;
+}
+
 // ─── Helpers para Faturamento Pós-Prova ─────────────────────────────────────
 function normalizePhone(p) {
     let n = String(p || '').replace(/\D/g, '');
@@ -93,7 +103,7 @@ async function computeFaturamentoPosProva() {
     // 1. Configs dos lojistas com tabela_pedidos preenchida
     const { data: lojistas, error: lojErr } = await db
         .from('lojistas')
-        .select('email, origem, tabela_pedidos, campo_telefone_pedido, campo_total_pedido, campo_data_pedido, campo_status_pedido, valores_status_pago')
+        .select('email, origem, categoria, tabela_pedidos, campo_telefone_pedido, campo_total_pedido, campo_data_pedido, campo_status_pedido, valores_status_pago')
         .neq('tabela_pedidos', '')
         .not('tabela_pedidos', 'is', null);
     if (lojErr) throw lojErr;
@@ -134,8 +144,9 @@ async function computeFaturamentoPosProva() {
                     lojProvas.push(...ps);
                 }
             }
+            const categoria = loj.categoria || 'oculos';
             if (lojProvas.length === 0) {
-                porEmail[loj.email] = { faturamento: 0, provas: 0, custo: 0 };
+                porEmail[loj.email] = { faturamento: 0, provas: 0, custo: 0, categoria };
                 continue;
             }
 
@@ -181,24 +192,45 @@ async function computeFaturamentoPosProva() {
             }
 
             const provasCount = lojProvas.length;
-            const custo = provasCount * COST_PER_PROVA;
-            porEmail[loj.email] = { faturamento: lojaTotal, provas: provasCount, custo };
+            const costRate = getCategoryCost(categoria);
+            const custo = costRate != null ? provasCount * costRate : null;
+            porEmail[loj.email] = { faturamento: lojaTotal, provas: provasCount, custo, categoria };
             totalGeral += lojaTotal;
         } catch (err) {
             console.warn(`Erro calculando faturamento para ${loj.email}:`, err);
-            porEmail[loj.email] = { faturamento: 0, provas: 0, custo: 0 };
+            porEmail[loj.email] = { faturamento: 0, provas: 0, custo: 0, categoria: loj.categoria || 'oculos' };
         }
     }
 
     let totalProvas = 0;
-    for (const v of Object.values(porEmail)) totalProvas += v.provas || 0;
-    const totalCusto = totalProvas * COST_PER_PROVA;
+    let totalCusto = 0;
+    let provasOculos = 0, provasRoupa = 0;
+    let custoOculos = 0, custoRoupa = 0;
+    let custoRoupaPendente = false;
+    for (const v of Object.values(porEmail)) {
+        const p = v.provas || 0;
+        totalProvas += p;
+        if (v.categoria === 'roupa') {
+            provasRoupa += p;
+            if (v.custo != null) custoRoupa += v.custo;
+            else if (p > 0) custoRoupaPendente = true;
+        } else {
+            provasOculos += p;
+            custoOculos += v.custo || 0;
+        }
+    }
+    totalCusto = custoOculos + custoRoupa;
 
     return {
         updatedAt: new Date().toISOString(),
         totalGeral,
         totalProvas,
         totalCusto,
+        provasOculos,
+        provasRoupa,
+        custoOculos,
+        custoRoupa,
+        custoRoupaPendente,
         porEmail
     };
 }
@@ -719,6 +751,21 @@ function showClientDetailsById(id) {
 }
 
 
+function clearChildren(el) {
+    while (el && el.firstChild) el.removeChild(el.firstChild);
+}
+
+function renderTryonsMessage(tbody, colspan, text, color) {
+    clearChildren(tbody);
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = colspan;
+    td.style.cssText = `text-align: center; color: ${color}; padding: 30px 0;`;
+    td.textContent = text;
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+}
+
 async function loadTryons() {
     if (!db) return;
 
@@ -726,77 +773,127 @@ async function loadTryons() {
     if (!tbody) return;
 
     try {
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-dim); padding: 30px 0;"><i class="fas fa-spinner fa-spin" style="margin-right: 8px;"></i> Carregando dados...</td></tr>';
+        renderTryonsMessage(tbody, 4, 'Carregando dados...', 'var(--text-dim)');
 
-        // Fetch tryons
-        const { data: tryons, error: tryonsError } = await db
-            .from('geracoes_provou_levou')
-            .select('*');
+        const { data: lojistas } = await db.from('lojistas').select('origem, categoria');
+        const categoriaMap = {};
+        for (const l of (lojistas || [])) {
+            const dom = normalizeDomain(l.origem);
+            if (dom) categoriaMap[dom] = l.categoria || 'oculos';
+        }
 
-        if (tryonsError) throw tryonsError;
+        const tryons = await fetchAllPaginated(
+            'geracoes_provou_levou',
+            'origin, created_at',
+            [{ method: 'order', args: ['created_at', { ascending: false }] }]
+        );
 
-        // Group by origin
         const tryonCounts = {};
-        if (tryons) {
-            for (const t of tryons) {
-                let origin = t.origin;
-                if (origin) {
-                    // Normalize origin
-                    origin = origin.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
-                    if (origin) {
-                        tryonCounts[origin] = (tryonCounts[origin] || 0) + 1;
-                    }
-                }
-            }
+        for (const t of tryons) {
+            const dom = normalizeDomain(t.origin);
+            if (!dom) continue;
+            tryonCounts[dom] = (tryonCounts[dom] || 0) + 1;
         }
 
         const tableData = [];
         let totalTryons = 0;
+        let provasOculos = 0, custoOculos = 0;
+        let provasRoupa = 0, custoRoupa = 0;
+        let custoRoupaPendente = false;
 
         for (const [origin, count] of Object.entries(tryonCounts)) {
+            const categoria = categoriaMap[origin] || 'oculos';
+            const rate = getCategoryCost(categoria);
+            const cost = rate != null ? count * rate : null;
             totalTryons += count;
-
-            tableData.push({
-                origin: origin,
-                count: count
-            });
+            if (categoria === 'roupa') {
+                provasRoupa += count;
+                if (cost != null) custoRoupa += cost;
+                else if (count > 0) custoRoupaPendente = true;
+            } else {
+                provasOculos += count;
+                custoOculos += cost || 0;
+            }
+            tableData.push({ origin, count, categoria, cost });
         }
 
         tableData.sort((a, b) => b.count - a.count);
 
-        // Update stats
         const statTotal = document.getElementById('stat-total-tryons');
         if (statTotal) statTotal.textContent = totalTryons.toLocaleString('pt-BR');
 
+        const custoTotal = custoOculos + custoRoupa;
         const statCost = document.getElementById('stat-total-tryons-cost');
-        if (statCost) statCost.textContent = `R$ ${(totalTryons * COST_PER_PROVA).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        if (statCost) statCost.textContent = formatBRL(custoTotal);
 
-        tbody.innerHTML = '';
+        const statOculos = document.getElementById('stat-tryons-oculos');
+        if (statOculos) statOculos.textContent = `${provasOculos.toLocaleString('pt-BR')} provas · ${formatBRL(custoOculos)}`;
+
+        const statRoupa = document.getElementById('stat-tryons-roupa');
+        if (statRoupa) {
+            const custoRoupaLabel = custoRoupaPendente ? 'custo pendente' : formatBRL(custoRoupa);
+            statRoupa.textContent = `${provasRoupa.toLocaleString('pt-BR')} provas · ${custoRoupaLabel}`;
+        }
+
+        clearChildren(tbody);
 
         if (tableData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-dim); padding: 30px 0;">Nenhuma geração encontrada.</td></tr>';
+            renderTryonsMessage(tbody, 4, 'Nenhuma geração encontrada.', 'var(--text-dim)');
             return;
         }
 
         for (const item of tableData) {
             const tr = document.createElement('tr');
+            const isRoupa = item.categoria === 'roupa';
+            const badgeBg = isRoupa ? 'rgba(16,185,129,0.15)' : 'rgba(124,58,237,0.15)';
+            const badgeColor = isRoupa ? '#34d399' : '#a78bfa';
+            const costLabel = item.cost != null ? formatBRL(item.cost) : '—';
+            const catLabel = isRoupa ? 'Roupa' : 'Óculos';
 
-            const cost = item.count * COST_PER_PROVA;
+            const tdOrigin = document.createElement('td');
+            const divName = document.createElement('div');
+            divName.style.fontWeight = '600';
+            const aLink = document.createElement('a');
+            aLink.href = 'https://' + item.origin;
+            aLink.target = '_blank';
+            aLink.style.color = 'var(--text)';
+            aLink.style.textDecoration = 'none';
+            aLink.textContent = item.origin + ' ';
+            const iExt = document.createElement('i');
+            iExt.className = 'fas fa-external-link-alt';
+            iExt.style.cssText = 'font-size:10px;margin-left:4px;color:var(--accent)';
+            aLink.appendChild(iExt);
+            divName.appendChild(aLink);
+            tdOrigin.appendChild(divName);
 
-            tr.innerHTML = `
-                <td>
-                    <div style="font-weight:600"><a href="https://${item.origin}" target="_blank" style="color:var(--text); text-decoration: none;">${item.origin} <i class="fas fa-external-link-alt" style="font-size:10px;margin-left:4px;color:var(--accent)"></i></a></div>
-                </td>
-                <td><span class="status-badge" style="background: rgba(124,58,237,0.15); color: #a78bfa; font-weight: 600;">${item.count.toLocaleString('pt-BR')} provas</span></td>
-                <td style="color: #ef4444; font-weight: 600;">R$ ${cost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-            `;
+            const tdCat = document.createElement('td');
+            const spanCat = document.createElement('span');
+            spanCat.className = 'status-badge';
+            spanCat.style.cssText = `background: ${badgeBg}; color: ${badgeColor}; font-weight: 600;`;
+            spanCat.textContent = catLabel;
+            tdCat.appendChild(spanCat);
 
+            const tdCount = document.createElement('td');
+            const spanCount = document.createElement('span');
+            spanCount.className = 'status-badge';
+            spanCount.style.cssText = 'background: rgba(124,58,237,0.15); color: #a78bfa; font-weight: 600;';
+            spanCount.textContent = item.count.toLocaleString('pt-BR') + ' provas';
+            tdCount.appendChild(spanCount);
+
+            const tdCost = document.createElement('td');
+            tdCost.style.cssText = 'color: #ef4444; font-weight: 600;';
+            tdCost.textContent = costLabel;
+
+            tr.appendChild(tdOrigin);
+            tr.appendChild(tdCat);
+            tr.appendChild(tdCount);
+            tr.appendChild(tdCost);
             tbody.appendChild(tr);
         }
 
     } catch (err) {
         console.error('Erro ao carregar provas virtuais:', err);
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #ef4444; padding: 30px 0;">Erro ao carregar os dados.</td></tr>';
+        renderTryonsMessage(tbody, 4, 'Erro ao carregar os dados.', '#ef4444');
     }
 }
 
