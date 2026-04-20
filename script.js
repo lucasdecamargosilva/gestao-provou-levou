@@ -20,7 +20,7 @@ const COST_PER_PROVA = 0.20;
 
 const COST_PER_CATEGORIA = {
     'oculos': 0.20,
-    'roupa': null
+    'roupa': 0.35
 };
 
 function getCategoryCost(categoria) {
