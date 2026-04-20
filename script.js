@@ -844,14 +844,15 @@ async function loadTryons() {
         const statCost = document.getElementById('stat-total-tryons-cost');
         if (statCost) statCost.textContent = formatBRL(custoTotal);
 
-        const statOculos = document.getElementById('stat-tryons-oculos');
-        if (statOculos) statOculos.textContent = `${provasOculos.toLocaleString('pt-BR')} provas · ${formatBRL(custoOculos)}`;
+        const statOculosCost = document.getElementById('stat-tryons-oculos-cost');
+        if (statOculosCost) statOculosCost.textContent = formatBRL(custoOculos);
+        const statOculosCount = document.getElementById('stat-tryons-oculos-count');
+        if (statOculosCount) statOculosCount.textContent = `${provasOculos.toLocaleString('pt-BR')} provas`;
 
-        const statRoupa = document.getElementById('stat-tryons-roupa');
-        if (statRoupa) {
-            const custoRoupaLabel = custoRoupaPendente ? 'custo pendente' : formatBRL(custoRoupa);
-            statRoupa.textContent = `${provasRoupa.toLocaleString('pt-BR')} provas · ${custoRoupaLabel}`;
-        }
+        const statRoupaCost = document.getElementById('stat-tryons-roupa-cost');
+        if (statRoupaCost) statRoupaCost.textContent = custoRoupaPendente ? '—' : formatBRL(custoRoupa);
+        const statRoupaCount = document.getElementById('stat-tryons-roupa-count');
+        if (statRoupaCount) statRoupaCount.textContent = `${provasRoupa.toLocaleString('pt-BR')} provas`;
 
         clearChildren(tbody);
 
