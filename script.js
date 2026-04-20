@@ -925,9 +925,6 @@ function renderTable() {
 
     const sorted = [...clients].sort((a, b) => new Date(b.date) - new Date(a.date));
 
-    const fatCache = readFaturamentoCache();
-    const fatPorEmail = (fatCache && fatCache.porEmail) || {};
-
     sorted.forEach(client => {
         const tr = document.createElement('tr');
         tr.style.cursor = 'pointer';
@@ -960,8 +957,6 @@ function renderTable() {
             <td style="color:var(--success);font-weight:600">${value}</td>
             <td style="color:var(--text-dim)">${client.lastPayment && client.lastPayment !== '-' ? formatDate(client.lastPayment) : '—'}</td>
             <td><span class="status-badge ${cls}">${statusDisplay}</span></td>
-            <td class="cell-faturamento"></td>
-            <td class="cell-custo-geracoes"></td>
             <td>
                 <div style="display:flex;gap:10px">
                     <button data-action="edit"   data-id="${client.id}" style="background:none;border:none;color:var(--text-dim);cursor:pointer" title="Editar"><i class="fas fa-edit"></i></button>
@@ -971,22 +966,6 @@ function renderTable() {
             </td>
         `;
 
-        const fatEntry = fatPorEmail[client.email];
-        const fatValue = (fatEntry && typeof fatEntry === 'object') ? fatEntry.faturamento : (typeof fatEntry === 'number' ? fatEntry : undefined);
-        const custoValue = (fatEntry && typeof fatEntry === 'object') ? fatEntry.custo : undefined;
-
-        const fatCell = tr.querySelector('.cell-faturamento');
-        if (fatCell) {
-            fatCell.textContent = (typeof fatValue === 'number') ? formatBRL(fatValue) : '—';
-            fatCell.style.color = (typeof fatValue === 'number') ? 'var(--accent)' : 'var(--text-dim)';
-            fatCell.style.fontWeight = '600';
-        }
-        const custoCell = tr.querySelector('.cell-custo-geracoes');
-        if (custoCell) {
-            custoCell.textContent = (typeof custoValue === 'number') ? formatBRL(custoValue) : '—';
-            custoCell.style.color = (typeof custoValue === 'number') ? '#ef4444' : 'var(--text-dim)';
-            custoCell.style.fontWeight = '600';
-        }
 
         // Clique na linha → abre detalhes (exceto em botão)
         tr.addEventListener('click', e => {
@@ -1382,14 +1361,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Volta pro que estava antes
             if (wasPassword) input.type = 'password';
         });
-    }
-
-    // ─── Faturamento via Provador wiring ──────────────────────────────────
-    renderFaturamentoCard(readFaturamentoCache());
-
-    const btnRefreshFat = document.getElementById('btn-refresh-faturamento');
-    if (btnRefreshFat) {
-        btnRefreshFat.addEventListener('click', refreshFaturamentoPosProva);
     }
 
 });
