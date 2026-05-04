@@ -18,6 +18,18 @@ const PLAN_VALUES = {
 
 const COST_PER_PROVA = 0.20;
 
+function getClientMonthlyValue(client) {
+    if (client.valorPersonalizado != null && client.valorPersonalizado > 0) {
+        return client.valorPersonalizado;
+    }
+    return PLAN_VALUES[client.plan] || 0;
+}
+
+function getClientPlanLabel(client) {
+    if (client.planoPersonalizado) return client.planoPersonalizado;
+    return client.plan;
+}
+
 const COST_PER_CATEGORIA = {
     'oculos': 0.20,
     'roupa': 0.35
@@ -568,7 +580,9 @@ async function loadClients() {
             date: new Date(s.created_at).toISOString().split('T')[0],
             lastPayment: s.last_payment || '-',
             implementationDate: s.implementation_date || null,
-            categoria: s.categoria || 'oculos'
+            categoria: s.categoria || 'oculos',
+            planoPersonalizado: s.plano_personalizado || null,
+            valorPersonalizado: s.valor_personalizado != null ? parseFloat(s.valor_personalizado) : null
         }));
     } catch (err) {
         console.error('Erro ao carregar clientes:', err);
@@ -613,7 +627,9 @@ async function addClient(event) {
         implementation_date: document.getElementById('status').value === 'Teste Gratuito' ? document.getElementById('implementation_date').value : null,
         domain: document.getElementById('website').value.trim() || `loja-${Date.now()}.com`,
         last_payment: document.getElementById('last_payment').value || null,
-        categoria: document.getElementById('categoria').value || 'oculos'
+        categoria: document.getElementById('categoria').value || 'oculos',
+        plano_personalizado: document.getElementById('plano_personalizado').value.trim() || null,
+        valor_personalizado: parseFloat(document.getElementById('valor_personalizado').value) || null
     };
 
     if (!db) {
@@ -759,6 +775,8 @@ function editClientById(id) {
     document.getElementById('website').value = c.website || '';
     document.getElementById('last_payment').value = c.lastPayment && c.lastPayment !== '-' ? c.lastPayment : '';
     document.getElementById('categoria').value = c.categoria || 'oculos';
+    document.getElementById('plano_personalizado').value = c.planoPersonalizado || '';
+    document.getElementById('valor_personalizado').value = c.valorPersonalizado != null ? c.valorPersonalizado : '';
 
     const impWrapper = document.getElementById('implementation-date-wrapper');
     if (c.status === 'Teste Gratuito') {
@@ -1025,9 +1043,9 @@ function renderTable() {
         tr.style.cursor = 'pointer';
 
         let cls = statusClass(client.status);
-        const value = PLAN_VALUES[client.plan]
-            ? `R$ ${PLAN_VALUES[client.plan].toLocaleString('pt-BR')}`
-            : '-';
+        const monthlyVal = getClientMonthlyValue(client);
+        const value = monthlyVal ? `R$ ${monthlyVal.toLocaleString('pt-BR')}` : '-';
+        const planLabel = getClientPlanLabel(client);
 
         let statusDisplay = client.status;
         if (client.status === 'Teste Gratuito') {
@@ -1048,7 +1066,10 @@ function renderTable() {
                 <div style="color:var(--text-dim);font-size:12px">${client.email}</div>
             </td>
             <td>${client.company}</td>
-            <td><span style="opacity:.85">${client.plan}</span></td>
+            <td>
+                <span style="opacity:.85">${planLabel}</span>
+                ${client.valorPersonalizado ? '<span style="font-size:10px;color:var(--purple-light);margin-left:6px;font-weight:600;">CUSTOM</span>' : ''}
+            </td>
             <td style="color:var(--success);font-weight:600">${value}</td>
             <td style="color:var(--text-dim)">${client.lastPayment && client.lastPayment !== '-' ? formatDate(client.lastPayment) : '—'}</td>
             <td><span class="status-badge ${cls}">${statusDisplay}</span></td>
@@ -1137,8 +1158,8 @@ function updateStats() {
     const active = clients.filter(c => c.status === 'Ativo');
     const potential = clients.filter(c => c.status === 'Ativo' || c.status === 'Teste Gratuito');
 
-    const mrr = active.reduce((sum, c) => sum + (PLAN_VALUES[c.plan] || 0), 0);
-    const potentialMrr = potential.reduce((sum, c) => sum + (PLAN_VALUES[c.plan] || 0), 0);
+    const mrr = active.reduce((sum, c) => sum + getClientMonthlyValue(c), 0);
+    const potentialMrr = potential.reduce((sum, c) => sum + getClientMonthlyValue(c), 0);
 
     const growth = active.length > 0 ? '12%' : '0%';
 
