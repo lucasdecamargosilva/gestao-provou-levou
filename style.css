@@ -13,22 +13,22 @@
 }
 
 :root {
-    /* Surface palette (provoulevou.com.br) */
-    --bg: #0a0a0a;
-    --bg-alt: #111111;
-    --bg-elevated: #161616;
+    /* Surface palette — LIGHT MODE */
+    --bg: #f5f4f0;
+    --bg-alt: #ffffff;
+    --bg-elevated: #ffffff;
     --bg-light: #f5f4f0;
     --bg-light-alt: #eeecea;
 
     /* Text */
-    --text: #edebe7;
-    --text-sub: #999;
-    --text-muted: #666;
+    --text: #0a0a0a;
+    --text-sub: #555;
+    --text-muted: #888;
     --text-dark: #0a0a0a;
 
     /* Borders */
-    --border: rgba(255, 255, 255, 0.06);
-    --border-strong: rgba(255, 255, 255, 0.12);
+    --border: rgba(0, 0, 0, 0.07);
+    --border-strong: rgba(0, 0, 0, 0.14);
     --border-light: rgba(0, 0, 0, 0.06);
 
     /* Accent */
@@ -102,7 +102,7 @@ body {
     position: relative;
 }
 
-/* Ambient purple aurora — fixed background glow */
+/* Ambient purple aurora — fixed background glow (subtler on light) */
 body::before {
     content: '';
     position: fixed;
@@ -110,9 +110,8 @@ body::before {
     pointer-events: none;
     z-index: 0;
     background:
-        radial-gradient(ellipse 1100px 600px at 80% -10%, rgba(124, 58, 237, 0.18), transparent 60%),
-        radial-gradient(ellipse 900px 500px at -10% 90%, rgba(167, 139, 250, 0.10), transparent 55%),
-        radial-gradient(ellipse 700px 400px at 50% 50%, rgba(124, 58, 237, 0.04), transparent 60%);
+        radial-gradient(ellipse 1100px 600px at 80% -10%, rgba(124, 58, 237, 0.08), transparent 60%),
+        radial-gradient(ellipse 900px 500px at -10% 90%, rgba(167, 139, 250, 0.05), transparent 55%);
 }
 
 /* Subtle grain layer */
@@ -122,17 +121,17 @@ body::after {
     inset: 0;
     pointer-events: none;
     z-index: 1;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.35 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-    opacity: 0.025;
-    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity: 0.018;
+    mix-blend-mode: multiply;
 }
 
 aside, main { position: relative; z-index: 2; }
 
 ::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--purple); border-radius: var(--pill); }
-::-webkit-scrollbar-thumb:hover { background: var(--purple-light); }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(124, 58, 237, 0.4); border-radius: var(--pill); }
+::-webkit-scrollbar-thumb:hover { background: var(--purple); }
 
 ::selection {
     background: var(--purple);
@@ -161,7 +160,7 @@ a, button, input, select, textarea {
 
 aside {
     width: var(--sidebar-width);
-    background: var(--bg-alt);
+    background: var(--bg-light-alt);
     border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
@@ -184,7 +183,6 @@ aside {
     max-width: 150px;
     height: auto;
     object-fit: contain;
-    filter: brightness(0) invert(1);
     opacity: 0.95;
 }
 
@@ -217,7 +215,7 @@ aside {
 }
 
 .nav-item:hover {
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(0, 0, 0, 0.04);
     color: var(--text);
 }
 
@@ -318,7 +316,7 @@ main {
     font-weight: 500;
     line-height: 1.05;
     letter-spacing: -0.04em;
-    background: linear-gradient(180deg, #ffffff 0%, #b8b3aa 100%);
+    background: linear-gradient(180deg, #0a0a0a 0%, #404040 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -350,13 +348,14 @@ main {
     padding: 20px 22px;
     border-radius: var(--radius);
     background:
-        linear-gradient(135deg, rgba(124, 58, 237, 0.06) 0%, transparent 55%),
+        linear-gradient(135deg, rgba(124, 58, 237, 0.04) 0%, transparent 55%),
         var(--bg-elevated);
     border: 1px solid var(--border);
     transition: var(--transition);
     position: relative;
     overflow: hidden;
     isolation: isolate;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
 }
 
 /* Diagonal sheen on hover */
@@ -379,8 +378,8 @@ main {
     right: -40px;
     width: 140px;
     height: 140px;
-    background: radial-gradient(circle, rgba(124, 58, 237, 0.18), transparent 70%);
-    opacity: 0.5;
+    background: radial-gradient(circle, rgba(124, 58, 237, 0.10), transparent 70%);
+    opacity: 0.6;
     transition: all .6s cubic-bezier(.22, 1, .36, 1);
     pointer-events: none;
     z-index: -1;
@@ -389,12 +388,12 @@ main {
 
 .stat-card:hover {
     transform: translateY(-3px);
-    border-color: rgba(124, 58, 237, 0.35);
+    border-color: rgba(124, 58, 237, 0.30);
     box-shadow:
-        0 12px 40px rgba(124, 58, 237, 0.12),
-        0 0 0 1px rgba(124, 58, 237, 0.15);
+        0 12px 32px rgba(124, 58, 237, 0.10),
+        0 0 0 1px rgba(124, 58, 237, 0.12);
     background:
-        linear-gradient(135deg, rgba(124, 58, 237, 0.10) 0%, transparent 55%),
+        linear-gradient(135deg, rgba(124, 58, 237, 0.07) 0%, transparent 55%),
         var(--bg-elevated);
 }
 
@@ -424,7 +423,7 @@ main {
     font-family: var(--font);
     font-size: 22px;
     font-weight: 500;
-    background: linear-gradient(180deg, #ffffff 0%, #c9c4bc 100%);
+    background: linear-gradient(180deg, #0a0a0a 0%, #4a4a4a 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -459,13 +458,14 @@ main {
 
 .section-container {
     background:
-        linear-gradient(180deg, rgba(124, 58, 237, 0.03) 0%, transparent 30%),
+        linear-gradient(180deg, rgba(124, 58, 237, 0.02) 0%, transparent 30%),
         var(--bg-elevated);
     border-radius: var(--radius);
     padding: 32px;
     border: 1px solid var(--border);
     position: relative;
     overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
 }
 
 .section-container::before {
@@ -522,7 +522,7 @@ main {
 
 .client-table tr:last-child td { border-bottom: none; }
 .client-table tbody tr { transition: background 200ms ease; }
-.client-table tbody tr:hover { background: var(--purple-soft); }
+.client-table tbody tr:hover { background: rgba(124, 58, 237, 0.04); }
 .client-table tbody tr:hover td { background: transparent; }
 
 /* ─── Status Badges ──────────────────────────────────────── */
@@ -587,7 +587,7 @@ main {
 }
 
 .form-control {
-    background: var(--bg-alt);
+    background: #fafafa;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     padding: 13px 16px;
@@ -606,12 +606,12 @@ main {
 .form-control:focus {
     border-color: var(--purple);
     box-shadow: 0 0 0 3px var(--purple-soft);
-    background: var(--bg);
+    background: #fff;
 }
 
 select.form-control {
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='%23999' viewBox='0 0 24 24' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='%23555' viewBox='0 0 24 24' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 14px center;
     background-size: 16px;
@@ -723,7 +723,7 @@ select.form-control {
 
 .filter-group {
     display: inline-flex;
-    background: var(--bg-alt);
+    background: var(--bg-light-alt);
     padding: 4px;
     border-radius: var(--pill);
     border: 1px solid var(--border);
@@ -754,7 +754,7 @@ select.form-control {
 .modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.75);
+    background: rgba(10, 10, 10, 0.45);
     backdrop-filter: blur(8px);
     display: flex;
     align-items: center;
@@ -780,9 +780,9 @@ select.form-control {
     position: relative;
     transform: translateY(24px) scale(0.98);
     transition: transform .45s cubic-bezier(.22, 1, .36, 1);
-    background: var(--bg-elevated);
+    background: var(--bg-alt);
     border: 1px solid var(--border);
-    box-shadow: 0 32px 80px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 32px 80px rgba(0, 0, 0, 0.18);
 }
 
 .modal-overlay.active .modal-content {
@@ -932,8 +932,8 @@ select.form-control {
     width: 100%;
     height: 100vh;
     background:
-        radial-gradient(ellipse 800px 400px at 50% 30%, rgba(124, 58, 237, 0.12), transparent),
-        radial-gradient(ellipse at 80% 80%, rgba(167, 139, 250, 0.06), transparent),
+        radial-gradient(ellipse 800px 400px at 50% 30%, rgba(124, 58, 237, 0.10), transparent),
+        radial-gradient(ellipse at 80% 80%, rgba(167, 139, 250, 0.05), transparent),
         var(--bg);
     position: fixed;
     top: 0;
@@ -951,13 +951,12 @@ select.form-control {
     align-items: center;
     background: var(--bg-alt);
     border: 1px solid var(--border);
-    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.10);
     animation: fadeUp .8s cubic-bezier(.22, 1, .36, 1);
 }
 
 .login-logo {
     width: 160px;
-    filter: brightness(0) invert(1);
     margin-bottom: 32px;
     opacity: 0.95;
 }
@@ -1073,7 +1072,7 @@ select.form-control {
 .provinha-bar-track {
     width: 100%;
     height: 6px;
-    background: var(--bg-alt);
+    background: var(--bg-light-alt);
     border-radius: var(--pill);
     overflow: hidden;
     border: 1px solid var(--border);
@@ -1105,7 +1104,7 @@ select.form-control {
 .provinha-indicator {
     text-align: center;
     padding: 16px 18px;
-    background: var(--bg-alt);
+    background: var(--bg-light-alt);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     flex: 1;
