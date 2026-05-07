@@ -41,17 +41,11 @@ function getCategoryCost(categoria) {
 }
 
 // ─── Helpers para Faturamento Pós-Prova ─────────────────────────────────────
-function normalizePhoneFull(p) {
+function normalizePhone(p) {
     let n = String(p || '').replace(/\D/g, '');
     if (n.startsWith('55') && n.length > 11) n = n.slice(2);
     if (n.startsWith('0')) n = n.slice(1);
     return n;
-}
-// Match key (default) — usa últimos 9 dígitos para tolerar DDD 55 (Mato Grosso) e dados legacy
-// gravados sem DDD (bug histórico do SQL n8n strippando '^55' demais).
-function normalizePhone(p) {
-    const n = normalizePhoneFull(p);
-    return n.length >= 9 ? n.slice(-9) : n;
 }
 
 function normalizeDomain(o) {
