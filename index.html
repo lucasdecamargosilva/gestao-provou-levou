@@ -68,6 +68,12 @@
                         <span>Provas Virtuais</span>
                     </a>
                 </li>
+                <li>
+                    <a href="#" class="nav-item" data-view="limites">
+                        <i class="fas fa-gauge-high"></i>
+                        <span>Limites</span>
+                    </a>
+                </li>
             </ul>
 
             <div class="user-profile">
@@ -330,6 +336,62 @@
                 </div>
             </section>
 
+
+            <!-- Limites View -->
+            <section id="limites" class="view">
+                <div class="page-header">
+                    <h1 class="page-title">Limites por Plano</h1>
+                    <p style="color: var(--text-muted); margin-top: 5px;">Provas geradas desde o último pagamento vs limite do plano</p>
+                </div>
+
+                <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+                    <div class="stat-card glass">
+                        <div class="stat-label">Clientes Monitorados</div>
+                        <div id="stat-limites-monitorados" class="stat-value">0</div>
+                        <div class="stat-sub">com último pagamento</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-label">Próximos do Limite</div>
+                        <div id="stat-limites-atencao" class="stat-value">0</div>
+                        <div class="stat-sub" style="color: #f59e0b;">≥ 80% do limite</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-label">Excederam Limite</div>
+                        <div id="stat-limites-excedidos" class="stat-value">0</div>
+                        <div class="stat-sub" style="color: #ef4444;">acima de 100%</div>
+                    </div>
+                </div>
+
+                <div class="section-container glass">
+                    <div class="table-header">
+                        <h2 class="table-title">Uso por Cliente</h2>
+                        <button id="btn-refresh-limites" class="btn-primary">
+                            <i class="fas fa-sync-alt"></i> Atualizar
+                        </button>
+                    </div>
+                    <table class="client-table">
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Loja</th>
+                                <th>Plano</th>
+                                <th>Último Pagamento</th>
+                                <th>Provas Feitas</th>
+                                <th>Limite</th>
+                                <th>Uso</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="limites-table-body">
+                            <tr>
+                                <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px 0;">
+                                    Carregando dados...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
 
         </main>
 

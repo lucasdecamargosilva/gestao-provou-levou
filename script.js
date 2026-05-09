@@ -18,6 +18,14 @@ const PLAN_VALUES = {
 
 const COST_PER_PROVA = 0.20;
 
+const PLAN_LIMITS = {
+    'Starter': 50,
+    'Inicial': 100,
+    'Médio': 500,
+    'Premium': 1200,
+    'Ultra Power': Infinity
+};
+
 function getClientMonthlyValue(client) {
     if (client.valorPersonalizado != null && client.valorPersonalizado > 0) {
         return client.valorPersonalizado;
@@ -919,6 +927,202 @@ function clearChildren(el) {
     while (el && el.firstChild) el.removeChild(el.firstChild);
 }
 
+async function loadLimites() {
+    if (!db) return;
+    const tbody = document.getElementById('limites-table-body');
+    if (!tbody) return;
+
+    clearChildren(tbody);
+    const loading = document.createElement('tr');
+    const ldTd = document.createElement('td');
+    ldTd.colSpan = 8;
+    ldTd.style.cssText = 'text-align:center;color:var(--text-muted);padding:30px 0;';
+    ldTd.textContent = 'Carregando dados...';
+    loading.appendChild(ldTd);
+    tbody.appendChild(loading);
+
+    try {
+        // Need clients loaded
+        if (!clients || clients.length === 0) await loadClients();
+
+        // Earliest last_payment to bound the query
+        let earliestPay = null;
+        for (const c of clients) {
+            if (c.lastPayment && c.lastPayment !== '-') {
+                if (!earliestPay || c.lastPayment < earliestPay) earliestPay = c.lastPayment;
+            }
+        }
+
+        // Fetch provas paginated, bounded
+        const filters = [{ method: 'order', args: ['created_at', { ascending: false }] }];
+        if (earliestPay) filters.push({ method: 'gte', args: ['created_at', earliestPay + 'T00:00:00-03:00'] });
+        const provas = await fetchAllPaginated('geracoes_provou_levou', 'origin, created_at', filters);
+
+        // Group provas by normalized origin + collect dates
+        const provasByOrigin = {};
+        for (const p of provas) {
+            const dom = normalizeDomain(p.origin);
+            if (!dom) continue;
+            if (!provasByOrigin[dom]) provasByOrigin[dom] = [];
+            provasByOrigin[dom].push(p.created_at || '');
+        }
+
+        // Build rows
+        const rows = [];
+        let monitorados = 0, atencao = 0, excedidos = 0;
+
+        for (const c of clients) {
+            const dom = normalizeDomain(c.website);
+            const allProvas = dom ? (provasByOrigin[dom] || []) : [];
+            const limit = PLAN_LIMITS[c.plan];
+            const limitLabel = (limit === Infinity) ? 'Ilimitado' : (limit != null ? limit.toLocaleString('pt-BR') : '—');
+
+            let provasCount, status, statusClass, pctText, pctValue;
+
+            if (!c.lastPayment || c.lastPayment === '-') {
+                provasCount = '—';
+                pctText = '—';
+                pctValue = null;
+                status = (c.status === 'Teste Gratuito') ? 'Teste gratuito' : 'Sem pagamento';
+                statusClass = 'status-pending';
+            } else {
+                const cutoff = c.lastPayment + 'T00:00:00';
+                const count = allProvas.filter(ts => ts >= cutoff).length;
+                provasCount = count.toLocaleString('pt-BR');
+                monitorados++;
+
+                if (limit === Infinity) {
+                    pctValue = 0;
+                    pctText = '—';
+                    status = 'Ilimitado';
+                    statusClass = 'status-permuta';
+                } else if (limit) {
+                    pctValue = (count / limit) * 100;
+                    pctText = pctValue.toFixed(0) + '%';
+                    if (pctValue >= 100) {
+                        status = 'Excedido';
+                        statusClass = 'status-inactive';
+                        excedidos++;
+                    } else if (pctValue >= 80) {
+                        status = 'Atenção';
+                        statusClass = 'status-pending';
+                        atencao++;
+                    } else {
+                        status = 'OK';
+                        statusClass = 'status-active';
+                    }
+                } else {
+                    pctValue = null;
+                    pctText = '—';
+                    status = 'Sem limite';
+                    statusClass = 'status-permuta';
+                }
+            }
+
+            rows.push({ c, provasCount, limitLabel, pctText, pctValue, status, statusClass });
+        }
+
+        // Sort: excedidos first, then atencao, then by % desc, last for sem-pagamento at bottom
+        rows.sort((a, b) => {
+            const aHas = a.pctValue != null;
+            const bHas = b.pctValue != null;
+            if (aHas && !bHas) return -1;
+            if (!aHas && bHas) return 1;
+            if (aHas && bHas) return b.pctValue - a.pctValue;
+            return 0;
+        });
+
+        // Update KPIs
+        setText('stat-limites-monitorados', monitorados);
+        setText('stat-limites-atencao', atencao);
+        setText('stat-limites-excedidos', excedidos);
+
+        // Render table
+        clearChildren(tbody);
+        if (rows.length === 0) {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.colSpan = 8;
+            td.style.cssText = 'text-align:center;color:var(--text-muted);padding:30px 0;';
+            td.textContent = 'Nenhum cliente cadastrado.';
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+            return;
+        }
+
+        for (const r of rows) {
+            const tr = document.createElement('tr');
+
+            const tdName = document.createElement('td');
+            const dn = document.createElement('div'); dn.style.fontWeight = '600'; dn.textContent = r.c.name;
+            const de = document.createElement('div'); de.style.cssText = 'color:var(--text-muted);font-size:12px'; de.textContent = r.c.email || '';
+            tdName.appendChild(dn); tdName.appendChild(de);
+
+            const tdCompany = document.createElement('td'); tdCompany.textContent = r.c.company || '—';
+            const tdPlan = document.createElement('td'); tdPlan.textContent = r.c.plan || '—';
+            const tdPay = document.createElement('td');
+            tdPay.style.color = 'var(--text-muted)';
+            tdPay.textContent = (r.c.lastPayment && r.c.lastPayment !== '-') ? formatDate(r.c.lastPayment) : '—';
+
+            const tdProvas = document.createElement('td');
+            tdProvas.style.cssText = 'font-weight:600;font-variant-numeric:tabular-nums';
+            tdProvas.textContent = r.provasCount;
+
+            const tdLimit = document.createElement('td');
+            tdLimit.style.color = 'var(--text-muted)';
+            tdLimit.textContent = r.limitLabel;
+
+            const tdPct = document.createElement('td');
+            if (r.pctValue == null || r.pctText === '—') {
+                tdPct.style.color = 'var(--text-muted)';
+                tdPct.textContent = r.pctText;
+            } else {
+                const pct = Math.min(100, r.pctValue);
+                const barColor = r.pctValue >= 100 ? '#ef4444' : r.pctValue >= 80 ? '#f59e0b' : '#10b981';
+                const wrap = document.createElement('div');
+                wrap.style.cssText = 'display:flex;align-items:center;gap:8px;';
+                const bar = document.createElement('div');
+                bar.style.cssText = 'flex:1;height:6px;background:var(--bg-light-alt);border-radius:9999px;overflow:hidden;min-width:60px;max-width:100px;';
+                const fill = document.createElement('div');
+                fill.style.cssText = `height:100%;width:${pct}%;background:${barColor};border-radius:9999px;`;
+                bar.appendChild(fill);
+                const lbl = document.createElement('span');
+                lbl.style.cssText = 'font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;min-width:42px;text-align:right;';
+                lbl.style.color = barColor;
+                lbl.textContent = r.pctText;
+                wrap.appendChild(bar); wrap.appendChild(lbl);
+                tdPct.appendChild(wrap);
+            }
+
+            const tdStatus = document.createElement('td');
+            const badge = document.createElement('span');
+            badge.className = 'status-badge ' + r.statusClass;
+            badge.textContent = r.status;
+            tdStatus.appendChild(badge);
+
+            tr.appendChild(tdName);
+            tr.appendChild(tdCompany);
+            tr.appendChild(tdPlan);
+            tr.appendChild(tdPay);
+            tr.appendChild(tdProvas);
+            tr.appendChild(tdLimit);
+            tr.appendChild(tdPct);
+            tr.appendChild(tdStatus);
+            tbody.appendChild(tr);
+        }
+    } catch (err) {
+        console.error('Erro ao carregar limites:', err);
+        clearChildren(tbody);
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 8;
+        td.style.cssText = 'text-align:center;color:#ef4444;padding:30px 0;';
+        td.textContent = 'Erro ao carregar dados.';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+    }
+}
+
 function renderTryonsMessage(tbody, colspan, text, color) {
     clearChildren(tbody);
     const tr = document.createElement('tr');
@@ -1190,6 +1394,7 @@ function switchView(viewId) {
     if (viewId === 'dashboard') { updateStats(); renderTable(); }
     if (viewId === 'provinha') { updateProvinha(); }
     if (viewId === 'tryons') { loadTryons(); }
+    if (viewId === 'limites') { loadLimites(); }
 }
 
 // ─── Utilitários ───────────────────────────────────────────────────────────────
@@ -1428,6 +1633,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnRefreshTryons = document.getElementById('btn-refresh-tryons');
     if (btnRefreshTryons) {
         btnRefreshTryons.addEventListener('click', loadTryons);
+    }
+
+    const btnRefreshLimites = document.getElementById('btn-refresh-limites');
+    if (btnRefreshLimites) {
+        btnRefreshLimites.addEventListener('click', loadLimites);
     }
 
     // 10. Lógica do Modal da API Key Gerada
