@@ -26,6 +26,18 @@ const PLAN_LIMITS = {
     'Ultra Power': Infinity
 };
 
+// ─── Controle de Acesso ────────────────────────────────────────────────
+// Apenas estes emails podem acessar o painel de gestão.
+// Para adicionar novo admin, inclua o email aqui.
+const ADMIN_EMAILS = [
+    'cionilucas@gmail.com',
+    'lucasdecamargo2015@gmail.com'
+];
+
+function isAdminEmail(email) {
+    return ADMIN_EMAILS.includes(String(email || '').toLowerCase().trim());
+}
+
 function getClientMonthlyValue(client) {
     if (client.valorPersonalizado != null && client.valorPersonalizado > 0) {
         return client.valorPersonalizado;
@@ -1461,12 +1473,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         const { data: { session }, error } = await db.auth.getSession();
 
         if (session) {
+            const email = session.user && session.user.email;
+            if (!isAdminEmail(email)) {
+                const errorDiv = document.getElementById('login-error');
+                if (errorDiv) {
+                    errorDiv.textContent = 'Acesso restrito. Este painel é exclusivo para administradores.';
+                    errorDiv.style.display = 'block';
+                }
+                loginView.style.display = 'flex';
+                appView.style.display = 'none';
+                await db.auth.signOut();
+                return;
+            }
+
             loginView.style.display = 'none';
             appView.style.display = 'flex';
 
-            // Atualiza o email na sidebar
             const userEmailEl = document.querySelector('.user-name');
-            if (userEmailEl) userEmailEl.textContent = session.user.email;
+            if (userEmailEl) userEmailEl.textContent = email;
 
             loadClients();
         } else {
