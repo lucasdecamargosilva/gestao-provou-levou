@@ -957,17 +957,22 @@ async function loadLimites() {
         // Need clients loaded
         if (!clients || clients.length === 0) await loadClients();
 
-        // Earliest last_payment to bound the query
-        let earliestPay = null;
+        // Get start date per client: last_payment OR implementation_date (for teste gratuito) OR created_at
+        const getStartDate = (c) => {
+            if (c.lastPayment && c.lastPayment !== '-') return c.lastPayment;
+            if (c.status === 'Teste Gratuito' && c.implementationDate) return c.implementationDate;
+            return null;
+        };
+
+        // Earliest start date across clients to bound the provas query
+        let earliestDate = null;
         for (const c of clients) {
-            if (c.lastPayment && c.lastPayment !== '-') {
-                if (!earliestPay || c.lastPayment < earliestPay) earliestPay = c.lastPayment;
-            }
+            const d = getStartDate(c);
+            if (d && (!earliestDate || d < earliestDate)) earliestDate = d;
         }
 
-        // Fetch provas paginated, bounded
         const filters = [{ method: 'order', args: ['created_at', { ascending: false }] }];
-        if (earliestPay) filters.push({ method: 'gte', args: ['created_at', earliestPay + 'T00:00:00-03:00'] });
+        if (earliestDate) filters.push({ method: 'gte', args: ['created_at', earliestDate + 'T00:00:00-03:00'] });
         const provas = await fetchAllPaginated('geracoes_provou_levou', 'origin, created_at', filters);
 
         // Group provas by normalized origin + collect dates
@@ -988,45 +993,47 @@ async function loadLimites() {
             const allProvas = dom ? (provasByOrigin[dom] || []) : [];
             const limit = PLAN_LIMITS[c.plan];
             const limitLabel = (limit === Infinity) ? 'Ilimitado' : (limit != null ? limit.toLocaleString('pt-BR') : '—');
+            const startDate = getStartDate(c);
+            const isTeste = c.status === 'Teste Gratuito';
 
             let provasCount, status, statusClass, pctText, pctValue;
 
-            if (!c.lastPayment || c.lastPayment === '-') {
+            if (!startDate) {
                 provasCount = '—';
                 pctText = '—';
                 pctValue = null;
-                status = (c.status === 'Teste Gratuito') ? 'Teste gratuito' : 'Sem pagamento';
+                status = isTeste ? 'Teste sem data' : 'Sem pagamento';
                 statusClass = 'status-pending';
             } else {
-                const cutoff = c.lastPayment + 'T00:00:00';
+                const cutoff = startDate + 'T00:00:00';
                 const count = allProvas.filter(ts => ts >= cutoff).length;
                 provasCount = count.toLocaleString('pt-BR');
-                monitorados++;
+                if (!isTeste) monitorados++;
 
                 if (limit === Infinity) {
                     pctValue = 0;
                     pctText = '—';
-                    status = 'Ilimitado';
+                    status = isTeste ? 'Teste · Ilimitado' : 'Ilimitado';
                     statusClass = 'status-permuta';
                 } else if (limit) {
                     pctValue = (count / limit) * 100;
                     pctText = pctValue.toFixed(0) + '%';
                     if (pctValue >= 100) {
-                        status = 'Excedido';
+                        status = isTeste ? 'Teste · Excedido' : 'Excedido';
                         statusClass = 'status-inactive';
-                        excedidos++;
+                        if (!isTeste) excedidos++;
                     } else if (pctValue >= 80) {
-                        status = 'Atenção';
+                        status = isTeste ? 'Teste · Atenção' : 'Atenção';
                         statusClass = 'status-pending';
-                        atencao++;
+                        if (!isTeste) atencao++;
                     } else {
-                        status = 'OK';
+                        status = isTeste ? 'Teste · OK' : 'OK';
                         statusClass = 'status-active';
                     }
                 } else {
                     pctValue = null;
                     pctText = '—';
-                    status = 'Sem limite';
+                    status = isTeste ? 'Teste · Sem limite' : 'Sem limite';
                     statusClass = 'status-permuta';
                 }
             }
@@ -1074,7 +1081,14 @@ async function loadLimites() {
             const tdPlan = document.createElement('td'); tdPlan.textContent = r.c.plan || '—';
             const tdPay = document.createElement('td');
             tdPay.style.color = 'var(--text-muted)';
-            tdPay.textContent = (r.c.lastPayment && r.c.lastPayment !== '-') ? formatDate(r.c.lastPayment) : '—';
+            if (r.c.lastPayment && r.c.lastPayment !== '-') {
+                tdPay.textContent = formatDate(r.c.lastPayment);
+            } else if (r.c.status === 'Teste Gratuito' && r.c.implementationDate) {
+                tdPay.textContent = formatDate(r.c.implementationDate) + ' (início teste)';
+                tdPay.style.fontStyle = 'italic';
+            } else {
+                tdPay.textContent = '—';
+            }
 
             const tdProvas = document.createElement('td');
             tdProvas.style.cssText = 'font-weight:600;font-variant-numeric:tabular-nums';
