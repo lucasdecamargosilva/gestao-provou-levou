@@ -13,7 +13,11 @@ const PLAN_VALUES = {
     'Inicial': 197,
     'Médio': 397,
     'Premium': 797,
-    'Ultra Power': 2200
+    'Ultra Power': 2200,
+    'Essencial': 97,
+    'Crescimento': 147,
+    'Performance': 547,
+    'Escala': 997
 };
 
 const COST_PER_PROVA = 0.20;
@@ -23,7 +27,11 @@ const PLAN_LIMITS = {
     'Inicial': 100,
     'Médio': 500,
     'Premium': 1200,
-    'Ultra Power': Infinity
+    'Ultra Power': Infinity,
+    'Essencial': 50,
+    'Crescimento': 100,
+    'Performance': 500,
+    'Escala': 1200
 };
 
 // ─── Controle de Acesso ────────────────────────────────────────────────
