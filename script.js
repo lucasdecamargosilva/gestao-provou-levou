@@ -223,7 +223,9 @@ async function computeFaturamentoPosProva() {
             const select = `${fPhone}, ${fTotal}, ${fDate}, ${fStatus}`;
 
             const filters = [
-                { method: 'in', args: [fStatus, loj.valores_status_pago] }
+                { method: 'in', args: [fStatus, loj.valores_status_pago] },
+                // Regra 6: order explícito para paginação estável (evita duplicatas entre páginas)
+                { method: 'order', args: [fDate, { ascending: true }] }
             ];
             if (earliestProvaDate) {
                 filters.push({ method: 'gte', args: [fDate, earliestProvaDate + 'T00:00:00-03:00'] });
@@ -231,12 +233,17 @@ async function computeFaturamentoPosProva() {
 
             const orders = await fetchAllPaginated(loj.tabela_pedidos, select, filters);
 
+            // Dedup safety net: por id se existir, senão por (phone+date+total) string
+            const seen = new Set();
             let lojaTotal = 0;
             for (const o of orders) {
                 const ph = normalizePhone(o[fPhone]);
                 if (!ph || !provaPhones.has(ph)) continue;
                 if (!isOrderAfterProva(o[fDate], ph, minDateMap, minTsMap)) continue;
                 const val = parseFloat(o[fTotal]) || 0;
+                const dedupKey = `${ph}|${o[fDate]}|${val}`;
+                if (seen.has(dedupKey)) continue;
+                seen.add(dedupKey);
                 lojaTotal += val;
             }
 
