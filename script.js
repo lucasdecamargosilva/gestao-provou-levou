@@ -178,6 +178,7 @@ async function computeFaturamentoPosProva() {
     }
 
     const porEmail = {};
+    const porDomain = {};
     let totalGeral = 0;
 
     // 4. Para cada lojista, calcular pós-prova
@@ -192,7 +193,9 @@ async function computeFaturamentoPosProva() {
             }
             const categoria = storeCategoriaMap[(loj.email || '').toLowerCase()] || loj.categoria || 'oculos';
             if (lojProvas.length === 0) {
-                porEmail[loj.email] = { faturamento: 0, provas: 0, custo: 0, categoria };
+                const entry0 = { faturamento: 0, provas: 0, custo: 0, categoria };
+                porEmail[loj.email] = entry0;
+                if (lojOrigem) porDomain[lojOrigem] = entry0;
                 continue;
             }
 
@@ -240,12 +243,17 @@ async function computeFaturamentoPosProva() {
             const provasCount = lojProvas.length;
             const costRate = getCategoryCost(categoria);
             const custo = costRate != null ? provasCount * costRate : null;
-            porEmail[loj.email] = { faturamento: lojaTotal, provas: provasCount, custo, categoria };
+            const entry = { faturamento: lojaTotal, provas: provasCount, custo, categoria };
+            porEmail[loj.email] = entry;
+            if (lojOrigem) porDomain[lojOrigem] = entry;
             totalGeral += lojaTotal;
         } catch (err) {
             console.warn(`Erro calculando faturamento para ${loj.email}:`, err);
             const fallbackCat = storeCategoriaMap[(loj.email || '').toLowerCase()] || loj.categoria || 'oculos';
-            porEmail[loj.email] = { faturamento: 0, provas: 0, custo: 0, categoria: fallbackCat };
+            const entry = { faturamento: 0, provas: 0, custo: 0, categoria: fallbackCat };
+            porEmail[loj.email] = entry;
+            const lojOrigem2 = normalizeDomain(loj.origem);
+            if (lojOrigem2) porDomain[lojOrigem2] = entry;
         }
     }
 
@@ -278,7 +286,8 @@ async function computeFaturamentoPosProva() {
         custoOculos,
         custoRoupa,
         custoRoupaPendente,
-        porEmail
+        porEmail,
+        porDomain
     };
 }
 
@@ -975,12 +984,24 @@ function renderFaturamentoView(cache) {
     if (updEl) updEl.textContent = 'Atualizado ' + formatRelativeTime(cache.updatedAt);
 
     const porEmail = cache.porEmail || {};
+    const porDomain = cache.porDomain || {};
     const rows = [];
     let lojasComReceita = 0;
     let somaReceita = 0;
 
+    const lookup = (c) => {
+        // Try email match first (case-insensitive), then domain
+        const emailLow = String(c.email || '').toLowerCase().trim();
+        for (const [k, v] of Object.entries(porEmail)) {
+            if (String(k).toLowerCase().trim() === emailLow) return v;
+        }
+        const dom = normalizeDomain(c.website);
+        if (dom && porDomain[dom]) return porDomain[dom];
+        return null;
+    };
+
     for (const c of clients) {
-        const entry = porEmail[c.email];
+        const entry = lookup(c);
         const fat = entry && typeof entry === 'object'
             ? (entry.faturamento || 0)
             : (typeof entry === 'number' ? entry : null);
