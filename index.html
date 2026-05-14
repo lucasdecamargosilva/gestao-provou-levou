@@ -74,6 +74,12 @@
                         <span>Limites</span>
                     </a>
                 </li>
+                <li>
+                    <a href="#" class="nav-item" data-view="faturamento">
+                        <i class="fas fa-money-bill-trend-up"></i>
+                        <span>Faturamento</span>
+                    </a>
+                </li>
             </ul>
 
             <div class="user-profile">
@@ -336,6 +342,58 @@
                 </div>
             </section>
 
+
+            <!-- Faturamento View -->
+            <section id="faturamento" class="view">
+                <div class="page-header">
+                    <h1 class="page-title">Faturamento Pós-Prova</h1>
+                    <p style="color: var(--text-muted); margin-top: 5px;">Receita gerada por clientes que usaram o provador, por loja</p>
+                </div>
+
+                <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+                    <div class="stat-card glass">
+                        <div class="stat-label">Faturamento Total</div>
+                        <div id="stat-fat-total" class="stat-value">R$ 0</div>
+                        <div id="stat-fat-updated" class="stat-sub">Nunca calculado</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-label">Lojas com Receita</div>
+                        <div id="stat-fat-lojas" class="stat-value">0</div>
+                        <div class="stat-sub">de clientes mapeados</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-label">Ticket Médio por Loja</div>
+                        <div id="stat-fat-ticket" class="stat-value">R$ 0</div>
+                        <div class="stat-sub">média de quem teve venda</div>
+                    </div>
+                </div>
+
+                <div class="section-container glass">
+                    <div class="table-header">
+                        <h2 class="table-title">Por Cliente</h2>
+                        <button id="btn-refresh-faturamento-view" class="btn-primary">
+                            <i class="fas fa-sync-alt"></i> Atualizar
+                        </button>
+                    </div>
+                    <table class="client-table">
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Loja</th>
+                                <th>Plano</th>
+                                <th>Faturamento Pós-Prova</th>
+                            </tr>
+                        </thead>
+                        <tbody id="faturamento-table-body">
+                            <tr>
+                                <td colspan="4" style="text-align:center;color:var(--text-muted);padding:30px 0;">
+                                    Clique em Atualizar pra calcular
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
 
             <!-- Limites View -->
             <section id="limites" class="view">

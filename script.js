@@ -947,6 +947,118 @@ function clearChildren(el) {
     while (el && el.firstChild) el.removeChild(el.firstChild);
 }
 
+function renderFaturamentoView(cache) {
+    const tbody = document.getElementById('faturamento-table-body');
+    if (!tbody) return;
+
+    const totalEl = document.getElementById('stat-fat-total');
+    const updEl = document.getElementById('stat-fat-updated');
+    const lojasEl = document.getElementById('stat-fat-lojas');
+    const ticketEl = document.getElementById('stat-fat-ticket');
+
+    if (!cache) {
+        if (totalEl) totalEl.textContent = 'R$ 0';
+        if (updEl) updEl.textContent = 'Nunca calculado';
+        if (lojasEl) lojasEl.textContent = '0';
+        if (ticketEl) ticketEl.textContent = 'R$ 0';
+        clearChildren(tbody);
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 4;
+        td.style.cssText = 'text-align:center;color:var(--text-muted);padding:30px 0;';
+        td.textContent = 'Clique em Atualizar pra calcular';
+        tr.appendChild(td); tbody.appendChild(tr);
+        return;
+    }
+
+    if (totalEl) totalEl.textContent = formatBRL(cache.totalGeral || 0);
+    if (updEl) updEl.textContent = 'Atualizado ' + formatRelativeTime(cache.updatedAt);
+
+    const porEmail = cache.porEmail || {};
+    const rows = [];
+    let lojasComReceita = 0;
+    let somaReceita = 0;
+
+    for (const c of clients) {
+        const entry = porEmail[c.email];
+        const fat = entry && typeof entry === 'object'
+            ? (entry.faturamento || 0)
+            : (typeof entry === 'number' ? entry : null);
+        rows.push({ c, fat });
+        if (typeof fat === 'number' && fat > 0) {
+            lojasComReceita++;
+            somaReceita += fat;
+        }
+    }
+
+    rows.sort((a, b) => (b.fat || 0) - (a.fat || 0));
+
+    if (lojasEl) lojasEl.textContent = lojasComReceita.toLocaleString('pt-BR');
+    if (ticketEl) ticketEl.textContent = formatBRL(lojasComReceita > 0 ? somaReceita / lojasComReceita : 0);
+
+    clearChildren(tbody);
+    if (rows.length === 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 4;
+        td.style.cssText = 'text-align:center;color:var(--text-muted);padding:30px 0;';
+        td.textContent = 'Nenhum cliente cadastrado.';
+        tr.appendChild(td); tbody.appendChild(tr);
+        return;
+    }
+
+    for (const r of rows) {
+        const tr = document.createElement('tr');
+
+        const tdName = document.createElement('td');
+        const dn = document.createElement('div'); dn.style.fontWeight = '600'; dn.textContent = r.c.name || '—';
+        const de = document.createElement('div'); de.style.cssText = 'color:var(--text-muted);font-size:12px'; de.textContent = r.c.email || '';
+        tdName.appendChild(dn); tdName.appendChild(de);
+
+        const tdCompany = document.createElement('td'); tdCompany.textContent = r.c.company || '—';
+        const tdPlan = document.createElement('td'); tdPlan.textContent = r.c.plan || '—';
+
+        const tdFat = document.createElement('td');
+        tdFat.style.cssText = 'font-weight:600;font-variant-numeric:tabular-nums;';
+        if (typeof r.fat === 'number') {
+            tdFat.textContent = formatBRL(r.fat);
+            tdFat.style.color = r.fat > 0 ? 'var(--success)' : 'var(--text-muted)';
+        } else {
+            tdFat.textContent = '—';
+            tdFat.style.color = 'var(--text-muted)';
+        }
+
+        tr.appendChild(tdName);
+        tr.appendChild(tdCompany);
+        tr.appendChild(tdPlan);
+        tr.appendChild(tdFat);
+        tbody.appendChild(tr);
+    }
+}
+
+async function loadFaturamentoView() {
+    // Render cached value immediately if exists
+    renderFaturamentoView(readFaturamentoCache());
+}
+
+async function refreshFaturamentoView() {
+    const btn = document.getElementById('btn-refresh-faturamento-view');
+    const icon = btn ? btn.querySelector('i') : null;
+    const updEl = document.getElementById('stat-fat-updated');
+    if (icon) icon.classList.add('fa-spin');
+    if (updEl) updEl.textContent = 'Calculando...';
+    try {
+        const result = await computeFaturamentoPosProva();
+        writeFaturamentoCache(result);
+        renderFaturamentoView(result);
+    } catch (err) {
+        console.error('Erro ao calcular faturamento:', err);
+        if (updEl) updEl.textContent = 'Erro — ver console';
+    } finally {
+        if (icon) icon.classList.remove('fa-spin');
+    }
+}
+
 async function loadLimites() {
     if (!db) return;
     const tbody = document.getElementById('limites-table-body');
@@ -1429,6 +1541,7 @@ function switchView(viewId) {
     if (viewId === 'provinha') { updateProvinha(); }
     if (viewId === 'tryons') { loadTryons(); }
     if (viewId === 'limites') { loadLimites(); }
+    if (viewId === 'faturamento') { loadFaturamentoView(); }
 }
 
 // ─── Utilitários ───────────────────────────────────────────────────────────────
@@ -1684,6 +1797,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnRefreshLimites = document.getElementById('btn-refresh-limites');
     if (btnRefreshLimites) {
         btnRefreshLimites.addEventListener('click', loadLimites);
+    }
+
+    const btnRefreshFatView = document.getElementById('btn-refresh-faturamento-view');
+    if (btnRefreshFatView) {
+        btnRefreshFatView.addEventListener('click', refreshFaturamentoView);
     }
 
     // 10. Lógica do Modal da API Key Gerada
