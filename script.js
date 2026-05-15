@@ -373,7 +373,7 @@ function renderProximosPagamentos() {
     }
 
     rows.sort((a, b) => a.nextPay - b.nextPay);
-    const topRows = rows.slice(0, 10);
+    const topRows = rows.slice(0, 3);
 
     if (totalEl) {
         totalEl.textContent = `R$ ${totalAReceber.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} a receber em 30 dias`;
