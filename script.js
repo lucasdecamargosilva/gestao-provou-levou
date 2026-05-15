@@ -346,6 +346,107 @@ function renderFaturamentoCard(cache) {
     if (provasEl) setUpdatedLine(provasEl, 'fas fa-image', (cache.totalProvas || 0).toLocaleString('pt-BR') + ' provas');
 }
 
+function renderProximosPagamentos() {
+    const tbody = document.getElementById('proximos-pagamentos-body');
+    const totalEl = document.getElementById('stat-prox-pagamentos-total');
+    if (!tbody) return;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const rows = [];
+    let totalAReceber = 0;
+
+    for (const c of clients) {
+        if (c.status !== 'Ativo' && c.status !== 'Permuta') continue;
+        if (!c.lastPayment || c.lastPayment === '-') continue;
+
+        const parts = c.lastPayment.split('T')[0].split('-').map(Number);
+        if (parts.length !== 3 || isNaN(parts[0])) continue;
+        const [y, m, d] = parts;
+        const nextPay = new Date(y, m, d); // last_payment + 1 month, same day
+        const diffDays = Math.round((nextPay - today) / (1000 * 60 * 60 * 24));
+
+        const valor = getClientMonthlyValue(c);
+        rows.push({ c, nextPay, diffDays, valor });
+        if (diffDays <= 30 && c.status === 'Ativo') totalAReceber += valor;
+    }
+
+    rows.sort((a, b) => a.nextPay - b.nextPay);
+    const topRows = rows.slice(0, 10);
+
+    if (totalEl) {
+        totalEl.textContent = `R$ ${totalAReceber.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} a receber em 30 dias`;
+    }
+
+    while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+
+    if (topRows.length === 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 6;
+        td.style.cssText = 'text-align:center;color:var(--text-muted);padding:30px 0;';
+        td.textContent = 'Sem pagamentos previstos. Cadastre a data de último pagamento dos clientes.';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+    }
+
+    for (const r of topRows) {
+        const tr = document.createElement('tr');
+
+        const tdName = document.createElement('td');
+        const divName = document.createElement('div');
+        divName.style.fontWeight = '600';
+        divName.textContent = r.c.name || '—';
+        const divEmail = document.createElement('div');
+        divEmail.style.cssText = 'color:var(--text-muted);font-size:12px;';
+        divEmail.textContent = r.c.email || '';
+        tdName.appendChild(divName);
+        tdName.appendChild(divEmail);
+
+        const tdCompany = document.createElement('td');
+        tdCompany.textContent = r.c.company || '—';
+
+        const tdPlan = document.createElement('td');
+        tdPlan.textContent = getClientPlanLabel(r.c);
+
+        const tdValor = document.createElement('td');
+        tdValor.style.cssText = 'color:var(--success);font-weight:600;font-variant-numeric:tabular-nums;';
+        tdValor.textContent = `R$ ${r.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+        const tdData = document.createElement('td');
+        tdData.style.cssText = 'font-variant-numeric:tabular-nums;';
+        tdData.textContent = r.nextPay.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+
+        const tdStatus = document.createElement('td');
+        const badge = document.createElement('span');
+        badge.className = 'status-badge';
+        if (r.diffDays < 0) {
+            badge.classList.add('status-inactive');
+            badge.textContent = `Atrasado ${Math.abs(r.diffDays)}d`;
+        } else if (r.diffDays === 0) {
+            badge.classList.add('status-pending');
+            badge.textContent = 'Hoje';
+        } else if (r.diffDays <= 7) {
+            badge.classList.add('status-pending');
+            badge.textContent = `Em ${r.diffDays} dia${r.diffDays > 1 ? 's' : ''}`;
+        } else {
+            badge.classList.add('status-active');
+            badge.textContent = `Em ${r.diffDays} dias`;
+        }
+        tdStatus.appendChild(badge);
+
+        tr.appendChild(tdName);
+        tr.appendChild(tdCompany);
+        tr.appendChild(tdPlan);
+        tr.appendChild(tdValor);
+        tr.appendChild(tdData);
+        tr.appendChild(tdStatus);
+        tbody.appendChild(tr);
+    }
+}
+
 function renderLucroLiquido(mrr) {
     const valEl = document.getElementById('stat-lucro-liquido');
     const subEl = document.getElementById('stat-lucro-sub');
@@ -1547,6 +1648,7 @@ function updateStats() {
     setText('stat-growth', growth);
 
     renderLucroLiquido(mrr);
+    renderProximosPagamentos();
 
     ['Starter', 'Inicial', 'Médio', 'Premium', 'Ultra Power'].forEach(plan => {
         const key = plan.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '-');
