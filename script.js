@@ -1165,9 +1165,22 @@ function renderFaturamentoView(cache) {
     }
 }
 
+let _fatAutoRefreshing = false;
 async function loadFaturamentoView() {
-    // Render cached value immediately if exists
+    // Show cached value immediately
     renderFaturamentoView(readFaturamentoCache());
+    // Then auto-refresh in background
+    if (_fatAutoRefreshing) return;
+    _fatAutoRefreshing = true;
+    try {
+        const result = await computeFaturamentoPosProva();
+        writeFaturamentoCache(result);
+        renderFaturamentoView(result);
+    } catch (err) {
+        console.warn('Auto-refresh faturamento falhou:', err);
+    } finally {
+        _fatAutoRefreshing = false;
+    }
 }
 
 async function refreshFaturamentoView() {
