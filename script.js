@@ -28,7 +28,7 @@ const PLAN_LIMITS = {
     'Inicial': 100,
     'Médio': 500,
     'Premium': 1200,
-    'Ultra Power': Infinity,
+    'Ultra Power': 3000,
     'Essencial': 50,
     'Crescimento': 100,
     'Acelerador': 300,
