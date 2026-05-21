@@ -16,6 +16,7 @@ const PLAN_VALUES = {
     'Ultra Power': 2200,
     'Essencial': 97,
     'Crescimento': 147,
+    'Acelerador': 347,
     'Performance': 547,
     'Escala': 997
 };
@@ -30,6 +31,7 @@ const PLAN_LIMITS = {
     'Ultra Power': Infinity,
     'Essencial': 50,
     'Crescimento': 100,
+    'Acelerador': 300,
     'Performance': 500,
     'Escala': 1200
 };
