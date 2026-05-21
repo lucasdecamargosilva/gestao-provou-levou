@@ -727,7 +727,8 @@ async function loadClients() {
             implementationDate: s.implementation_date || null,
             categoria: s.categoria || 'oculos',
             planoPersonalizado: s.plano_personalizado || null,
-            valorPersonalizado: s.valor_personalizado != null ? parseFloat(s.valor_personalizado) : null
+            valorPersonalizado: s.valor_personalizado != null ? parseFloat(s.valor_personalizado) : null,
+            fotosExtras: s.fotos_extras != null ? parseInt(s.fotos_extras) : 0
         }));
     } catch (err) {
         console.error('Erro ao carregar clientes:', err);
@@ -774,7 +775,8 @@ async function addClient(event) {
         last_payment: document.getElementById('last_payment').value || null,
         categoria: document.getElementById('categoria').value || 'oculos',
         plano_personalizado: document.getElementById('plano_personalizado').value.trim() || null,
-        valor_personalizado: parseFloat(document.getElementById('valor_personalizado').value) || null
+        valor_personalizado: parseFloat(document.getElementById('valor_personalizado').value) || null,
+        fotos_extras: parseInt(document.getElementById('fotos_extras').value) || 0
     };
 
     if (!db) {
@@ -922,6 +924,7 @@ function editClientById(id) {
     document.getElementById('categoria').value = c.categoria || 'oculos';
     document.getElementById('plano_personalizado').value = c.planoPersonalizado || '';
     document.getElementById('valor_personalizado').value = c.valorPersonalizado != null ? c.valorPersonalizado : '';
+    document.getElementById('fotos_extras').value = c.fotosExtras || '';
 
     const impWrapper = document.getElementById('implementation-date-wrapper');
     if (c.status === 'Teste Gratuito') {
@@ -1253,8 +1256,18 @@ async function loadLimites() {
         for (const c of clients) {
             const dom = normalizeDomain(c.website);
             const allProvas = dom ? (provasByOrigin[dom] || []) : [];
-            const limit = PLAN_LIMITS[c.plan];
-            const limitLabel = (limit === Infinity) ? 'Ilimitado' : (limit != null ? limit.toLocaleString('pt-BR') : '—');
+            const basePlanLimit = PLAN_LIMITS[c.plan];
+            const extras = c.fotosExtras || 0;
+            const limit = (basePlanLimit === Infinity) ? Infinity : (basePlanLimit != null ? basePlanLimit + extras : null);
+            let limitLabel;
+            if (limit === Infinity) {
+                limitLabel = 'Ilimitado';
+            } else if (limit != null) {
+                limitLabel = limit.toLocaleString('pt-BR');
+                if (extras > 0) limitLabel += ` (+${extras})`;
+            } else {
+                limitLabel = '—';
+            }
             const startDate = getStartDate(c);
             const isTeste = c.status === 'Teste Gratuito';
 
