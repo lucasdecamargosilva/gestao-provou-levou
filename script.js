@@ -21,7 +21,7 @@ const PLAN_VALUES = {
     'Escala': 997
 };
 
-const COST_PER_PROVA = 0.20;
+const COST_PER_PROVA = 0.045;
 
 const PLAN_LIMITS = {
     'Starter': 50,
@@ -61,7 +61,7 @@ function getClientPlanLabel(client) {
 }
 
 const COST_PER_CATEGORIA = {
-    'oculos': 0.20,
+    'oculos': 0.045,
     'roupa': 0.35
 };
 
@@ -476,11 +476,11 @@ function renderLucroLiquido(mrr) {
     };
 
     if (cache) {
-        setCostCard('stat-dash-custo-oculos', 'stat-dash-custo-oculos-sub', cache.custoOculos, cache.provasOculos, 'R$ 0,20/prova');
+        setCostCard('stat-dash-custo-oculos', 'stat-dash-custo-oculos-sub', cache.custoOculos, cache.provasOculos, 'R$ 0,045/prova');
         setCostCard('stat-dash-custo-roupa', 'stat-dash-custo-roupa-sub', cache.custoRoupa, cache.provasRoupa, 'R$ 0,35/prova');
         setCostCard('stat-dash-custo-total', 'stat-dash-custo-total-sub', cache.totalCusto, cache.totalProvas, '');
     } else {
-        setCostCard('stat-dash-custo-oculos', 'stat-dash-custo-oculos-sub', 0, 0, 'R$ 0,20/prova');
+        setCostCard('stat-dash-custo-oculos', 'stat-dash-custo-oculos-sub', 0, 0, 'R$ 0,045/prova');
         setCostCard('stat-dash-custo-roupa', 'stat-dash-custo-roupa-sub', 0, 0, 'R$ 0,35/prova');
         setCostCard('stat-dash-custo-total', 'stat-dash-custo-total-sub', 0, 0, '');
     }
