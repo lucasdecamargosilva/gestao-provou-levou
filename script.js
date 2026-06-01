@@ -348,7 +348,289 @@ function renderFaturamentoCard(cache) {
     if (provasEl) setUpdatedLine(provasEl, 'fas fa-image', (cache.totalProvas || 0).toLocaleString('pt-BR') + ' provas');
 }
 
+function _waLink(phone, msg) {
+    const num = String(phone || '').replace(/\D/g, '');
+    if (!num) return null;
+    const full = num.startsWith('55') ? num : '55' + num;
+    return `https://wa.me/${full}?text=${encodeURIComponent(msg || '')}`;
+}
+
+// metaParts: array of { text, bold?, color? ('red'|'yellow'|'green') }
+function _actionItem({ name, metaParts, phone, wamsg, urgentClass }) {
+    const item = document.createElement('div');
+    item.className = 'action-item' + (urgentClass ? ' ' + urgentClass : '');
+
+    const info = document.createElement('div');
+    info.className = 'action-info';
+    const dn = document.createElement('div');
+    dn.className = 'action-name';
+    dn.textContent = name;
+    const dm = document.createElement('div');
+    dm.className = 'action-meta';
+    (metaParts || []).forEach((part, i) => {
+        if (i > 0) dm.appendChild(document.createTextNode(' · '));
+        const el = document.createElement(part.bold ? 'strong' : 'span');
+        if (part.color) el.className = part.color;
+        el.textContent = part.text;
+        dm.appendChild(el);
+    });
+    info.appendChild(dn); info.appendChild(dm);
+
+    item.appendChild(info);
+    const link = _waLink(phone, wamsg);
+    if (link) {
+        const a = document.createElement('a');
+        a.className = 'action-cta';
+        a.href = link;
+        a.target = '_blank';
+        a.title = 'Abrir WhatsApp';
+        // Font Awesome icon — hardcoded class, no user data
+        const ic = document.createElement('i');
+        ic.className = 'fab fa-whatsapp';
+        a.appendChild(ic);
+        item.appendChild(a);
+    }
+    return item;
+}
+
+function renderCobrarAgora() {
+    const list = document.getElementById('cobrar-agora-list');
+    const totalEl = document.getElementById('stat-prox-pagamentos-total');
+    if (!list) return;
+
+    const today = new Date(); today.setHours(0,0,0,0);
+    const rows = [];
+    let total = 0;
+    for (const c of clients) {
+        if (c.status !== 'Ativo' && c.status !== 'Permuta') continue;
+        if (!c.lastPayment || c.lastPayment === '-') continue;
+        const p = c.lastPayment.split('T')[0].split('-').map(Number);
+        if (p.length !== 3) continue;
+        const nextPay = new Date(p[0], p[1], p[2]);
+        const diff = Math.round((nextPay - today)/(1000*60*60*24));
+        if (diff > 30) continue;
+        const v = getClientMonthlyValue(c);
+        rows.push({ c, nextPay, diff, v });
+        if (c.status === 'Ativo' && diff <= 30) total += v;
+    }
+    rows.sort((a,b) => a.diff - b.diff);
+
+    if (totalEl) totalEl.textContent = `R$ ${total.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+
+    while (list.firstChild) list.removeChild(list.firstChild);
+    if (rows.length === 0) {
+        const e = document.createElement('div');
+        e.className = 'action-empty';
+        e.textContent = 'Sem cobranças nos próximos 30 dias 🎉';
+        list.appendChild(e); return;
+    }
+    for (const r of rows.slice(0, 8)) {
+        const empresa = r.c.company || r.c.name || '—';
+        const dateStr = r.nextPay.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
+        const valor = `R$ ${r.v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+        let statusText, statusColor, urgent = '';
+        if (r.diff < 0) { statusText = `Atrasado ${Math.abs(r.diff)}d`; statusColor = 'red'; urgent = 'urgent'; }
+        else if (r.diff === 0) { statusText = 'Vence HOJE'; statusColor = 'yellow'; urgent = 'warning'; }
+        else if (r.diff <= 7) { statusText = `Em ${r.diff}d`; statusColor = 'yellow'; urgent = 'warning'; }
+        else { statusText = `Em ${r.diff}d`; statusColor = 'green'; }
+        const wamsg = `Oi ${r.c.name?.split(' ')[0] || ''}, tudo bem? Passando pra lembrar que o pagamento mensal do Provou Levou (${valor}) vence ${dateStr}. Qualquer dúvida tô aqui!`;
+        list.appendChild(_actionItem({
+            name: empresa,
+            metaParts: [
+                { text: valor, bold: true },
+                { text: `venc ${dateStr}` },
+                { text: statusText, color: statusColor }
+            ],
+            phone: r.c.phone,
+            wamsg,
+            urgentClass: urgent
+        }));
+    }
+}
+
+function renderTestesGratuitos() {
+    const list = document.getElementById('testes-list');
+    const totalEl = document.getElementById('stat-testes-total');
+    if (!list) return;
+
+    const today = new Date(); today.setHours(0,0,0,0);
+    const rows = [];
+    for (const c of clients) {
+        if (c.status !== 'Teste Gratuito') continue;
+        const imp = c.implementationDate || c.date;
+        if (!imp) continue;
+        const p = String(imp).split('T')[0].split('-').map(Number);
+        const start = new Date(p[0], p[1]-1, p[2]);
+        const days = Math.round((today - start)/(1000*60*60*24));
+        rows.push({ c, days, start });
+    }
+    rows.sort((a,b) => b.days - a.days);
+
+    if (totalEl) totalEl.textContent = `${rows.length} teste${rows.length === 1 ? '' : 's'}`;
+
+    while (list.firstChild) list.removeChild(list.firstChild);
+    if (rows.length === 0) {
+        const e = document.createElement('div');
+        e.className = 'action-empty';
+        e.textContent = 'Nenhum teste ativo';
+        list.appendChild(e); return;
+    }
+    for (const r of rows) {
+        const c = r.c;
+        const empresa = c.company || c.name || '—';
+        const v = getClientMonthlyValue(c);
+        const valor = v ? `R$ ${v.toLocaleString('pt-BR')}` : '—';
+        let statusText, statusColor, urgent = '';
+        if (r.days > 7) {
+            statusText = `Expirou há ${r.days - 7}d`;
+            statusColor = 'red'; urgent = 'urgent';
+        } else if (r.days >= 5) {
+            statusText = `Faltam ${7 - r.days}d`;
+            statusColor = 'yellow'; urgent = 'warning';
+        } else {
+            statusText = `Dia ${r.days}/7`;
+            statusColor = 'green';
+        }
+        const wamsg = r.days > 7
+            ? `Oi ${c.name?.split(' ')[0] || ''}! Seu teste do Provou Levou já encerrou. Quer continuar usando? O plano ${c.plan} é só ${valor}/mês 🚀`
+            : `Oi ${c.name?.split(' ')[0] || ''}! Como está sendo a experiência com o Provou Levou no seu ${r.days}º dia de teste? Posso te ajudar com algo?`;
+        list.appendChild(_actionItem({
+            name: empresa,
+            metaParts: [
+                { text: c.plan || '—' },
+                { text: valor },
+                { text: statusText, color: statusColor }
+            ],
+            phone: c.phone,
+            wamsg,
+            urgentClass: urgent
+        }));
+    }
+}
+
+function renderExcessoProvas(cache) {
+    const list = document.getElementById('excesso-list');
+    const totalEl = document.getElementById('stat-excesso-total');
+    if (!list) return;
+
+    const provasCache = cache || readProvasCustoCache();
+    if (!provasCache || !provasCache.tableData) {
+        if (totalEl) totalEl.textContent = 'calculando...';
+        while (list.firstChild) list.removeChild(list.firstChild);
+        const e = document.createElement('div');
+        e.className = 'action-empty';
+        e.textContent = 'Calculando provas...';
+        list.appendChild(e); return;
+    }
+
+    // Build dom -> {count, list of created_at timestamps not in cache, so approximate using count since start}
+    // We don't have per-prova timestamps here; need separate computation similar to loadLimites.
+    // Use the cache that was populated by computeProvasCustoTotal.
+    const provasByOrigin = {};
+    for (const row of provasCache.tableData || []) {
+        provasByOrigin[row.origin] = row.count; // total count, not since-payment
+    }
+
+    // For accurate "excesso desde último pagamento", we need timestamped provas.
+    // Use _excessoProvasFresh if available; otherwise show note.
+    const fresh = window._excessoProvasFresh;
+    if (!fresh) {
+        if (totalEl) totalEl.textContent = 'aguardando...';
+        while (list.firstChild) list.removeChild(list.firstChild);
+        const e = document.createElement('div');
+        e.className = 'action-empty';
+        e.textContent = 'Carregando provas com data...';
+        list.appendChild(e); return;
+    }
+
+    const rows = [];
+    for (const c of clients) {
+        const plan = c.plan || '';
+        const base = PLAN_LIMITS[plan];
+        if (base == null || base === Infinity) continue;
+        const limit = base + (c.fotosExtras || 0);
+        // Start date
+        let start = null;
+        if (c.lastPayment && c.lastPayment !== '-') {
+            const p = c.lastPayment.split('T')[0].split('-').map(Number);
+            start = new Date(p[0], p[1]-1, p[2]);
+        } else if (c.status === 'Teste Gratuito' && c.implementationDate) {
+            const p = String(c.implementationDate).split('T')[0].split('-').map(Number);
+            start = new Date(p[0], p[1]-1, p[2]);
+        }
+        if (!start) continue;
+        const dom = normalizeDomain(c.website);
+        if (!dom) continue;
+        const tsList = fresh[dom] || [];
+        const cutoff = start.toISOString().slice(0,10) + 'T00:00:00';
+        const used = tsList.filter(ts => ts >= cutoff).length;
+        if (used > limit) {
+            rows.push({ c, used, limit, excess: used - limit, plan });
+        }
+    }
+    rows.sort((a,b) => b.excess - a.excess);
+
+    if (totalEl) totalEl.textContent = `${rows.length} cliente${rows.length === 1 ? '' : 's'}`;
+
+    while (list.firstChild) list.removeChild(list.firstChild);
+    if (rows.length === 0) {
+        const e = document.createElement('div');
+        e.className = 'action-empty';
+        e.textContent = 'Ninguém acima do limite 🎉';
+        list.appendChild(e); return;
+    }
+    for (const r of rows) {
+        const c = r.c;
+        const empresa = c.company || c.name || '—';
+        const pct = Math.round(r.used / r.limit * 100);
+        const urgent = pct >= 150 ? 'urgent' : 'warning';
+        const wamsg = `Oi ${c.name?.split(' ')[0] || ''}! Vc já usou ${r.used} das ${r.limit} fotos do seu plano ${c.plan} este mês (+${r.excess} acima). Posso te oferecer um upgrade ou um pacote de fotos extras?`;
+        list.appendChild(_actionItem({
+            name: empresa,
+            metaParts: [
+                { text: r.plan },
+                { text: `${r.used}/${r.limit} (${pct}%)`, bold: true },
+                { text: `+${r.excess}`, color: 'red' }
+            ],
+            phone: c.phone,
+            wamsg,
+            urgentClass: urgent
+        }));
+    }
+}
+
+async function loadExcessoProvasDetailed() {
+    // Fetch all provas timestamps to build per-origin list for accurate cutoff filtering
+    if (!db) return;
+    const provas = await fetchAllPaginated(
+        'geracoes_provou_levou',
+        'origin, created_at',
+        [{ method: 'order', args: ['created_at', { ascending: false }] }]
+    );
+    const byDom = {};
+    for (const p of provas) {
+        const dom = normalizeDomain(p.origin);
+        if (!dom) continue;
+        if (!byDom[dom]) byDom[dom] = [];
+        byDom[dom].push(p.created_at || '');
+    }
+    window._excessoProvasFresh = byDom;
+    renderExcessoProvas();
+}
+
 function renderProximosPagamentos() {
+    // Backwards-compat: delegate to new renderers
+    renderCobrarAgora();
+    renderTestesGratuitos();
+    renderExcessoProvas();
+    // Trigger detailed fetch in background if not already done
+    if (!window._excessoProvasFresh && !window._excessoProvasLoading) {
+        window._excessoProvasLoading = true;
+        loadExcessoProvasDetailed().finally(() => { window._excessoProvasLoading = false; });
+    }
+}
+
+function _legacyProximosPagamentos() {
     const tbody = document.getElementById('proximos-pagamentos-body');
     const totalEl = document.getElementById('stat-prox-pagamentos-total');
     if (!tbody) return;

@@ -881,6 +881,122 @@ select.form-control {
     background: radial-gradient(circle, rgba(124, 58, 237, 0.22), transparent 70%);
 }
 
+/* ─── Action Grid (3 painéis lado a lado) ─── */
+.action-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+@media (max-width: 1280px) {
+    .action-grid { grid-template-columns: 1fr; }
+}
+
+.action-panel {
+    padding: 20px 22px;
+    display: flex;
+    flex-direction: column;
+    min-height: 360px;
+}
+
+.action-panel .table-header {
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+}
+
+.action-panel .table-title {
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+.action-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    max-height: 460px;
+}
+
+.action-empty {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 30px 10px;
+    font-size: 13px;
+}
+
+.action-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: rgba(0,0,0,0.015);
+    transition: border-color .2s, background .2s;
+}
+
+.action-item:hover {
+    border-color: rgba(124, 58, 237, 0.3);
+    background: rgba(124, 58, 237, 0.03);
+}
+
+.action-item.urgent {
+    border-color: rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.04);
+}
+
+.action-item.warning {
+    border-color: rgba(245, 158, 11, 0.3);
+    background: rgba(245, 158, 11, 0.04);
+}
+
+.action-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.action-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.action-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.action-meta strong { color: var(--text); font-weight: 600; }
+.action-meta .red { color: #ef4444; font-weight: 600; }
+.action-meta .yellow { color: #d97706; font-weight: 600; }
+.action-meta .green { color: var(--success); font-weight: 600; }
+
+.action-cta {
+    flex-shrink: 0;
+    background: #25d366;
+    color: white;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    text-decoration: none;
+    transition: transform .15s, box-shadow .15s;
+}
+.action-cta:hover { transform: scale(1.08); box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3); }
+
 .package-badge {
     display: inline-block;
     padding: 5px 12px;

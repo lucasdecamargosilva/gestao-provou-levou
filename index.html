@@ -100,37 +100,23 @@
             <!-- Dashboard View -->
             <section id="dashboard" class="view active">
                 <div class="page-header">
-                    <h1 class="page-title">Painel de Clientes Ativos</h1>
+                    <h1 class="page-title">Centro de Cobrança</h1>
                 </div>
 
-                <!-- KPI Cards -->
-                <div class="stats-grid" style="grid-template-columns: repeat(5, 1fr);">
+                <!-- KPI Cards principais -->
+                <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr);">
                     <div class="stat-card glass">
                         <div class="stat-label">Clientes Ativos</div>
                         <div id="stat-active-clients" class="stat-value">0</div>
                         <div class="stat-trend trend-up">
-                            <i class="fas fa-users"></i> Status: Ativo
+                            <i class="fas fa-users"></i> Pagantes
                         </div>
                     </div>
                     <div class="stat-card glass">
-                        <div class="stat-label">Faturamento Mensal (MRR)</div>
+                        <div class="stat-label">MRR Atual</div>
                         <div id="stat-total-mrr" class="stat-value">R$ 0</div>
                         <div class="stat-trend trend-up">
                             <i class="fas fa-dollar-sign"></i> Recorrente
-                        </div>
-                    </div>
-                    <div class="stat-card glass">
-                        <div class="stat-label">Faturamento Potencial</div>
-                        <div id="stat-potential-mrr" class="stat-value">R$ 0</div>
-                        <div class="stat-trend trend-up" style="color: var(--accent);">
-                            <i class="fas fa-chart-bar"></i> Inclui Testes
-                        </div>
-                    </div>
-                    <div class="stat-card glass">
-                        <div class="stat-label">Evolução do Mês</div>
-                        <div id="stat-growth" class="stat-value">12%</div>
-                        <div class="stat-trend trend-up">
-                            <i class="fas fa-chart-line"></i> Crescimento
                         </div>
                     </div>
                     <div class="stat-card glass">
@@ -138,52 +124,49 @@
                         <div id="stat-lucro-liquido" class="stat-value">R$ 0</div>
                         <div id="stat-lucro-sub" class="stat-sub">MRR − Custo Gerações</div>
                     </div>
-                </div>
-
-                <!-- Cost Breakdown Cards -->
-                <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
                     <div class="stat-card glass">
-                        <div class="stat-label">Custo Óculos</div>
-                        <div id="stat-dash-custo-oculos" class="stat-value">R$ 0</div>
-                        <div id="stat-dash-custo-oculos-sub" class="stat-sub">0 provas · R$ 0,045/prova</div>
-                    </div>
-                    <div class="stat-card glass">
-                        <div class="stat-label">Custo Roupa</div>
-                        <div id="stat-dash-custo-roupa" class="stat-value">R$ 0</div>
-                        <div id="stat-dash-custo-roupa-sub" class="stat-sub">0 provas · R$ 0,35/prova</div>
-                    </div>
-                    <div class="stat-card glass">
-                        <div class="stat-label">Custo Total Gerações</div>
-                        <div id="stat-dash-custo-total" class="stat-value">R$ 0</div>
-                        <div id="stat-dash-custo-total-sub" class="stat-sub">0 provas</div>
+                        <div class="stat-label">Potencial (com Testes)</div>
+                        <div id="stat-potential-mrr" class="stat-value">R$ 0</div>
+                        <div class="stat-trend trend-up" style="color: var(--accent);">
+                            <i class="fas fa-chart-bar"></i> Se todos converterem
+                        </div>
                     </div>
                 </div>
 
-                <!-- Próximos Pagamentos -->
-                <div class="section-container glass">
-                    <div class="table-header">
-                        <h2 class="table-title">Próximos Pagamentos</h2>
-                        <span id="stat-prox-pagamentos-total" class="stat-sub" style="color: var(--success);">R$ 0 a receber</span>
+                <!-- 3 Painéis de Ação -->
+                <div class="action-grid">
+                    <!-- Panel 1: Cobrar Agora -->
+                    <div class="section-container glass action-panel">
+                        <div class="table-header">
+                            <h2 class="table-title">💰 Cobrar Agora</h2>
+                            <span id="stat-prox-pagamentos-total" class="stat-sub" style="color: var(--success);">R$ 0</span>
+                        </div>
+                        <div id="cobrar-agora-list" class="action-list">
+                            <div class="action-empty">Carregando...</div>
+                        </div>
                     </div>
-                    <table class="client-table">
-                        <thead>
-                            <tr>
-                                <th>Cliente</th>
-                                <th>Empresa</th>
-                                <th>Plano</th>
-                                <th>Valor</th>
-                                <th>Vencimento</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="proximos-pagamentos-body">
-                            <tr>
-                                <td colspan="6" style="text-align:center;color:var(--text-muted);padding:30px 0;">
-                                    Carregando...
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+
+                    <!-- Panel 2: Testes Gratuitos -->
+                    <div class="section-container glass action-panel">
+                        <div class="table-header">
+                            <h2 class="table-title">🆓 Testes Gratuitos</h2>
+                            <span id="stat-testes-total" class="stat-sub" style="color: var(--accent);">0 testes</span>
+                        </div>
+                        <div id="testes-list" class="action-list">
+                            <div class="action-empty">Carregando...</div>
+                        </div>
+                    </div>
+
+                    <!-- Panel 3: Excesso de Provas -->
+                    <div class="section-container glass action-panel">
+                        <div class="table-header">
+                            <h2 class="table-title">📸 Excesso de Provas</h2>
+                            <span id="stat-excesso-total" class="stat-sub" style="color: var(--danger);">0 clientes</span>
+                        </div>
+                        <div id="excesso-list" class="action-list">
+                            <div class="action-empty">Carregando...</div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Dashboard Client Table -->
