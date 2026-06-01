@@ -564,11 +564,81 @@
                                     placeholder="Ex: 50" min="0" step="1">
                             </div>
                         </div>
-                        <div style="margin-top: 16px; display: flex; gap: 12px; justify-content: flex-end; position: sticky; bottom: -28px; background: var(--bg-alt); padding: 12px 0 4px; border-top: 1px solid var(--border);">
+                        <div style="margin-top: 16px; display: flex; gap: 12px; justify-content: space-between; align-items: center; position: sticky; bottom: -28px; background: var(--bg-alt); padding: 12px 0 4px; border-top: 1px solid var(--border);">
+                            <button type="button" id="btn-historico-pagamentos" class="btn-icon" style="display:none;">
+                                <i class="fas fa-receipt"></i> Histórico de Pagamentos
+                            </button>
                             <button type="submit" class="btn-primary"><i class="fas fa-user-plus"></i>
                                 Salvar</button>
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: Histórico de Pagamentos -->
+        <div id="pagamentos-modal" class="modal-overlay">
+            <div class="modal-content glass-premium" style="max-width: 720px;">
+                <div class="modal-header">
+                    <h2>Histórico de Pagamentos<br><span id="pgto-cliente-nome" style="font-size: 13px; font-weight: 400; color: var(--text-muted);">—</span></h2>
+                    <button type="button" id="btn-close-pagamentos" class="close-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <!-- Form: Registrar Novo Pagamento -->
+                    <div style="background: rgba(124,58,237,0.04); border: 1px solid rgba(124,58,237,0.15); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+                        <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--purple);">+ Registrar Novo Pagamento</h3>
+                        <div class="form-grid" style="grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                            <div class="form-group">
+                                <label for="pgto-tipo">Tipo</label>
+                                <select id="pgto-tipo" class="form-control">
+                                    <option value="mensalidade">Mensalidade</option>
+                                    <option value="extra">Extra (provas excedentes)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="pgto-valor">Valor (R$)</label>
+                                <input type="number" id="pgto-valor" class="form-control" min="0" step="0.01" placeholder="0,00">
+                            </div>
+                            <div class="form-group">
+                                <label for="pgto-data">Data</label>
+                                <input type="date" id="pgto-data" class="form-control">
+                            </div>
+                            <div class="form-group" style="display:flex;align-items:flex-end;">
+                                <button type="button" id="btn-salvar-pagamento" class="btn-primary" style="width:100%;justify-content:center;">
+                                    <i class="fas fa-check"></i> Registrar
+                                </button>
+                            </div>
+                            <div class="form-group" style="grid-column: span 4;">
+                                <label for="pgto-descricao">Descrição (opcional)</label>
+                                <input type="text" id="pgto-descricao" class="form-control" placeholder="Ex: Excesso de 30 fotos no plano Médio">
+                            </div>
+                        </div>
+                        <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">
+                            <i class="fas fa-info-circle"></i> Registrar <strong>mensalidade</strong> atualiza automaticamente o "Último Pagamento" do cliente. <strong>Extra</strong> não afeta o ciclo.
+                        </p>
+                    </div>
+
+                    <!-- Lista de pagamentos passados -->
+                    <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 12px;">Pagamentos Registrados</h3>
+                    <div id="pagamentos-stats" style="display: flex; gap: 16px; margin-bottom: 12px; font-size: 12px; color: var(--text-muted);">
+                        <span>Total mensalidades: <strong id="pgto-total-mens" style="color: var(--text);">R$ 0,00</strong></span>
+                        <span>Total extras: <strong id="pgto-total-extras" style="color: var(--text);">R$ 0,00</strong></span>
+                        <span>Total geral: <strong id="pgto-total-geral" style="color: var(--success);">R$ 0,00</strong></span>
+                    </div>
+                    <table class="client-table" style="font-size: 12px;">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Tipo</th>
+                                <th>Valor</th>
+                                <th>Descrição</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="pagamentos-table-body">
+                            <tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:30px 0;">Carregando...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

@@ -348,6 +348,188 @@ function renderFaturamentoCard(cache) {
     if (provasEl) setUpdatedLine(provasEl, 'fas fa-image', (cache.totalProvas || 0).toLocaleString('pt-BR') + ' provas');
 }
 
+// ─── Pagamentos: histórico + registro ─────────────────────────────────────
+let _currentPagamentosStoreId = null;
+let _currentPagamentosClient = null;
+
+async function openPagamentosModal(clientId) {
+    const c = clients.find(cl => cl.id === clientId);
+    if (!c) return;
+    _currentPagamentosStoreId = clientId;
+    _currentPagamentosClient = c;
+    const nomeEl = document.getElementById('pgto-cliente-nome');
+    if (nomeEl) nomeEl.textContent = `${c.company || c.name || '—'}`;
+    // Pre-fill form defaults
+    const today = new Date().toISOString().slice(0, 10);
+    document.getElementById('pgto-data').value = today;
+    document.getElementById('pgto-valor').value = '';
+    document.getElementById('pgto-descricao').value = '';
+    document.getElementById('pgto-tipo').value = 'mensalidade';
+    openModal('pagamentos-modal');
+    await loadPagamentos(clientId);
+}
+
+function closePagamentosModal() {
+    hideModal('pagamentos-modal');
+    _currentPagamentosStoreId = null;
+    _currentPagamentosClient = null;
+}
+
+async function loadPagamentos(storeId) {
+    const tbody = document.getElementById('pagamentos-table-body');
+    if (!tbody || !db) return;
+    while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 5; td.style.cssText = 'text-align:center;color:var(--text-muted);padding:30px 0;';
+    td.textContent = 'Carregando...'; tr.appendChild(td); tbody.appendChild(tr);
+
+    try {
+        const { data, error } = await db
+            .from('pagamentos_clientes')
+            .select('id, tipo, valor, data_pagamento, descricao')
+            .eq('store_id', storeId)
+            .order('data_pagamento', { ascending: false });
+        if (error) throw error;
+
+        // Calcula totals
+        let totMens = 0, totExtras = 0;
+        (data || []).forEach(p => {
+            const v = parseFloat(p.valor) || 0;
+            if (p.tipo === 'mensalidade') totMens += v;
+            else if (p.tipo === 'extra') totExtras += v;
+        });
+        const setBR = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = `R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        };
+        setBR('pgto-total-mens', totMens);
+        setBR('pgto-total-extras', totExtras);
+        setBR('pgto-total-geral', totMens + totExtras);
+
+        while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+        if (!data || data.length === 0) {
+            const tr2 = document.createElement('tr');
+            const td2 = document.createElement('td');
+            td2.colSpan = 5; td2.style.cssText = 'text-align:center;color:var(--text-muted);padding:30px 0;';
+            td2.textContent = 'Nenhum pagamento registrado.';
+            tr2.appendChild(td2); tbody.appendChild(tr2);
+            return;
+        }
+
+        for (const p of data) {
+            const tr2 = document.createElement('tr');
+            // Data
+            const tdData = document.createElement('td');
+            const dp = p.data_pagamento.split('-');
+            tdData.textContent = `${dp[2]}/${dp[1]}/${dp[0]}`;
+            // Tipo
+            const tdTipo = document.createElement('td');
+            const badge = document.createElement('span');
+            badge.className = 'status-badge ' + (p.tipo === 'mensalidade' ? 'status-active' : 'status-permuta');
+            badge.textContent = p.tipo === 'mensalidade' ? 'Mensalidade' : 'Extra';
+            tdTipo.appendChild(badge);
+            // Valor
+            const tdValor = document.createElement('td');
+            tdValor.style.cssText = 'font-weight:600;font-variant-numeric:tabular-nums;';
+            tdValor.style.color = p.tipo === 'extra' ? 'var(--purple)' : 'var(--success)';
+            tdValor.textContent = `R$ ${(parseFloat(p.valor) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            // Descrição
+            const tdDesc = document.createElement('td');
+            tdDesc.style.cssText = 'color:var(--text-muted);font-size:11px;';
+            tdDesc.textContent = p.descricao || '';
+            // Ações (excluir)
+            const tdAct = document.createElement('td');
+            const btnDel = document.createElement('button');
+            btnDel.className = 'btn-icon';
+            btnDel.title = 'Excluir';
+            btnDel.dataset.pid = p.id;
+            const ic = document.createElement('i'); ic.className = 'fas fa-trash';
+            btnDel.appendChild(ic);
+            btnDel.addEventListener('click', () => deletePagamento(p.id));
+            tdAct.appendChild(btnDel);
+
+            tr2.appendChild(tdData);
+            tr2.appendChild(tdTipo);
+            tr2.appendChild(tdValor);
+            tr2.appendChild(tdDesc);
+            tr2.appendChild(tdAct);
+            tbody.appendChild(tr2);
+        }
+    } catch (err) {
+        console.error('Erro ao carregar pagamentos:', err);
+        while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+        const tr2 = document.createElement('tr');
+        const td2 = document.createElement('td');
+        td2.colSpan = 5; td2.style.cssText = 'text-align:center;color:#ef4444;padding:30px 0;';
+        td2.textContent = 'Erro ao carregar pagamentos.';
+        tr2.appendChild(td2); tbody.appendChild(tr2);
+    }
+}
+
+async function salvarPagamento() {
+    if (!_currentPagamentosStoreId || !db) return;
+    const tipo = document.getElementById('pgto-tipo').value;
+    const valor = parseFloat(document.getElementById('pgto-valor').value);
+    const data = document.getElementById('pgto-data').value;
+    const descricao = document.getElementById('pgto-descricao').value.trim() || null;
+
+    if (!valor || valor <= 0) { alert('Informe um valor válido'); return; }
+    if (!data) { alert('Informe a data'); return; }
+
+    const btn = document.getElementById('btn-salvar-pagamento');
+    if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
+
+    try {
+        const { error } = await db.from('pagamentos_clientes').insert({
+            store_id: _currentPagamentosStoreId,
+            tipo, valor, data_pagamento: data, descricao
+        });
+        if (error) throw error;
+
+        // Se for mensalidade, atualiza last_payment do cliente
+        if (tipo === 'mensalidade') {
+            await db.from('provou_levou_stores')
+                .update({ last_payment: data })
+                .eq('id', _currentPagamentosStoreId);
+            // Update local clients array
+            const idx = clients.findIndex(c => c.id === _currentPagamentosStoreId);
+            if (idx !== -1) clients[idx].lastPayment = data;
+        }
+
+        // Limpa form, recarrega lista, atualiza stats
+        document.getElementById('pgto-valor').value = '';
+        document.getElementById('pgto-descricao').value = '';
+        await loadPagamentos(_currentPagamentosStoreId);
+        updateStats();
+        renderTable();
+    } catch (err) {
+        console.error('Erro ao salvar pagamento:', err);
+        alert('Erro ao salvar pagamento: ' + (err.message || err));
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            const ic = document.createElement('i'); ic.className = 'fas fa-check';
+            btn.textContent = ' Registrar';
+            btn.prepend(ic);
+        }
+    }
+}
+
+async function deletePagamento(id) {
+    if (!confirm('Excluir este pagamento?')) return;
+    if (!db) return;
+    try {
+        const { error } = await db.from('pagamentos_clientes').delete().eq('id', id);
+        if (error) throw error;
+        await loadPagamentos(_currentPagamentosStoreId);
+        updateStats();
+    } catch (err) {
+        console.error('Erro ao excluir:', err);
+        alert('Erro ao excluir: ' + (err.message || err));
+    }
+}
+
 function _waLink(phone, msg) {
     const num = String(phone || '').replace(/\D/g, '');
     if (!num) return null;
@@ -946,6 +1128,8 @@ window.closeRegistrationModal = () => {
     if (errorMsg) errorMsg.style.display = 'none';
     const wrapper = document.getElementById('implementation-date-wrapper');
     if (wrapper) wrapper.style.display = 'none';
+    const histBtn = document.getElementById('btn-historico-pagamentos');
+    if (histBtn) histBtn.style.display = 'none';
 };
 window.closeModal = () => hideModal('client-modal');
 
@@ -1217,6 +1401,13 @@ function editClientById(id) {
     } else {
         if (impWrapper) impWrapper.style.display = 'none';
         document.getElementById('implementation_date').value = '';
+    }
+
+    // Mostra botão de histórico (só faz sentido pra cliente já existente)
+    const histBtn = document.getElementById('btn-historico-pagamentos');
+    if (histBtn) {
+        histBtn.style.display = 'inline-flex';
+        histBtn.onclick = () => openPagamentosModal(id);
     }
 
     openModal('registration-modal');
@@ -2173,10 +2364,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnFecharDetalhes = document.getElementById('btn-fechar-detalhes');
     if (btnFecharDetalhes) btnFecharDetalhes.addEventListener('click', window.closeModal);
 
+    // Modal de pagamentos
+    const btnClosePgto = document.getElementById('btn-close-pagamentos');
+    if (btnClosePgto) btnClosePgto.addEventListener('click', closePagamentosModal);
+    const btnSavePgto = document.getElementById('btn-salvar-pagamento');
+    if (btnSavePgto) btnSavePgto.addEventListener('click', salvarPagamento);
+
     // 4. Fechar modal ao clicar no overlay (fundo escuro) ou pressionar ESC
     document.addEventListener('click', e => {
         if (e.target.id === 'registration-modal') window.closeRegistrationModal();
         if (e.target.id === 'client-modal') window.closeModal();
+        if (e.target.id === 'pagamentos-modal') closePagamentosModal();
     });
 
     document.addEventListener('keydown', e => {
