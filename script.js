@@ -728,7 +728,12 @@ function renderExcessoProvas(cache) {
     const rows = [];
     for (const c of clients) {
         const plan = c.plan || '';
-        const base = PLAN_LIMITS[plan];
+        let base;
+        if (plan === 'Personalizado') {
+            base = (c.limitePersonalizado != null && c.limitePersonalizado > 0) ? c.limitePersonalizado : null;
+        } else {
+            base = PLAN_LIMITS[plan];
+        }
         if (base == null || base === Infinity) continue;
         const limit = base + (c.fotosExtras || 0);
         // Start date
@@ -1205,7 +1210,8 @@ async function loadClients() {
             categoria: s.categoria || 'oculos',
             planoPersonalizado: s.plano_personalizado || null,
             valorPersonalizado: s.valor_personalizado != null ? parseFloat(s.valor_personalizado) : null,
-            fotosExtras: s.fotos_extras != null ? parseInt(s.fotos_extras) : 0
+            fotosExtras: s.fotos_extras != null ? parseInt(s.fotos_extras) : 0,
+            limitePersonalizado: s.limite_personalizado != null ? parseInt(s.limite_personalizado) : null
         }));
     } catch (err) {
         console.error('Erro ao carregar clientes:', err);
@@ -1253,7 +1259,8 @@ async function addClient(event) {
         categoria: document.getElementById('categoria').value || 'oculos',
         plano_personalizado: document.getElementById('plano_personalizado').value.trim() || null,
         valor_personalizado: parseFloat(document.getElementById('valor_personalizado').value) || null,
-        fotos_extras: parseInt(document.getElementById('fotos_extras').value) || 0
+        fotos_extras: parseInt(document.getElementById('fotos_extras').value) || 0,
+        limite_personalizado: parseInt(document.getElementById('limite_personalizado').value) || null
     };
 
     if (!db) {
@@ -1426,6 +1433,7 @@ function editClientById(id) {
     document.getElementById('categoria').value = c.categoria || 'oculos';
     document.getElementById('plano_personalizado').value = c.planoPersonalizado || '';
     document.getElementById('valor_personalizado').value = c.valorPersonalizado != null ? c.valorPersonalizado : '';
+    document.getElementById('limite_personalizado').value = c.limitePersonalizado != null ? c.limitePersonalizado : '';
     document.getElementById('fotos_extras').value = c.fotosExtras || '';
     // Aplica lógica de plano personalizado (lock dropdown se tem custom)
     syncPersonalizadoLock();
@@ -1767,7 +1775,13 @@ async function loadLimites() {
         for (const c of clients) {
             const dom = normalizeDomain(c.website);
             const allProvas = dom ? (provasByOrigin[dom] || []) : [];
-            const basePlanLimit = PLAN_LIMITS[c.plan];
+            // Para plano Personalizado, usa limitePersonalizado; senão, usa PLAN_LIMITS
+            let basePlanLimit;
+            if (c.plan === 'Personalizado') {
+                basePlanLimit = (c.limitePersonalizado != null && c.limitePersonalizado > 0) ? c.limitePersonalizado : null;
+            } else {
+                basePlanLimit = PLAN_LIMITS[c.plan];
+            }
             const extras = c.fotosExtras || 0;
             const limit = (basePlanLimit === Infinity) ? Infinity : (basePlanLimit != null ? basePlanLimit + extras : null);
             let limitLabel;
