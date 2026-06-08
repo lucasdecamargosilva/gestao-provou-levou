@@ -1130,6 +1130,15 @@ window.closeRegistrationModal = () => {
     if (wrapper) wrapper.style.display = 'none';
     const histBtn = document.getElementById('btn-historico-pagamentos');
     if (histBtn) histBtn.style.display = 'none';
+    // Reset lock do plano personalizado
+    const planSelect = document.getElementById('plan');
+    if (planSelect) {
+        planSelect.disabled = false;
+        planSelect.style.opacity = '';
+        planSelect.style.cursor = '';
+        const opt = planSelect.querySelector('option[value="Personalizado"]');
+        if (opt) opt.disabled = true;
+    }
 };
 window.closeModal = () => hideModal('client-modal');
 
@@ -1371,6 +1380,31 @@ async function deleteClientById(id) {
     await loadClients();
 }
 
+// Bloqueia dropdown de plano quando há plano personalizado preenchido
+function syncPersonalizadoLock() {
+    const planoCustomInput = document.getElementById('plano_personalizado');
+    const planSelect = document.getElementById('plan');
+    const customOpt = planSelect ? planSelect.querySelector('option[value="Personalizado"]') : null;
+    if (!planoCustomInput || !planSelect || !customOpt) return;
+
+    const hasCustom = planoCustomInput.value.trim() !== '';
+    if (hasCustom) {
+        customOpt.disabled = false;
+        planSelect.value = 'Personalizado';
+        planSelect.disabled = true;
+        planSelect.style.opacity = '0.6';
+        planSelect.style.cursor = 'not-allowed';
+    } else {
+        planSelect.disabled = false;
+        planSelect.style.opacity = '';
+        planSelect.style.cursor = '';
+        if (planSelect.value === 'Personalizado') {
+            planSelect.value = 'Essencial'; // fallback
+        }
+        customOpt.disabled = true;
+    }
+}
+
 function editClientById(id) {
     const c = clients.find(c => c.id == id);
     if (!c) return;
@@ -1393,6 +1427,8 @@ function editClientById(id) {
     document.getElementById('plano_personalizado').value = c.planoPersonalizado || '';
     document.getElementById('valor_personalizado').value = c.valorPersonalizado != null ? c.valorPersonalizado : '';
     document.getElementById('fotos_extras').value = c.fotosExtras || '';
+    // Aplica lógica de plano personalizado (lock dropdown se tem custom)
+    syncPersonalizadoLock();
 
     const impWrapper = document.getElementById('implementation-date-wrapper');
     if (c.status === 'Teste Gratuito') {
@@ -2369,6 +2405,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (btnClosePgto) btnClosePgto.addEventListener('click', closePagamentosModal);
     const btnSavePgto = document.getElementById('btn-salvar-pagamento');
     if (btnSavePgto) btnSavePgto.addEventListener('click', salvarPagamento);
+
+    // Plano personalizado: bloqueia/desbloqueia dropdown de plano em tempo real
+    const planoCustomInput = document.getElementById('plano_personalizado');
+    if (planoCustomInput) planoCustomInput.addEventListener('input', syncPersonalizadoLock);
 
     // 4. Fechar modal ao clicar no overlay (fundo escuro) ou pressionar ESC
     document.addEventListener('click', e => {
