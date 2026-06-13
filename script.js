@@ -2355,18 +2355,39 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            const { data, error } = await db.auth.signInWithPassword({
-                email: email,
-                password: password,
-            });
-
-            if (error) {
-                errorDiv.textContent = 'Credenciais inválidas. Tente novamente.';
+            // Login via Edge Function gestao-auth: bloqueia qualquer email != admin
+            // ANTES de autenticar (nem chega no GoTrue). Camada extra além da RLS.
+            const _resetBtn = () => { btn.innerHTML = '<i class="fas fa-sign-in-alt" style="margin-right: 8px;"></i> Entrar'; btn.disabled = false; };
+            try {
+                const resp = await fetch(SUPABASE_URL + '/functions/v1/gestao-auth', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': 'Bearer ' + SUPABASE_KEY,
+                    },
+                    body: JSON.stringify({ email: email, password: password }),
+                });
+                const data = await resp.json();
+                if (resp.status === 403) {
+                    errorDiv.textContent = 'Acesso restrito a este painel.';
+                    errorDiv.style.display = 'block';
+                    _resetBtn();
+                    return;
+                }
+                if (!resp.ok || !data || !data.access_token) {
+                    errorDiv.textContent = 'Credenciais inválidas. Tente novamente.';
+                    errorDiv.style.display = 'block';
+                    _resetBtn();
+                    return;
+                }
+                await db.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
+                // Se der certo, onAuthStateChange captura o evento SIGNED_IN
+            } catch (err) {
+                errorDiv.textContent = 'Erro de conexão. Tente novamente.';
                 errorDiv.style.display = 'block';
-                btn.innerHTML = '<i class="fas fa-sign-in-alt" style="margin-right: 8px;"></i> Entrar';
-                btn.disabled = false;
+                _resetBtn();
             }
-            // Se der certo, onAuthStateChange vai capturar o evento SIGNED_IN
         });
     }
 
