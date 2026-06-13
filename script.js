@@ -40,7 +40,6 @@ const PLAN_LIMITS = {
 // Apenas estes emails podem acessar o painel de gestão.
 // Para adicionar novo admin, inclua o email aqui.
 const ADMIN_EMAILS = [
-    'cionilucas@gmail.com',
     'lucasdecamargo2015@gmail.com'
 ];
 

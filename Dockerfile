@@ -1,8 +1,19 @@
 # Usa a imagem oficial do Nginx para servir arquivos estáticos
 FROM nginx:stable-alpine
 
-# Copia os arquivos do seu projeto para o diretório padrão do Nginx
+# Copia os arquivos do projeto para o diretório do Nginx
 COPY . /usr/share/nginx/html
+
+# Config do Nginx com Basic Auth (protege o site inteiro, inclusive env-config.js)
+COPY default.conf /etc/nginx/conf.d/default.conf
+COPY .htpasswd /etc/nginx/.htpasswd
+
+# Remove do diretório público os arquivos sensíveis/de build (não devem ser servidos)
+RUN rm -f /usr/share/nginx/html/.htpasswd \
+          /usr/share/nginx/html/default.conf \
+          /usr/share/nginx/html/Dockerfile \
+          /usr/share/nginx/html/package.json \
+          /usr/share/nginx/html/package-lock.json
 
 # Expõe a porta 80
 EXPOSE 80
