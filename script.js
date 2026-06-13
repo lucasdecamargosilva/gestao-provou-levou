@@ -2355,50 +2355,36 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            // Login via Edge Function gestao-auth: bloqueia qualquer email != admin
-            // ANTES de autenticar (nem chega no GoTrue). Camada extra além da RLS.
+            // Login direto via signInWithPassword (mesmo método do dashboard lojista).
+            // Segurança: RLS admins_only bloqueia dados de não-admins + checkAuth faz
+            // signOut() de quem não é admin (ver isAdminEmail em checkAuth).
             const _resetBtn = () => { btn.innerHTML = '<i class="fas fa-sign-in-alt" style="margin-right: 8px;"></i> Entrar'; btn.disabled = false; };
             try {
-                const resp = await fetch(SUPABASE_URL + '/functions/v1/gestao-auth', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'apikey': SUPABASE_KEY,
-                        'Authorization': 'Bearer ' + SUPABASE_KEY,
-                    },
-                    body: JSON.stringify({ email: email, password: password }),
-                });
-                const data = await resp.json();
-                if (resp.status === 403) {
-                    errorDiv.textContent = 'Acesso restrito a este painel.';
+                // Bloqueio de email não-admin antes de autenticar (camada client extra)
+                if (!isAdminEmail(email)) {
+                    errorDiv.textContent = 'Acesso restrito. Este painel é exclusivo para administradores.';
                     errorDiv.style.display = 'block';
                     _resetBtn();
                     return;
                 }
-                if (!resp.ok || !data || !data.access_token) {
-                    console.warn('[gestao-auth] resp status:', resp.status, 'body:', data);
+
+                const { data, error } = await db.auth.signInWithPassword({
+                    email: email,
+                    password: password,
+                });
+
+                if (error || !data || !data.session) {
+                    console.warn('[login] erro:', error);
                     errorDiv.textContent = 'Credenciais inválidas. Tente novamente.';
                     errorDiv.style.display = 'block';
                     _resetBtn();
                     return;
                 }
-                console.log('[gestao-auth] login OK, setting session...');
-                const { error: setErr } = await db.auth.setSession({
-                    access_token: data.access_token,
-                    refresh_token: data.refresh_token
-                });
-                if (setErr) {
-                    console.error('[gestao-auth] setSession error:', setErr);
-                    errorDiv.textContent = 'Erro ao iniciar sessão: ' + (setErr.message || setErr);
-                    errorDiv.style.display = 'block';
-                    _resetBtn();
-                    return;
-                }
-                console.log('[gestao-auth] session set, forçando checkAuth...');
-                _resetBtn(); // reseta botão antes de redirecionar
+
+                _resetBtn();
                 await checkAuth(); // força navegação independente de onAuthStateChange
             } catch (err) {
-                console.error('[gestao-auth] erro no fluxo:', err);
+                console.error('[login] erro no fluxo:', err);
                 errorDiv.textContent = 'Erro de conexão. Tente novamente.';
                 errorDiv.style.display = 'block';
                 _resetBtn();
