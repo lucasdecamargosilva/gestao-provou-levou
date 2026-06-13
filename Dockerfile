@@ -4,19 +4,15 @@ FROM nginx:stable-alpine
 # Copia os arquivos do projeto para o diretório do Nginx
 COPY . /usr/share/nginx/html
 
-# Config do Nginx com Basic Auth (protege o site inteiro, inclusive env-config.js)
-COPY default.conf /etc/nginx/conf.d/default.conf
-COPY .htpasswd /etc/nginx/.htpasswd
-
-# Remove do diretório público os arquivos sensíveis/de build (não devem ser servidos)
-RUN rm -f /usr/share/nginx/html/.htpasswd \
-          /usr/share/nginx/html/default.conf \
-          /usr/share/nginx/html/Dockerfile \
+# Remove do diretório público arquivos de build (não devem ser servidos)
+RUN rm -f /usr/share/nginx/html/Dockerfile \
           /usr/share/nginx/html/package.json \
           /usr/share/nginx/html/package-lock.json
 
 # Expõe a porta 80
 EXPOSE 80
 
-# Gera o arquivo env-config.js dinamicamente antes de iniciar o Nginx
+# Gera o env-config.js dinamicamente (a partir das env vars) antes de iniciar o Nginx.
+# SUPABASE_KEY deve ser a chave ANON (pública, segura) — o acesso é controlado por
+# login Supabase no front + RLS (policies admins_only por email). NUNCA usar service_role aqui.
 CMD ["/bin/sh", "-c", "echo \"window.LOCAL_SUPABASE_URL = '$SUPABASE_URL'; window.LOCAL_SUPABASE_KEY = '$SUPABASE_KEY';\" > /usr/share/nginx/html/env-config.js && nginx -g 'daemon off;'"]
