@@ -2491,16 +2491,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     body: JSON.stringify({ email: email, password: password }),
                 });
                 const data = await resp.json();
-                if (resp.status === 429) {
-                    // Servidor bloqueou (rate limit): força lockout local também
-                    const lockMs = (data && data.retry_after_seconds ? data.retry_after_seconds * 1000 : 15 * 60 * 1000);
-                    saveLoginState({ fails: [], lockedUntil: Date.now() + lockMs });
-                    updateLoginUI();
-                    errorDiv.textContent = (data && data.message) || 'Muitas tentativas. Tente novamente mais tarde.';
-                    errorDiv.style.display = 'block';
-                    _resetBtn();
-                    return;
-                }
                 if (resp.status === 403) {
                     recordLoginFailure();
                     updateLoginUI();
