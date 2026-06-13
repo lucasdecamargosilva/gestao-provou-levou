@@ -47,103 +47,6 @@ function isAdminEmail(email) {
     return ADMIN_EMAILS.includes(String(email || '').toLowerCase().trim());
 }
 
-// ─── Rate Limit + CAPTCHA do Login ─────────────────────────────────────
-const LOGIN_RATE_KEY = 'loginAttempts_v1';
-const MAX_ATTEMPTS = 5;
-const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;  // 15 min
-const LOCKOUT_MS = 15 * 60 * 1000;          // 15 min
-const CAPTCHA_AFTER_ATTEMPT = 1;            // mostra captcha após 1ª falha
-let _captchaAnswer = null;
-
-function loadLoginState() {
-    try {
-        const raw = localStorage.getItem(LOGIN_RATE_KEY);
-        if (!raw) return { fails: [], lockedUntil: 0 };
-        const s = JSON.parse(raw);
-        const now = Date.now();
-        s.fails = (s.fails || []).filter(t => now - t < ATTEMPT_WINDOW_MS);
-        return s;
-    } catch { return { fails: [], lockedUntil: 0 }; }
-}
-
-function saveLoginState(s) {
-    try { localStorage.setItem(LOGIN_RATE_KEY, JSON.stringify(s)); } catch {}
-}
-
-function isLockedOut() {
-    const s = loadLoginState();
-    return s.lockedUntil > Date.now();
-}
-
-function lockoutRemainingMin() {
-    const s = loadLoginState();
-    return Math.ceil((s.lockedUntil - Date.now()) / 60000);
-}
-
-function recordLoginFailure() {
-    const s = loadLoginState();
-    s.fails.push(Date.now());
-    if (s.fails.length >= MAX_ATTEMPTS) {
-        s.lockedUntil = Date.now() + LOCKOUT_MS;
-        s.fails = [];
-    }
-    saveLoginState(s);
-    return s;
-}
-
-function clearLoginFailures() {
-    saveLoginState({ fails: [], lockedUntil: 0 });
-}
-
-function genCaptcha() {
-    const a = Math.floor(Math.random() * 9) + 1;
-    const b = Math.floor(Math.random() * 9) + 1;
-    const ops = ['+', '−', '×'];
-    const op = ops[Math.floor(Math.random() * ops.length)];
-    let answer;
-    if (op === '+') answer = a + b;
-    else if (op === '−') answer = a - b;
-    else answer = a * b;
-    _captchaAnswer = answer;
-    const qEl = document.getElementById('login-captcha-question');
-    if (qEl) qEl.textContent = `${a} ${op} ${b} = ?`;
-    const inp = document.getElementById('login-captcha');
-    if (inp) inp.value = '';
-}
-
-function updateLoginUI() {
-    const errDiv = document.getElementById('login-error');
-    const lockMsg = document.getElementById('login-lockout-msg');
-    const captchaWrap = document.getElementById('login-captcha-wrapper');
-    const btn = document.getElementById('btn-login');
-
-    const state = loadLoginState();
-    const locked = state.lockedUntil > Date.now();
-    const failCount = state.fails.length;
-
-    if (locked) {
-        const mins = Math.ceil((state.lockedUntil - Date.now()) / 60000);
-        if (lockMsg) {
-            lockMsg.style.display = 'block';
-            lockMsg.textContent = `Muitas tentativas. Tente novamente em ${mins} minuto(s).`;
-        }
-        if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; btn.style.cursor = 'not-allowed'; }
-        if (captchaWrap) captchaWrap.style.display = 'none';
-        return;
-    }
-
-    if (lockMsg) lockMsg.style.display = 'none';
-    if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.style.cursor = ''; }
-
-    if (failCount >= CAPTCHA_AFTER_ATTEMPT) {
-        if (captchaWrap) captchaWrap.style.display = 'block';
-        if (!_captchaAnswer) genCaptcha();
-    } else {
-        if (captchaWrap) captchaWrap.style.display = 'none';
-        _captchaAnswer = null;
-    }
-}
-
 function getClientMonthlyValue(client) {
     if (client.valorPersonalizado != null && client.valorPersonalizado > 0) {
         return client.valorPersonalizado;
@@ -2420,10 +2323,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // Inicializa estado visual do rate-limit no load
-    updateLoginUI();
-    setInterval(updateLoginUI, 30000); // atualiza msg de lockout a cada 30s
-
     if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -2433,27 +2332,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const btn = document.getElementById('btn-login');
 
             errorDiv.style.display = 'none';
-
-            // Rate limit
-            if (isLockedOut()) {
-                errorDiv.textContent = `Conta bloqueada por excesso de tentativas. Aguarde ${lockoutRemainingMin()} minuto(s).`;
-                errorDiv.style.display = 'block';
-                updateLoginUI();
-                return;
-            }
-
-            // CAPTCHA — valida se está visível
-            const captchaWrap = document.getElementById('login-captcha-wrapper');
-            if (captchaWrap && captchaWrap.style.display !== 'none') {
-                const userAns = (document.getElementById('login-captcha').value || '').trim();
-                if (userAns === '' || parseInt(userAns, 10) !== _captchaAnswer) {
-                    errorDiv.textContent = 'Verificação de segurança incorreta. Tente novamente.';
-                    errorDiv.style.display = 'block';
-                    genCaptcha(); // gera novo captcha
-                    return;
-                }
-            }
-
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Entrando...';
             btn.disabled = true;
 
@@ -2492,27 +2370,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
                 const data = await resp.json();
                 if (resp.status === 403) {
-                    recordLoginFailure();
-                    updateLoginUI();
                     errorDiv.textContent = 'Acesso restrito a este painel.';
                     errorDiv.style.display = 'block';
                     _resetBtn();
                     return;
                 }
                 if (!resp.ok || !data || !data.access_token) {
-                    recordLoginFailure();
-                    updateLoginUI();
                     errorDiv.textContent = 'Credenciais inválidas. Tente novamente.';
                     errorDiv.style.display = 'block';
                     _resetBtn();
                     return;
                 }
-                clearLoginFailures(); // sucesso: zera contador
                 await db.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
                 // Se der certo, onAuthStateChange captura o evento SIGNED_IN
             } catch (err) {
-                recordLoginFailure();
-                updateLoginUI();
                 errorDiv.textContent = 'Erro de conexão. Tente novamente.';
                 errorDiv.style.display = 'block';
                 _resetBtn();
