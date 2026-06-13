@@ -2376,14 +2376,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                     return;
                 }
                 if (!resp.ok || !data || !data.access_token) {
+                    console.warn('[gestao-auth] resp status:', resp.status, 'body:', data);
                     errorDiv.textContent = 'Credenciais inválidas. Tente novamente.';
                     errorDiv.style.display = 'block';
                     _resetBtn();
                     return;
                 }
-                await db.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
-                // Se der certo, onAuthStateChange captura o evento SIGNED_IN
+                console.log('[gestao-auth] login OK, setting session...');
+                const { error: setErr } = await db.auth.setSession({
+                    access_token: data.access_token,
+                    refresh_token: data.refresh_token
+                });
+                if (setErr) {
+                    console.error('[gestao-auth] setSession error:', setErr);
+                    errorDiv.textContent = 'Erro ao iniciar sessão: ' + (setErr.message || setErr);
+                    errorDiv.style.display = 'block';
+                    _resetBtn();
+                    return;
+                }
+                console.log('[gestao-auth] session set, forçando checkAuth...');
+                _resetBtn(); // reseta botão antes de redirecionar
+                await checkAuth(); // força navegação independente de onAuthStateChange
             } catch (err) {
+                console.error('[gestao-auth] erro no fluxo:', err);
                 errorDiv.textContent = 'Erro de conexão. Tente novamente.';
                 errorDiv.style.display = 'block';
                 _resetBtn();
