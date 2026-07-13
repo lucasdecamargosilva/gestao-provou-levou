@@ -727,6 +727,7 @@ function renderExcessoProvas(cache) {
 
     const rows = [];
     for (const c of clients) {
+        if (c.status === 'Inativo') continue; // loja inativa não entra em excesso de provas
         const plan = c.plan || '';
         let base;
         if (plan === 'Personalizado') {
@@ -1773,6 +1774,7 @@ async function loadLimites() {
         let monitorados = 0, atencao = 0, excedidos = 0;
 
         for (const c of clients) {
+            if (c.status === 'Inativo') continue; // loja inativa não é monitorada em limites
             const dom = normalizeDomain(c.website);
             const allProvas = dom ? (provasByOrigin[dom] || []) : [];
             // Para plano Personalizado, usa limitePersonalizado; senão, usa PLAN_LIMITS
