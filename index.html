@@ -80,6 +80,12 @@
                         <span>Faturamento</span>
                     </a>
                 </li>
+                <li>
+                    <a href="#" class="nav-item" data-view="fluxo">
+                        <i class="fas fa-wallet"></i>
+                        <span>Fluxo de Caixa</span>
+                    </a>
+                </li>
             </ul>
 
             <div class="user-profile">
@@ -401,6 +407,50 @@
                                 </td>
                             </tr>
                         </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Fluxo de Caixa View -->
+            <section id="fluxo" class="view">
+                <div class="page-header">
+                    <h1 class="page-title">Fluxo de Caixa &amp; Custos</h1>
+                    <p style="color: var(--text-muted); margin-top: 5px;">Receita, custo de provas, ferramentas e gastos, separando negócio de pessoal</p>
+                </div>
+
+                <div style="display:flex; gap:12px; align-items:center; margin-bottom:20px;">
+                    <label style="color:var(--text-dim);">Mês:</label>
+                    <select id="fluxo-mes-select" onchange="renderFluxoMes()" style="padding:8px 12px; border-radius:8px; background:var(--bg-elevated,#1a1a1a); color:var(--text,#fff); border:1px solid rgba(255,255,255,0.1);"></select>
+                    <span id="fluxo-mes-obs" class="stat-sub" style="color:var(--text-dim);"></span>
+                </div>
+
+                <div class="stats-grid" style="grid-template-columns: repeat(5, 1fr);">
+                    <div class="stat-card glass"><div class="stat-label">Receita líquida</div><div id="fx-receita" class="stat-value">—</div></div>
+                    <div class="stat-card glass"><div class="stat-label">Custo provas (Google)</div><div id="fx-provas" class="stat-value" style="color:var(--danger);">—</div></div>
+                    <div class="stat-card glass"><div class="stat-label">Lucro do negócio</div><div id="fx-lucro" class="stat-value" style="color:var(--success);">—</div></div>
+                    <div class="stat-card glass"><div class="stat-label">Gastos pessoais</div><div id="fx-pessoal" class="stat-value" style="color:var(--accent);">—</div></div>
+                    <div class="stat-card glass"><div class="stat-label">Saldo em conta</div><div id="fx-saldo" class="stat-value">—</div></div>
+                </div>
+
+                <div class="action-grid" style="grid-template-columns: 1fr 1fr; margin-top:8px;">
+                    <div class="section-container glass action-panel">
+                        <div class="table-header"><h2 class="table-title">🟢 Negócio (operacional)</h2><span id="fx-negocio-total" class="stat-sub" style="color:var(--success);">R$ 0</span></div>
+                        <div id="fx-negocio-list" class="action-list"></div>
+                    </div>
+                    <div class="section-container glass action-panel">
+                        <div class="table-header"><h2 class="table-title">🔴 Pessoal &amp; distribuições</h2><span id="fx-pessoal-total" class="stat-sub" style="color:var(--accent);">R$ 0</span></div>
+                        <div id="fx-pessoal-list" class="action-list"></div>
+                    </div>
+                </div>
+
+                <div class="section-container glass" style="margin-top:8px;">
+                    <div class="table-header">
+                        <h2 class="table-title">📸 Custo por loja (mês corrente)</h2>
+                        <span class="stat-sub" style="color:var(--text-dim);">Óculos R$ 0,28 · Roupa R$ 0,37 por prova</span>
+                    </div>
+                    <table class="client-table">
+                        <thead><tr><th>Loja</th><th>Categoria</th><th>Provas</th><th>Custo tokens</th><th>Mensalidade</th><th>Lucro</th></tr></thead>
+                        <tbody id="fx-lojas-body"><tr><td colspan="6" style="text-align:center;color:var(--text-dim);">Carregando…</td></tr></tbody>
                     </table>
                 </div>
             </section>

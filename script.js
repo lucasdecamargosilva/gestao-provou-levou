@@ -2225,6 +2225,109 @@ function switchView(viewId) {
     if (viewId === 'tryons') { loadTryons(); }
     if (viewId === 'limites') { loadLimites(); }
     if (viewId === 'faturamento') { loadFaturamentoView(); }
+    if (viewId === 'fluxo') { loadFluxoCaixa(); }
+}
+
+// ─── Fluxo de Caixa & Custos ─────────────────────────────────────────────────
+const FLUXO_RATE = { oculos: 0.28, roupa: 0.37 };  // R$ por prova (real, billing Google)
+let _fluxoData = [];
+
+function fmtBRL2(v) { return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function fluxoMesLabel(m) {
+    const p = String(m).split('-'); const nomes = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    return (nomes[parseInt(p[1], 10)] || m) + '/' + p[0];
+}
+
+async function loadFluxoCaixa() {
+    if (db) {
+        try {
+            const { data, error } = await db.from('fluxo_caixa_mensal').select('*').order('mes', { ascending: false });
+            if (error) throw error;
+            _fluxoData = data || [];
+        } catch (e) { console.warn('[fluxo] tabela fluxo_caixa_mensal ausente?', e); _fluxoData = []; }
+    }
+    const sel = document.getElementById('fluxo-mes-select');
+    if (sel) {
+        sel.innerHTML = '';
+        if (!_fluxoData.length) {
+            const o = document.createElement('option'); o.textContent = 'Rode database/fluxo_caixa.sql'; sel.appendChild(o);
+        }
+        _fluxoData.forEach(r => {
+            const o = document.createElement('option'); o.value = r.mes;
+            o.textContent = fluxoMesLabel(r.mes) + (r.fechado ? '' : ' (parcial)');
+            sel.appendChild(o);
+        });
+    }
+    renderFluxoMes();
+    renderFluxoLojas();
+}
+
+function renderFluxoMes() {
+    const sel = document.getElementById('fluxo-mes-select');
+    const mes = sel ? sel.value : (_fluxoData[0] || {}).mes;
+    const r = _fluxoData.find(x => x.mes === mes) || {};
+    setText('fx-receita', fmtBRL2(r.receita_liquida));
+    setText('fx-provas', fmtBRL2(r.custo_provas));
+    setText('fx-lucro', fmtBRL2(r.lucro_negocio));
+    setText('fx-pessoal', fmtBRL2(r.gastos_pessoais));
+    setText('fx-saldo', fmtBRL2(r.saldo_final));
+    setText('fluxo-mes-obs', r.obs || '');
+    const cats = r.categorias || {};
+    const NEG = { provas: 'Provas (Google Cloud)', ferramentas: 'Ferramentas (SaaS/APIs)', anuncios: 'Anúncios (Meta/Google)', tarifas: 'Tarifas MP / IOF' };
+    const PES = { aluguel: 'Aluguel', alimentacao: 'Alimentação / delivery', compras_pessoais: 'Compras pessoais', pessoal_outros: 'Outros pessoais', retirada_lucas: 'Retiradas (pró-labore)', pix_terceiros: 'PIX a terceiros', reembolso: 'Reembolso a cliente' };
+    renderFluxoCatList('fx-negocio-list', 'fx-negocio-total', cats, NEG);
+    renderFluxoCatList('fx-pessoal-list', 'fx-pessoal-total', cats, PES);
+}
+
+function renderFluxoCatList(listId, totalId, cats, map) {
+    const el = document.getElementById(listId); if (!el) return;
+    el.innerHTML = ''; let tot = 0;
+    Object.keys(map).forEach(k => {
+        if (cats[k] != null) {
+            tot += Number(cats[k]);
+            const row = document.createElement('div'); row.className = 'action-item';
+            const info = document.createElement('div'); info.className = 'action-info';
+            const n = document.createElement('div'); n.className = 'action-name'; n.textContent = map[k];
+            info.appendChild(n); row.appendChild(info);
+            const v = document.createElement('span'); v.style.cssText = 'font-weight:600;'; v.textContent = fmtBRL2(cats[k]);
+            row.appendChild(v); el.appendChild(row);
+        }
+    });
+    if (!el.children.length) { const d = document.createElement('div'); d.className = 'action-empty'; d.textContent = 'Sem dados'; el.appendChild(d); }
+    setText(totalId, fmtBRL2(tot));
+}
+
+async function renderFluxoLojas() {
+    const body = document.getElementById('fx-lojas-body'); if (!body) return;
+    if (!window._excessoProvasFresh) { try { await loadExcessoProvasDetailed(); } catch (e) { } }
+    const byDom = window._excessoProvasFresh || {};
+    const now = new Date();
+    const ym = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    const cmap = {};
+    (clients || []).forEach(c => { const d = normalizeDomain(c.website || c.domain || c.origem || ''); if (d) cmap[d] = c; });
+    const rows = [];
+    Object.keys(byDom).forEach(dom => {
+        const provas = byDom[dom].filter(ts => String(ts).slice(0, 7) === ym).length;
+        if (!provas) return;
+        const c = cmap[dom];
+        const cat = (c && c.categoria) || 'oculos';
+        const custo = provas * (FLUXO_RATE[cat] || 0.28);
+        const mensal = c ? getClientMonthlyValue(c) : null;
+        rows.push({ dom, cat, provas, custo, mensal, lucro: (mensal != null ? mensal - custo : null) });
+    });
+    rows.sort((a, b) => b.custo - a.custo);
+    body.innerHTML = '';
+    if (!rows.length) { body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-dim);">Sem provas no mês</td></tr>'; return; }
+    rows.forEach(r => {
+        const tr = document.createElement('tr');
+        const cells = [r.dom, r.cat, String(r.provas), fmtBRL2(r.custo), (r.mensal != null ? fmtBRL2(r.mensal) : '—'), (r.lucro != null ? fmtBRL2(r.lucro) : '—')];
+        cells.forEach((val, i) => {
+            const td = document.createElement('td'); td.textContent = val;
+            if (i === 5 && r.lucro != null) td.style.color = r.lucro >= 0 ? 'var(--success)' : 'var(--danger)';
+            tr.appendChild(td);
+        });
+        body.appendChild(tr);
+    });
 }
 
 // ─── Utilitários ───────────────────────────────────────────────────────────────
