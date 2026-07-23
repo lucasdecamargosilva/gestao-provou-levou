@@ -139,6 +139,19 @@ async function fetchAllPaginated(table, selectFields, filters = []) {
     return all;
 }
 
+// Conta provas por loja SERVER-SIDE via RPC (Postgres) em vez de baixar dezenas de milhares de
+// linhas pro navegador. lojas = [{dom, cutoff(ISO)}]; retorna { dom: nº de provas desde o cutoff }.
+async function fetchProvasCounts(lojas) {
+    if (!db || !lojas || !lojas.length) return {};
+    try {
+        const { data, error } = await db.rpc('provas_por_loja', { lojas });
+        if (error) { console.warn('rpc provas_por_loja:', error); return {}; }
+        const m = {};
+        (data || []).forEach(r => { m[r.dom] = Number(r.cnt) || 0; });
+        return m;
+    } catch (e) { console.warn('rpc provas_por_loja:', e); return {}; }
+}
+
 async function computeFaturamentoPosProva() {
     if (!db) throw new Error('Supabase não conectado');
 
@@ -713,10 +726,9 @@ function renderExcessoProvas(cache) {
         provasByOrigin[row.origin] = row.count; // total count, not since-payment
     }
 
-    // For accurate "excesso desde último pagamento", we need timestamped provas.
-    // Use _excessoProvasFresh if available; otherwise show note.
-    const fresh = window._excessoProvasFresh;
-    if (!fresh) {
+    // Contagens por loja (desde o cutoff de cada uma) vêm da RPC via loadExcessoProvasDetailed.
+    const counts = window._excessoCounts;
+    if (!counts) {
         if (totalEl) totalEl.textContent = 'aguardando...';
         while (list.firstChild) list.removeChild(list.firstChild);
         const e = document.createElement('div');
@@ -737,21 +749,12 @@ function renderExcessoProvas(cache) {
         }
         if (base == null || base === Infinity) continue;
         const limit = base + (c.fotosExtras || 0);
-        // Start date
-        let start = null;
-        if (c.lastPayment && c.lastPayment !== '-') {
-            const p = c.lastPayment.split('T')[0].split('-').map(Number);
-            start = new Date(p[0], p[1]-1, p[2]);
-        } else if (c.status === 'Teste Gratuito' && c.implementationDate) {
-            const p = String(c.implementationDate).split('T')[0].split('-').map(Number);
-            start = new Date(p[0], p[1]-1, p[2]);
-        }
-        if (!start) continue;
+        // Precisa ter data de início (último pagamento / implementação) pra contar "desde então".
+        const hasStart = (c.lastPayment && c.lastPayment !== '-') || (c.status === 'Teste Gratuito' && c.implementationDate);
+        if (!hasStart) continue;
         const dom = normalizeDomain(c.website);
         if (!dom) continue;
-        const tsList = fresh[dom] || [];
-        const cutoff = start.toISOString().slice(0,10) + 'T00:00:00';
-        const used = tsList.filter(ts => ts >= cutoff).length;
+        const used = counts[dom] || 0;  // já contado desde o cutoff da loja pela RPC
         if (used > limit) {
             rows.push({ c, used, limit, excess: used - limit, plan });
         }
@@ -788,40 +791,19 @@ function renderExcessoProvas(cache) {
 }
 
 async function loadExcessoProvasDetailed() {
-    // Antes puxava a geracoes_provou_levou INTEIRA (all-time) só pra contar o mês corrente e as
-    // provas desde o último pagamento — com 100k+ provas na frota ficava lentíssimo. Agora só
-    // busca a partir do cutoff mais antigo que os cards realmente usam:
-    //   • Custo por loja (mês corrente): 1º dia do mês corrente
-    //   • Excesso de provas: last_payment / implementationDate de cada cliente ativo
-    // Pega o MENOR desses (com 3 dias de folga p/ fuso) e filtra a query por created_at >= cutoff.
+    // Conta provas por loja SERVER-SIDE (1 RPC), desde o cutoff de cada cliente ativo (último
+    // pagamento / implementação), em vez de baixar dezenas de milhares de linhas pro navegador.
     if (!db) return;
-    let earliest = new Date();
-    earliest = new Date(earliest.getFullYear(), earliest.getMonth(), 1); // 1º dia do mês corrente
+    const lojas = [];
     (clients || []).forEach(c => {
         if (c.status === 'Inativo') return;
-        let d = null;
-        if (c.lastPayment && c.lastPayment !== '-') {
-            const p = c.lastPayment.split('T')[0].split('-').map(Number); d = new Date(p[0], p[1] - 1, p[2]);
-        } else if (c.status === 'Teste Gratuito' && c.implementationDate) {
-            const p = String(c.implementationDate).split('T')[0].split('-').map(Number); d = new Date(p[0], p[1] - 1, p[2]);
-        }
-        if (d && !isNaN(d.getTime()) && d < earliest) earliest = d;
+        const dom = normalizeDomain(c.website);
+        let cutoff = null;
+        if (c.lastPayment && c.lastPayment !== '-') cutoff = c.lastPayment.split('T')[0] + 'T00:00:00';
+        else if (c.status === 'Teste Gratuito' && c.implementationDate) cutoff = String(c.implementationDate).split('T')[0] + 'T00:00:00';
+        if (dom && cutoff) lojas.push({ dom, cutoff });
     });
-    const cutoffISO = new Date(earliest.getTime() - 3 * 86400000).toISOString().slice(0, 10) + 'T00:00:00';
-    const provas = await fetchAllPaginated(
-        'geracoes_provou_levou',
-        'origin, created_at',
-        [{ method: 'gte', args: ['created_at', cutoffISO] },
-         { method: 'order', args: ['created_at', { ascending: false }] }]
-    );
-    const byDom = {};
-    for (const p of provas) {
-        const dom = normalizeDomain(p.origin);
-        if (!dom) continue;
-        if (!byDom[dom]) byDom[dom] = [];
-        byDom[dom].push(p.created_at || '');
-    }
-    window._excessoProvasFresh = byDom;
+    window._excessoCounts = await fetchProvasCounts(lojas);
     renderExcessoProvas();
 }
 
@@ -831,7 +813,7 @@ function renderProximosPagamentos() {
     renderTestesGratuitos();
     renderExcessoProvas();
     // Trigger detailed fetch in background if not already done
-    if (!window._excessoProvasFresh && !window._excessoProvasLoading) {
+    if (!window._excessoCounts && !window._excessoProvasLoading) {
         window._excessoProvasLoading = true;
         loadExcessoProvasDetailed().finally(() => { window._excessoProvasLoading = false; });
     }
@@ -1768,25 +1750,16 @@ async function loadLimites() {
             return null;
         };
 
-        // Earliest start date across clients to bound the provas query
-        let earliestDate = null;
+        // Conta provas por loja SERVER-SIDE (1 RPC) desde o cutoff de cada cliente (último pagamento /
+        // implementação), em vez de baixar dezenas de milhares de linhas e agrupar no navegador.
+        const lojasLim = [];
         for (const c of clients) {
-            const d = getStartDate(c);
-            if (d && (!earliestDate || d < earliestDate)) earliestDate = d;
+            if (c.status === 'Inativo') continue;
+            const dom = normalizeDomain(c.website);
+            const sd = getStartDate(c);
+            if (dom && sd) lojasLim.push({ dom, cutoff: String(sd).split('T')[0] + 'T00:00:00' });
         }
-
-        const filters = [{ method: 'order', args: ['created_at', { ascending: false }] }];
-        if (earliestDate) filters.push({ method: 'gte', args: ['created_at', earliestDate + 'T00:00:00-03:00'] });
-        const provas = await fetchAllPaginated('geracoes_provou_levou', 'origin, created_at', filters);
-
-        // Group provas by normalized origin + collect dates
-        const provasByOrigin = {};
-        for (const p of provas) {
-            const dom = normalizeDomain(p.origin);
-            if (!dom) continue;
-            if (!provasByOrigin[dom]) provasByOrigin[dom] = [];
-            provasByOrigin[dom].push(p.created_at || '');
-        }
+        const countsByDom = await fetchProvasCounts(lojasLim);
 
         // Build rows
         const rows = [];
@@ -1795,7 +1768,6 @@ async function loadLimites() {
         for (const c of clients) {
             if (c.status === 'Inativo') continue; // loja inativa não é monitorada em limites
             const dom = normalizeDomain(c.website);
-            const allProvas = dom ? (provasByOrigin[dom] || []) : [];
             // Para plano Personalizado, usa limitePersonalizado; senão, usa PLAN_LIMITS
             let basePlanLimit;
             if (c.plan === 'Personalizado') {
@@ -1826,8 +1798,7 @@ async function loadLimites() {
                 status = isTeste ? 'Teste sem data' : 'Sem pagamento';
                 statusClass = 'status-pending';
             } else {
-                const cutoff = startDate + 'T00:00:00';
-                const count = allProvas.filter(ts => ts >= cutoff).length;
+                const count = countsByDom[dom] || 0;
                 provasCount = count.toLocaleString('pt-BR');
                 if (!isTeste) monitorados++;
 
@@ -2318,15 +2289,15 @@ function renderFluxoCatList(listId, totalId, cats, map) {
 
 async function renderFluxoLojas() {
     const body = document.getElementById('fx-lojas-body'); if (!body) return;
-    if (!window._excessoProvasFresh) { try { await loadExcessoProvasDetailed(); } catch (e) { } }
-    const byDom = window._excessoProvasFresh || {};
     const now = new Date();
-    const ym = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    const monthStart = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-01T00:00:00';
     const cmap = {};
     (clients || []).forEach(c => { const d = normalizeDomain(c.website || c.domain || c.origem || ''); if (d) cmap[d] = c; });
+    // Conta provas do mês corrente por loja SERVER-SIDE (1 RPC) em vez de baixar dezenas de milhares de linhas.
+    const counts = await fetchProvasCounts(Object.keys(cmap).map(dom => ({ dom, cutoff: monthStart })));
     const rows = [];
-    Object.keys(byDom).forEach(dom => {
-        const provas = byDom[dom].filter(ts => String(ts).slice(0, 7) === ym).length;
+    Object.keys(counts).forEach(dom => {
+        const provas = counts[dom] || 0;
         if (!provas) return;
         const c = cmap[dom];
         const cat = (c && c.categoria) || 'oculos';
