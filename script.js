@@ -788,12 +788,31 @@ function renderExcessoProvas(cache) {
 }
 
 async function loadExcessoProvasDetailed() {
-    // Fetch all provas timestamps to build per-origin list for accurate cutoff filtering
+    // Antes puxava a geracoes_provou_levou INTEIRA (all-time) só pra contar o mês corrente e as
+    // provas desde o último pagamento — com 100k+ provas na frota ficava lentíssimo. Agora só
+    // busca a partir do cutoff mais antigo que os cards realmente usam:
+    //   • Custo por loja (mês corrente): 1º dia do mês corrente
+    //   • Excesso de provas: last_payment / implementationDate de cada cliente ativo
+    // Pega o MENOR desses (com 3 dias de folga p/ fuso) e filtra a query por created_at >= cutoff.
     if (!db) return;
+    let earliest = new Date();
+    earliest = new Date(earliest.getFullYear(), earliest.getMonth(), 1); // 1º dia do mês corrente
+    (clients || []).forEach(c => {
+        if (c.status === 'Inativo') return;
+        let d = null;
+        if (c.lastPayment && c.lastPayment !== '-') {
+            const p = c.lastPayment.split('T')[0].split('-').map(Number); d = new Date(p[0], p[1] - 1, p[2]);
+        } else if (c.status === 'Teste Gratuito' && c.implementationDate) {
+            const p = String(c.implementationDate).split('T')[0].split('-').map(Number); d = new Date(p[0], p[1] - 1, p[2]);
+        }
+        if (d && !isNaN(d.getTime()) && d < earliest) earliest = d;
+    });
+    const cutoffISO = new Date(earliest.getTime() - 3 * 86400000).toISOString().slice(0, 10) + 'T00:00:00';
     const provas = await fetchAllPaginated(
         'geracoes_provou_levou',
         'origin, created_at',
-        [{ method: 'order', args: ['created_at', { ascending: false }] }]
+        [{ method: 'gte', args: ['created_at', cutoffISO] },
+         { method: 'order', args: ['created_at', { ascending: false }] }]
     );
     const byDom = {};
     for (const p of provas) {
