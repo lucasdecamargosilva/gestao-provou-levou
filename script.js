@@ -799,8 +799,10 @@ async function loadExcessoProvasDetailed() {
         if (c.status === 'Inativo') return;
         const dom = normalizeDomain(c.website);
         let cutoff = null;
-        if (c.lastPayment && c.lastPayment !== '-') cutoff = c.lastPayment.split('T')[0] + 'T00:00:00';
-        else if (c.status === 'Teste Gratuito' && c.implementationDate) cutoff = String(c.implementationDate).split('T')[0] + 'T00:00:00';
+        // Fronteira em BRT (-03:00), igual à dashboard do lojista. Sem o offset o cutoff virava
+        // meia-noite UTC e contava ~3h de provas da noite anterior (BRT) a mais (ex.: Cacife +57).
+        if (c.lastPayment && c.lastPayment !== '-') cutoff = c.lastPayment.split('T')[0] + 'T00:00:00-03:00';
+        else if (c.status === 'Teste Gratuito' && c.implementationDate) cutoff = String(c.implementationDate).split('T')[0] + 'T00:00:00-03:00';
         if (dom && cutoff) lojas.push({ dom, cutoff });
     });
     window._excessoCounts = await fetchProvasCounts(lojas);
