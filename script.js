@@ -1215,7 +1215,9 @@ async function loadClients() {
             planoPersonalizado: s.plano_personalizado || null,
             valorPersonalizado: s.valor_personalizado != null ? parseFloat(s.valor_personalizado) : null,
             fotosExtras: s.fotos_extras != null ? parseInt(s.fotos_extras) : 0,
-            limitePersonalizado: s.limite_personalizado != null ? parseInt(s.limite_personalizado) : null
+            limitePersonalizado: s.limite_personalizado != null ? parseInt(s.limite_personalizado) : null,
+            formaPagamento: s.forma_pagamento || '',
+            observacao: s.observacao || ''
         }));
     } catch (err) {
         console.error('Erro ao carregar clientes:', err);
@@ -1264,7 +1266,9 @@ async function addClient(event) {
         plano_personalizado: document.getElementById('plano_personalizado').value.trim() || null,
         valor_personalizado: parseFloat(document.getElementById('valor_personalizado').value) || null,
         fotos_extras: parseInt(document.getElementById('fotos_extras').value) || 0,
-        limite_personalizado: parseInt(document.getElementById('limite_personalizado').value) || null
+        limite_personalizado: parseInt(document.getElementById('limite_personalizado').value) || null,
+        forma_pagamento: document.getElementById('forma_pagamento').value || null,
+        observacao: document.getElementById('observacao').value.trim() || null
     };
 
     if (!db) {
@@ -1439,6 +1443,8 @@ function editClientById(id) {
     document.getElementById('valor_personalizado').value = c.valorPersonalizado != null ? c.valorPersonalizado : '';
     document.getElementById('limite_personalizado').value = c.limitePersonalizado != null ? c.limitePersonalizado : '';
     document.getElementById('fotos_extras').value = c.fotosExtras || '';
+    document.getElementById('forma_pagamento').value = c.formaPagamento || '';
+    document.getElementById('observacao').value = c.observacao || '';
     // Aplica lógica de plano personalizado (lock dropdown se tem custom)
     syncPersonalizadoLock();
 
