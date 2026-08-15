@@ -63,6 +63,12 @@
                     </a>
                 </li>
                 <li>
+                    <a href="#" class="nav-item" data-view="pagamentos">
+                        <i class="fas fa-credit-card"></i>
+                        <span>Pagamentos</span>
+                    </a>
+                </li>
+                <li>
                     <a href="#" class="nav-item" data-view="fluxo">
                         <i class="fas fa-wallet"></i>
                         <span>Fluxo de Caixa</span>
@@ -173,6 +179,7 @@
                                 <th>Empresa</th>
                                 <th>Plano</th>
                                 <th>Valor Mensal</th>
+                                <th>Pagamento</th>
                                 <th>Último Pagamento</th>
                                 <th>Status</th>
                                 <th>Ações</th>
@@ -390,6 +397,107 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+            </section>
+
+            <!-- Pagamentos View -->
+            <section id="pagamentos" class="view">
+                <div class="pay-topbar">
+                    <div>
+                        <h1 class="page-title">Pagamentos</h1>
+                        <p class="pay-subtitle">Gerencie os planos e pagamentos dos seus clientes.</p>
+                    </div>
+                    <div class="pay-topbar-actions">
+                        <div class="pay-search">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="pay-search" placeholder="Buscar cliente...">
+                        </div>
+                        <button id="btn-pay-export" class="btn-ghost">
+                            <i class="fas fa-download"></i> Exportar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr);">
+                    <div class="stat-card glass">
+                        <div class="stat-label">MRR Ativo</div>
+                        <div id="pay-kpi-mrr" class="stat-value">R$ 0</div>
+                        <div id="pay-kpi-mrr-sub" class="stat-sub">0 clientes pagantes</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-label">A Receber (7 dias)</div>
+                        <div id="pay-kpi-areceber" class="stat-value">R$ 0</div>
+                        <div id="pay-kpi-areceber-sub" class="stat-sub">nenhuma cobrança na semana</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-label">Em Atraso</div>
+                        <div id="pay-kpi-atraso" class="stat-value" style="color: var(--red);">R$ 0</div>
+                        <div id="pay-kpi-atraso-sub" class="stat-sub">0 inadimplentes</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-label">Testes Ativos</div>
+                        <div id="pay-kpi-testes" class="stat-value" style="color: var(--purple);">0</div>
+                        <div id="pay-kpi-testes-sub" class="stat-sub">0 vencendo em 2 dias</div>
+                    </div>
+                </div>
+
+                <div class="chart-grid">
+                    <div class="section-container glass chart-card">
+                        <div class="table-header">
+                            <div>
+                                <h2 class="table-title">Evolução do MRR</h2>
+                                <span class="chart-sub">Receita recorrente por mês e a variação de cada mês</span>
+                            </div>
+                            <div class="chart-head-right">
+                                <span id="mrr-delta-badge" class="chart-badge">—</span>
+                                <select id="mrr-range" class="chart-select">
+                                    <option value="6">6 meses</option>
+                                    <option value="12" selected>12 meses</option>
+                                    <option value="18">18 meses</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="mrr-chart" class="chart-box"></div>
+                    </div>
+
+                    <div class="section-container glass chart-card">
+                        <div class="table-header">
+                            <div>
+                                <h2 class="table-title">MRR por plano</h2>
+                                <span class="chart-sub">De onde vem a receita hoje</span>
+                            </div>
+                        </div>
+                        <div id="mrr-plan-chart" class="chart-box"></div>
+                    </div>
+                </div>
+
+                <div class="section-container glass pay-panel">
+                    <div class="pay-tabs" id="pay-tabs">
+                        <button class="pay-tab active" data-tab="todos">Todos <span class="pay-tab-count" id="pay-count-todos">0</span></button>
+                        <button class="pay-tab" data-tab="ativos">Ativos <span class="pay-tab-count" id="pay-count-ativos">0</span></button>
+                        <button class="pay-tab" data-tab="inadimplentes">Inadimplentes <span class="pay-tab-count" id="pay-count-inadimplentes">0</span></button>
+                        <button class="pay-tab" data-tab="testes">Testes <span class="pay-tab-count" id="pay-count-testes">0</span></button>
+                        <button class="pay-tab" data-tab="cancelados">Cancelados <span class="pay-tab-count" id="pay-count-cancelados">0</span></button>
+                    </div>
+
+                    <div class="pay-head">
+                        <div>Cliente</div>
+                        <div>Plano</div>
+                        <div>Fotos <i class="fas fa-circle-info" title="Provas geradas desde o último pagamento"></i></div>
+                        <div>Pagamento</div>
+                        <div>Próxima cobrança</div>
+                        <div>Status</div>
+                        <div></div>
+                    </div>
+
+                    <div id="pay-list" class="pay-list">
+                        <div class="pay-empty">Carregando...</div>
+                    </div>
+
+                    <div class="pay-footer">
+                        <span id="pay-range" class="pay-range">—</span>
+                        <div id="pay-pager" class="pay-pager"></div>
+                    </div>
                 </div>
             </section>
 

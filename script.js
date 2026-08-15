@@ -2101,6 +2101,7 @@ function renderTable() {
                 ${client.valorPersonalizado ? '<span style="font-size:10px;color:var(--purple-light);margin-left:6px;font-weight:600;">CUSTOM</span>' : ''}
             </td>
             <td style="color:var(--success);font-weight:600">${value}</td>
+            <td>${payMethodHTML(client.formaPagamento)}</td>
             <td style="color:var(--text-dim)">${client.lastPayment && client.lastPayment !== '-' ? formatDate(client.lastPayment) : '—'}</td>
             <td><span class="status-badge ${cls}">${statusDisplay}</span></td>
             <td>
@@ -2211,6 +2212,547 @@ function updateStats() {
     updateProvinha();
 }
 
+// ─── View: Pagamentos ──────────────────────────────────────────────────────────
+const PAY_PER_PAGE = 8;
+const payState = { tab: 'todos', search: '', page: 1, rows: [], counts: {}, loaded: false };
+
+function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, ch => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]
+    ));
+}
+
+function payMethodKind(forma) {
+    const f = String(forma || '').toLowerCase();
+    if (!f) return null;
+    if (f.includes('pix')) return 'pix';
+    if (f.includes('boleto')) return 'boleto';
+    if (f.includes('cart') || f.includes('credito') || f.includes('crédito')) return 'cartao';
+    return 'outro';
+}
+
+// SVGs fixos (sem dado do usuário) — usados como ícone da forma de pagamento
+function payMethodIconSVG(kind) {
+    if (kind === 'pix') {
+        return '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">' +
+            '<path fill="#32BCAD" d="M9.4 3.6a3.7 3.7 0 0 1 5.2 0l2.4 2.4h-1.3c-.8 0-1.6.3-2.2.9L11 9.4a1.4 1.4 0 0 1-2 0L6.5 6.9c-.6-.6-1.4-.9-2.2-.9H3L5.4 3.6a3.7 3.7 0 0 1 4 0Z"/>' +
+            '<path fill="#32BCAD" d="M3 8h1.3c.4 0 .8.2 1.1.5L8 11a3.4 3.4 0 0 0 4.8 0l2.5-2.5c.3-.3.7-.5 1.1-.5H18l2.4 2.4a3.7 3.7 0 0 1 0 5.2L18 18h-1.6c-.4 0-.8-.2-1.1-.5L12.8 15a3.4 3.4 0 0 0-4.8 0l-2.5 2.5c-.3.3-.7.5-1.1.5H3L.6 15.6a3.7 3.7 0 0 1 0-5.2L3 8Z" opacity=".35"/>' +
+            '<path fill="#32BCAD" d="M9.4 20.4 7 18h1.3c.8 0 1.6-.3 2.2-.9l2.5-2.5a1.4 1.4 0 0 1 2 0l2.5 2.5c.6.6 1.4.9 2.2.9H21l-2.4 2.4a3.7 3.7 0 0 1-5.2 0l-1-1-1 1a3.7 3.7 0 0 1-2 0Z"/>' +
+            '</svg>';
+    }
+    if (kind === 'cartao') {
+        return '<svg width="20" height="14" viewBox="0 0 32 20" aria-hidden="true">' +
+            '<circle cx="12" cy="10" r="9" fill="#EB001B"/>' +
+            '<circle cx="20" cy="10" r="9" fill="#F79E1B" opacity=".85"/>' +
+            '</svg>';
+    }
+    if (kind === 'boleto') {
+        return '<svg width="18" height="14" viewBox="0 0 24 18" aria-hidden="true">' +
+            '<g fill="#0a0a0a">' +
+            '<rect x="2" y="2" width="2" height="14"/><rect x="6" y="2" width="1" height="14"/>' +
+            '<rect x="9" y="2" width="2" height="14"/><rect x="13" y="2" width="1" height="14"/>' +
+            '<rect x="16" y="2" width="3" height="14"/><rect x="21" y="2" width="1" height="14"/>' +
+            '</g></svg>';
+    }
+    return '<svg width="18" height="14" viewBox="0 0 24 18" aria-hidden="true">' +
+        '<rect x="1" y="2" width="22" height="14" rx="3" fill="none" stroke="#888" stroke-width="1.6"/>' +
+        '<rect x="1" y="6" width="22" height="3" fill="#888"/></svg>';
+}
+
+function payMethodHTML(forma) {
+    const kind = payMethodKind(forma);
+    if (!kind) {
+        return '<div class="pay-method is-empty"><span class="pay-method-icon">' +
+            payMethodIconSVG('outro') + '</span><span>Não informado</span></div>';
+    }
+    const labels = { pix: 'Pix', cartao: 'Cartão', boleto: 'Boleto' };
+    const label = labels[kind] || forma;
+    return '<div class="pay-method"><span class="pay-method-icon">' +
+        payMethodIconSVG(kind) + '</span><span>' + esc(label) + '</span></div>';
+}
+
+function addMonths(dateStr, months) {
+    const [y, m, d] = String(dateStr).split('T')[0].split('-').map(Number);
+    const dt = new Date(y, m - 1 + months, d);
+    return dt;
+}
+
+function addDays(dateStr, days) {
+    const [y, m, d] = String(dateStr).split('T')[0].split('-').map(Number);
+    return new Date(y, m - 1, d + days);
+}
+
+function daysBetween(a, b) {
+    return Math.round((a - b) / 86400000);
+}
+
+function payStartDate(c) {
+    if (c.lastPayment && c.lastPayment !== '-') return c.lastPayment;
+    if (c.status === 'Teste Gratuito' && c.implementationDate) return c.implementationDate;
+    return null;
+}
+
+function payPlanLimit(c) {
+    let base;
+    if (c.plan === 'Personalizado') {
+        base = (c.limitePersonalizado != null && c.limitePersonalizado > 0) ? c.limitePersonalizado : null;
+    } else {
+        base = PLAN_LIMITS[c.plan];
+    }
+    if (base == null) return null;
+    return base + (c.fotosExtras || 0);
+}
+
+function buildPagamentosRows() {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    return clients.map(c => {
+        const dom = normalizeDomain(c.website);
+        const limite = payPlanLimit(c);
+        const usadas = payState.counts[dom];
+        const pct = (limite && usadas != null) ? (usadas / limite) * 100 : null;
+        const valor = getClientMonthlyValue(c);
+
+        let next = null, nextLabel = '—', nextSub = '', atrasado = false;
+        if (c.status === 'Teste Gratuito' && c.implementationDate) {
+            next = addDays(c.implementationDate, 7);
+            nextSub = 'fim do teste';
+        } else if (c.lastPayment && c.lastPayment !== '-') {
+            next = addMonths(c.lastPayment, 1);
+        }
+        if (next) {
+            nextLabel = next.toLocaleDateString('pt-BR');
+            const dif = daysBetween(next, hoje);
+            atrasado = dif < 0;
+            if (!nextSub) {
+                if (dif < 0) nextSub = Math.abs(dif) + ' dia(s) em atraso';
+                else if (dif === 0) nextSub = 'vence hoje';
+                else if (dif <= 7) nextSub = 'em ' + dif + ' dia(s)';
+            }
+        }
+
+        let tab, statusLabel, statusCls;
+        if (c.status === 'Inativo') {
+            tab = 'cancelados'; statusLabel = 'Cancelado'; statusCls = 'status-inactive';
+        } else if (c.status === 'Teste Gratuito') {
+            tab = 'testes'; statusCls = 'status-pending';
+            const inicio = c.implementationDate || c.date;
+            const dias = Math.max(0, daysBetween(hoje, new Date(inicio.split('T')[0].replace(/-/g, '/'))));
+            statusLabel = dias > 7 ? 'Teste expirado' : `Teste ${dias}/7`;
+            if (dias > 7) statusCls = 'status-inactive';
+        } else if (c.status === 'Permuta') {
+            tab = 'ativos'; statusLabel = 'Permuta'; statusCls = 'status-permuta';
+        } else if (atrasado) {
+            tab = 'inadimplentes'; statusLabel = 'Inadimplente'; statusCls = 'status-inactive';
+        } else if (!next) {
+            tab = 'ativos'; statusLabel = 'Sem 1º pgto'; statusCls = 'status-pending';
+        } else {
+            tab = 'ativos'; statusLabel = 'Ativo'; statusCls = 'status-active';
+        }
+
+        return { c, limite, usadas, pct, valor, next, nextLabel, nextSub, atrasado, tab, statusLabel, statusCls };
+    });
+}
+
+function payFilteredRows() {
+    const q = payState.search.trim().toLowerCase();
+    return payState.rows.filter(r => {
+        if (payState.tab !== 'todos' && r.tab !== payState.tab) return false;
+        if (!q) return true;
+        return [r.c.name, r.c.company, r.c.email, r.c.website, r.c.plan]
+            .some(v => String(v || '').toLowerCase().includes(q));
+    });
+}
+
+const PAY_AVATAR_COLORS = [
+    ['rgba(124,58,237,0.12)', '#7c3aed'],
+    ['rgba(16,185,129,0.12)', '#059669'],
+    ['rgba(59,130,246,0.12)', '#2563eb'],
+    ['rgba(245,158,11,0.14)', '#b45309'],
+    ['rgba(236,72,153,0.12)', '#db2777']
+];
+
+function payAvatar(nome) {
+    const txt = String(nome || '?').trim();
+    const parts = txt.split(/\s+/).filter(Boolean);
+    const initials = ((parts[0] || '?')[0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+    let h = 0;
+    for (let i = 0; i < txt.length; i++) h = (h * 31 + txt.charCodeAt(i)) % 997;
+    const [bg, fg] = PAY_AVATAR_COLORS[h % PAY_AVATAR_COLORS.length];
+    return `<span class="pay-avatar" style="background:${bg};color:${fg}">${esc(initials)}</span>`;
+}
+
+function renderPagamentos() {
+    const list = document.getElementById('pay-list');
+    if (!list) return;
+
+    // Contadores das abas
+    const byTab = { todos: payState.rows.length, ativos: 0, inadimplentes: 0, testes: 0, cancelados: 0 };
+    payState.rows.forEach(r => { byTab[r.tab] = (byTab[r.tab] || 0) + 1; });
+    Object.keys(byTab).forEach(k => setText('pay-count-' + k, `(${byTab[k]})`));
+
+    // KPIs
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    let mrr = 0, pagantes = 0, aReceber = 0, aReceberN = 0, atraso = 0, atrasoN = 0, testes = 0, testesFim = 0;
+    payState.rows.forEach(r => {
+        if (r.tab === 'ativos' || r.tab === 'inadimplentes') { mrr += r.valor; pagantes++; }
+        if (r.tab === 'inadimplentes') { atraso += r.valor; atrasoN++; }
+        if (r.tab === 'ativos' && r.next) {
+            const dif = daysBetween(r.next, hoje);
+            if (dif >= 0 && dif <= 7) { aReceber += r.valor; aReceberN++; }
+        }
+        if (r.tab === 'testes') {
+            testes++;
+            if (r.next && daysBetween(r.next, hoje) <= 2) testesFim++;
+        }
+    });
+    setText('pay-kpi-mrr', 'R$ ' + mrr.toLocaleString('pt-BR'));
+    setText('pay-kpi-mrr-sub', `${pagantes} cliente(s) na régua de cobrança`);
+    setText('pay-kpi-areceber', 'R$ ' + aReceber.toLocaleString('pt-BR'));
+    setText('pay-kpi-areceber-sub', aReceberN ? `${aReceberN} cobrança(s) até 7 dias` : 'nenhuma cobrança na semana');
+    setText('pay-kpi-atraso', 'R$ ' + atraso.toLocaleString('pt-BR'));
+    setText('pay-kpi-atraso-sub', `${atrasoN} inadimplente(s)`);
+    setText('pay-kpi-testes', testes);
+    setText('pay-kpi-testes-sub', `${testesFim} vencendo em até 2 dias`);
+
+    // Paginação
+    const filtered = payFilteredRows();
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAY_PER_PAGE));
+    if (payState.page > totalPages) payState.page = totalPages;
+    const start = (payState.page - 1) * PAY_PER_PAGE;
+    const pageRows = filtered.slice(start, start + PAY_PER_PAGE);
+
+    if (!filtered.length) {
+        list.innerHTML = '<div class="pay-empty">Nenhum cliente encontrado com esse filtro.</div>';
+    } else {
+        list.innerHTML = pageRows.map(r => {
+            const c = r.c;
+            const planLabel = getClientPlanLabel(c);
+            const limTxt = r.limite != null ? r.limite.toLocaleString('pt-BR') : '∞';
+            const usoTxt = r.usadas != null ? r.usadas.toLocaleString('pt-BR') : '—';
+            let barra = '<div class="pay-usage-bottom"><span class="pay-usage-pct" style="color:var(--text-muted)">—</span></div>';
+            if (r.pct != null) {
+                const cor = r.pct >= 100 ? 'var(--red)' : r.pct >= 80 ? 'var(--yellow)' : 'var(--purple)';
+                barra = `<div class="pay-usage-bottom">
+                        <div class="pay-usage-track"><div class="pay-usage-fill" style="width:${Math.min(100, r.pct)}%;background:${cor}"></div></div>
+                        <span class="pay-usage-pct" style="color:${cor}">${r.pct.toFixed(0)}%</span>
+                    </div>`;
+            }
+            return `
+            <div class="pay-row" data-id="${esc(c.id)}">
+                <div class="pay-client">
+                    ${payAvatar(c.company || c.name)}
+                    <div style="min-width:0">
+                        <div class="pay-client-name">${esc(c.company || c.name)}</div>
+                        <div class="pay-client-email">${esc(c.email || c.website || '')}</div>
+                    </div>
+                </div>
+                <div>
+                    <div class="pay-plan-name">${esc(planLabel)}</div>
+                    <div class="pay-plan-price">R$ ${r.valor.toLocaleString('pt-BR')}/mês</div>
+                </div>
+                <div>
+                    <div class="pay-usage-nums">${usoTxt} / ${limTxt}</div>
+                    ${barra}
+                </div>
+                <div>${payMethodHTML(c.formaPagamento)}</div>
+                <div>
+                    <div class="pay-next ${r.atrasado ? 'is-late' : ''}">${esc(r.nextLabel)}</div>
+                    ${r.nextSub ? `<div class="pay-next-sub">${esc(r.nextSub)}</div>` : ''}
+                </div>
+                <div><span class="status-badge ${r.statusCls}">${esc(r.statusLabel)}</span></div>
+                <div class="pay-actions">
+                    <button class="pay-kebab" data-kebab="${esc(c.id)}" title="Ações"><i class="fas fa-ellipsis-vertical"></i></button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    setText('pay-range', filtered.length
+        ? `Mostrando ${start + 1} a ${start + pageRows.length} de ${filtered.length} clientes`
+        : 'Nenhum cliente');
+
+    // Pager
+    const pager = document.getElementById('pay-pager');
+    if (pager) {
+        let html = `<button data-page="${payState.page - 1}" ${payState.page === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i></button>`;
+        for (let p = 1; p <= totalPages; p++) {
+            if (totalPages > 7 && p > 2 && p < totalPages - 1 && Math.abs(p - payState.page) > 1) {
+                if (p === 3) html += '<span>…</span>';
+                continue;
+            }
+            html += `<button data-page="${p}" class="${p === payState.page ? 'active' : ''}">${p}</button>`;
+        }
+        html += `<button data-page="${payState.page + 1}" ${payState.page === totalPages ? 'disabled' : ''}><i class="fas fa-chevron-right"></i></button>`;
+        pager.innerHTML = html;
+    }
+}
+
+// ─── Gráficos: evolução do MRR e composição por plano ──────────────────────────
+const MES_CURTO = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+
+// Reconstrói o MRR de cada mês: cliente entra no MRR a partir do created_at e sai
+// um mês depois do último pagamento quando está Inativo. Testes e permutas não contam.
+function buildMrrSeries(meses) {
+    const hoje = new Date();
+    const pts = [];
+    for (let i = meses - 1; i >= 0; i--) {
+        const ini = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+        const fim = new Date(hoje.getFullYear(), hoje.getMonth() - i + 1, 0);
+        let mrr = 0, ativos = 0;
+        clients.forEach(c => {
+            if (c.status === 'Teste Gratuito' || c.status === 'Permuta') return;
+            const criado = new Date(String(c.date).split('T')[0].replace(/-/g, '/'));
+            if (criado > fim) return;
+            if (c.status === 'Inativo') {
+                if (!c.lastPayment || c.lastPayment === '-') return;
+                if (addMonths(c.lastPayment, 1) < ini) return;
+            }
+            const v = getClientMonthlyValue(c);
+            if (v <= 0) return;
+            mrr += v;
+            ativos++;
+        });
+        pts.push({ label: MES_CURTO[ini.getMonth()] + '/' + String(ini.getFullYear()).slice(2), mrr, ativos });
+    }
+    // Corta os meses vazios do começo (antes do 1º cliente pagante)
+    while (pts.length > 1 && pts[0].mrr === 0) pts.shift();
+    return pts;
+}
+
+function renderMrrChart(meses) {
+    const box = document.getElementById('mrr-chart');
+    const badge = document.getElementById('mrr-delta-badge');
+    if (!box) return;
+
+    const pts = buildMrrSeries(meses);
+    if (!pts.length || pts.every(p => p.mrr === 0)) {
+        box.innerHTML = '<div class="chart-empty">Sem dados de MRR ainda.</div>';
+        return;
+    }
+
+    const W = 760, H = 260, padL = 8, padR = 8, padT = 34, padB = 40;
+    const max = Math.max(...pts.map(p => p.mrr)) * 1.18 || 1;
+    const faixa = (W - padL - padR) / pts.length;
+    const larg = Math.min(46, faixa * 0.56);
+
+    let barras = '';
+    pts.forEach((p, i) => {
+        const alt = (p.mrr / max) * (H - padT - padB);
+        const x = padL + faixa * i + (faixa - larg) / 2;
+        const y = H - padB - alt;
+        const antes = i > 0 ? pts[i - 1].mrr : null;
+        const dif = antes != null ? p.mrr - antes : null;
+        const cor = i === pts.length - 1 ? 'var(--purple)' : 'rgba(124,58,237,0.45)';
+        barras += `<g class="chart-bar">
+            <title>${esc(p.label)}: R$ ${p.mrr.toLocaleString('pt-BR')} · ${p.ativos} cliente(s)${dif != null ? ' · ' + (dif >= 0 ? '+' : '') + 'R$ ' + dif.toLocaleString('pt-BR') + ' vs mês anterior' : ''}</title>
+            <rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${larg.toFixed(1)}" height="${Math.max(2, alt).toFixed(1)}" rx="6" fill="${cor}"></rect>
+            <text x="${(x + larg / 2).toFixed(1)}" y="${(y - 18).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="600" fill="var(--text)">${p.mrr >= 1000 ? (p.mrr / 1000).toFixed(1).replace('.', ',') + 'k' : p.mrr}</text>
+            ${dif != null && dif !== 0 ? `<text x="${(x + larg / 2).toFixed(1)}" y="${(y - 5).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="600" fill="${dif > 0 ? 'var(--green)' : 'var(--red)'}">${dif > 0 ? '▲' : '▼'} ${Math.abs(dif) >= 1000 ? (Math.abs(dif) / 1000).toFixed(1).replace('.', ',') + 'k' : Math.abs(dif)}</text>` : ''}
+            <text x="${(x + larg / 2).toFixed(1)}" y="${H - padB + 18}" text-anchor="middle" font-size="11" fill="var(--text-muted)">${esc(p.label)}</text>
+        </g>`;
+    });
+
+    box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolução do MRR mês a mês">
+        <line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="var(--border)" stroke-width="1"></line>
+        ${barras}
+    </svg>`;
+
+    if (badge) {
+        const ult = pts[pts.length - 1].mrr;
+        const pen = pts.length > 1 ? pts[pts.length - 2].mrr : 0;
+        const dif = ult - pen;
+        const pctTxt = pen > 0 ? ` (${dif >= 0 ? '+' : ''}${((dif / pen) * 100).toFixed(1).replace('.', ',')}%)` : '';
+        badge.className = 'chart-badge ' + (dif > 0 ? 'is-up' : dif < 0 ? 'is-down' : '');
+        badge.textContent = `${dif >= 0 ? '▲' : '▼'} R$ ${Math.abs(dif).toLocaleString('pt-BR')}${pctTxt} no mês`;
+    }
+}
+
+function renderMrrPorPlano() {
+    const box = document.getElementById('mrr-plan-chart');
+    if (!box) return;
+
+    const porPlano = {};
+    clients.forEach(c => {
+        if (c.status !== 'Ativo') return;
+        const v = getClientMonthlyValue(c);
+        if (v <= 0) return;
+        const nome = c.valorPersonalizado ? 'Personalizado' : (c.plan || '—');
+        if (!porPlano[nome]) porPlano[nome] = { total: 0, n: 0 };
+        porPlano[nome].total += v;
+        porPlano[nome].n++;
+    });
+
+    const linhas = Object.entries(porPlano).sort((a, b) => b[1].total - a[1].total);
+    if (!linhas.length) {
+        box.innerHTML = '<div class="chart-empty">Nenhum cliente ativo pagante.</div>';
+        return;
+    }
+
+    const max = linhas[0][1].total;
+    const totalGeral = linhas.reduce((s, l) => s + l[1].total, 0);
+    box.innerHTML = linhas.map(([nome, d]) => {
+        const pct = (d.total / totalGeral) * 100;
+        return `<div style="margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;margin-bottom:5px">
+                <span style="font-weight:600">${esc(nome)} <span style="color:var(--text-muted);font-weight:400">· ${d.n}</span></span>
+                <span style="font-variant-numeric:tabular-nums;color:var(--text-sub)">R$ ${d.total.toLocaleString('pt-BR')} <span style="color:var(--text-muted);font-size:11px">${pct.toFixed(0)}%</span></span>
+            </div>
+            <div class="pay-usage-track" style="width:100%;max-width:none;height:8px">
+                <div class="pay-usage-fill" style="width:${(d.total / max) * 100}%;background:linear-gradient(90deg,var(--purple),var(--purple-light))"></div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function renderPayCharts() {
+    const sel = document.getElementById('mrr-range');
+    renderMrrChart(parseInt(sel && sel.value, 10) || 12);
+    renderMrrPorPlano();
+}
+
+function closePayMenus() {
+    document.querySelectorAll('.pay-menu').forEach(m => m.remove());
+}
+
+function openPayMenu(btn, id) {
+    const aberto = btn.parentElement.querySelector('.pay-menu');
+    closePayMenus();
+    if (aberto) return;
+    const menu = document.createElement('div');
+    menu.className = 'pay-menu';
+    menu.innerHTML = `
+        <button data-act="hist"><i class="fas fa-receipt"></i> Histórico de pagamentos</button>
+        <button data-act="edit"><i class="fas fa-pen"></i> Editar cliente</button>
+        <button data-act="view"><i class="fas fa-eye"></i> Ver detalhes</button>
+        <button data-act="site"><i class="fas fa-arrow-up-right-from-square"></i> Abrir loja</button>
+        <button data-act="del" class="is-danger"><i class="fas fa-trash"></i> Excluir</button>`;
+    menu.addEventListener('click', e => {
+        const b = e.target.closest('button');
+        if (!b) return;
+        e.stopPropagation();
+        const act = b.dataset.act;
+        closePayMenus();
+        if (act === 'hist') openPagamentosModal(clients.find(c => String(c.id) === String(id)).id);
+        if (act === 'edit') editClientById(id);
+        if (act === 'view') showClientDetailsById(id);
+        if (act === 'del') deleteClientById(id);
+        if (act === 'site') {
+            const c = clients.find(cl => String(cl.id) === String(id));
+            const url = c && c.website ? (c.website.startsWith('http') ? c.website : 'https://' + c.website) : null;
+            if (url) window.open(url, '_blank', 'noopener');
+        }
+    });
+    btn.parentElement.appendChild(menu);
+}
+
+function exportPagamentosCSV() {
+    const rows = payFilteredRows();
+    const head = ['Cliente', 'Empresa', 'Email', 'Plano', 'Valor mensal', 'Provas usadas', 'Limite', 'Uso %', 'Forma de pagamento', 'Ultimo pagamento', 'Proxima cobranca', 'Status'];
+    const linhas = rows.map(r => [
+        r.c.name, r.c.company, r.c.email, getClientPlanLabel(r.c), r.valor,
+        r.usadas != null ? r.usadas : '', r.limite != null ? r.limite : '',
+        r.pct != null ? r.pct.toFixed(0) : '',
+        r.c.formaPagamento || '', r.c.lastPayment && r.c.lastPayment !== '-' ? r.c.lastPayment : '',
+        r.nextLabel, r.statusLabel
+    ]);
+    const csv = [head, ...linhas]
+        .map(l => l.map(v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`).join(';'))
+        .join('\r\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `pagamentos-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+}
+
+async function loadPagamentosView() {
+    const list = document.getElementById('pay-list');
+    if (!list) return;
+    if (!clients || clients.length === 0) await loadClients();
+
+    payState.rows = buildPagamentosRows();
+    renderPagamentos();
+    renderPayCharts();
+
+    // Provas por loja desde o último pagamento (RPC server-side)
+    if (db && !payState.loaded) {
+        try {
+            const lojas = [];
+            for (const c of clients) {
+                if (c.status === 'Inativo') continue;
+                const dom = normalizeDomain(c.website);
+                const sd = payStartDate(c);
+                if (dom && sd) lojas.push({ dom, cutoff: String(sd).split('T')[0] + 'T00:00:00' });
+            }
+            payState.counts = await fetchProvasCounts(lojas);
+            payState.loaded = true;
+            payState.rows = buildPagamentosRows();
+            renderPagamentos();
+        } catch (err) {
+            console.warn('Pagamentos: contagem de provas falhou:', err);
+        }
+    }
+}
+
+function setupPagamentosUI() {
+    const tabs = document.getElementById('pay-tabs');
+    if (tabs) {
+        tabs.addEventListener('click', e => {
+            const b = e.target.closest('.pay-tab');
+            if (!b) return;
+            tabs.querySelectorAll('.pay-tab').forEach(t => t.classList.toggle('active', t === b));
+            payState.tab = b.dataset.tab;
+            payState.page = 1;
+            renderPagamentos();
+        });
+    }
+
+    const search = document.getElementById('pay-search');
+    if (search) {
+        search.addEventListener('input', () => {
+            payState.search = search.value;
+            payState.page = 1;
+            renderPagamentos();
+        });
+    }
+
+    const exportBtn = document.getElementById('btn-pay-export');
+    if (exportBtn) exportBtn.addEventListener('click', exportPagamentosCSV);
+
+    const mrrRange = document.getElementById('mrr-range');
+    if (mrrRange) mrrRange.addEventListener('change', renderPayCharts);
+
+    const list = document.getElementById('pay-list');
+    if (list) {
+        list.addEventListener('click', e => {
+            const kebab = e.target.closest('[data-kebab]');
+            if (kebab) {
+                e.stopPropagation();
+                openPayMenu(kebab, kebab.dataset.kebab);
+                return;
+            }
+            if (e.target.closest('.pay-menu')) return;
+            const row = e.target.closest('.pay-row');
+            if (row) showClientDetailsById(row.dataset.id);
+        });
+    }
+
+    const pager = document.getElementById('pay-pager');
+    if (pager) {
+        pager.addEventListener('click', e => {
+            const b = e.target.closest('button[data-page]');
+            if (!b || b.disabled) return;
+            const p = parseInt(b.dataset.page, 10);
+            if (!isNaN(p) && p >= 1) { payState.page = p; renderPagamentos(); }
+        });
+    }
+
+    document.addEventListener('click', () => closePayMenus());
+}
+
 function switchView(viewId) {
     document.querySelectorAll('.nav-item').forEach(el => {
         el.classList.toggle('active', el.dataset.view === viewId);
@@ -2222,6 +2764,7 @@ function switchView(viewId) {
     if (viewId === 'provinha') { updateProvinha(); }
     if (viewId === 'tryons') { loadTryons(); }
     if (viewId === 'limites') { loadLimites(); }
+    if (viewId === 'pagamentos') { loadPagamentosView(); }
     if (viewId === 'faturamento') { loadFaturamentoView(); }
     if (viewId === 'fluxo') { loadFluxoCaixa(); }
 }
@@ -2620,6 +3163,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (btnRefreshFatView) {
         btnRefreshFatView.addEventListener('click', refreshFaturamentoView);
     }
+
+    // 9b. Tela de Pagamentos (abas, busca, exportar, menus de ação)
+    setupPagamentosUI();
 
     // 10. Lógica do Modal da API Key Gerada
     const btnCloseApiKey = document.getElementById('btn-close-apikey');
