@@ -1743,3 +1743,130 @@ select.form-control {
 @media (max-width: 1100px) {
     .chart-grid { grid-template-columns: 1fr; }
 }
+
+/* ─── Mercado Pago: conciliação ──────────────────────────── */
+
+.mp-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    color: var(--text-sub);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.mp-toggle input { accent-color: var(--purple); width: 15px; height: 15px; cursor: pointer; }
+
+.mp-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 22px;
+}
+
+.mp-kpi {
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+}
+
+.mp-kpi-label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+}
+
+.mp-kpi strong {
+    font-size: 18px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.mp-list { display: flex; flex-direction: column; gap: 8px; }
+
+.mp-row {
+    display: grid;
+    grid-template-columns: 96px 110px 120px 1fr 210px 130px;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--bg-alt);
+}
+
+.mp-row.is-done { opacity: .6; background: var(--bg-light); }
+
+.mp-date { font-size: 13px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+.mp-value {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--green);
+    font-variant-numeric: tabular-nums;
+}
+
+.mp-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: var(--pill);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+}
+
+.mp-tag.is-assinatura { background: rgba(124, 58, 237, 0.1); color: var(--purple); }
+.mp-tag.is-link { background: rgba(59, 130, 246, 0.1); color: var(--blue); }
+.mp-tag.is-pix { background: rgba(16, 185, 129, 0.1); color: var(--green); }
+
+.mp-desc { font-size: 13px; color: var(--text-sub); min-width: 0; }
+.mp-desc small { display: block; color: var(--text-muted); font-size: 11px; }
+
+.mp-row select {
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border-strong);
+    background: var(--bg-alt);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 12px;
+    width: 100%;
+    min-width: 0;
+}
+
+.mp-assign {
+    padding: 8px 14px;
+    border-radius: var(--pill);
+    border: none;
+    background: var(--purple);
+    color: #fff;
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.mp-assign:hover { background: var(--primary-dark); }
+.mp-assign:disabled { background: var(--bg-light-alt); color: var(--text-muted); cursor: default; }
+
+.mp-done-label {
+    font-size: 12px;
+    color: var(--green);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+@media (max-width: 1200px) {
+    .mp-kpis { grid-template-columns: repeat(2, 1fr); }
+    .mp-row { grid-template-columns: 90px 100px 1fr; row-gap: 10px; }
+}

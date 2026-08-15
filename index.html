@@ -499,6 +499,36 @@
                         <div id="pay-pager" class="pay-pager"></div>
                     </div>
                 </div>
+
+                <!-- Mercado Pago: recebimentos dos últimos 3 meses -->
+                <div class="section-container glass" style="margin-top:20px;">
+                    <div class="table-header">
+                        <div>
+                            <h2 class="table-title">Recebido no Mercado Pago</h2>
+                            <span class="chart-sub">Últimos 3 meses, direto da conta. Atribua cada recebimento ao cliente para entrar no histórico.</span>
+                        </div>
+                        <div class="chart-head-right">
+                            <label class="mp-toggle">
+                                <input type="checkbox" id="mp-only-pending" checked>
+                                Só não atribuídos
+                            </label>
+                            <button id="btn-mp-refresh" class="btn-ghost">
+                                <i class="fas fa-sync-alt"></i> Atualizar
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mp-kpis">
+                        <div class="mp-kpi"><span class="mp-kpi-label">Total recebido</span><strong id="mp-kpi-total">—</strong></div>
+                        <div class="mp-kpi"><span class="mp-kpi-label">Assinaturas</span><strong id="mp-kpi-assin">—</strong></div>
+                        <div class="mp-kpi"><span class="mp-kpi-label">Link / PIX avulso</span><strong id="mp-kpi-avulso">—</strong></div>
+                        <div class="mp-kpi"><span class="mp-kpi-label">Provas extras (R$ 1)</span><strong id="mp-kpi-extra">—</strong></div>
+                    </div>
+
+                    <div id="mp-list" class="mp-list">
+                        <div class="pay-empty">Clique em Atualizar para buscar no Mercado Pago.</div>
+                    </div>
+                </div>
             </section>
 
             <!-- Fluxo de Caixa View -->
