@@ -2618,6 +2618,14 @@ const MP_MESES = 3;
 const MP_VALOR_MIN = 50; // abaixo disso é PIX de prova extra (R$ 1), não mensalidade
 const mpState = { pagamentos: [], jaRegistrados: new Set(), idsRegistrados: new Set(), carregando: false };
 
+// A conta é pessoa jurídica + pessoal do Lucas: cobranças de ferramenta/consumo
+// entram como "pagamento aprovado" e não são receita de cliente.
+const MP_GASTOS_PESSOAIS = /anthropic|claude|openai|hostinger|google|uber|ifood|tiktok|bytedance|power bank/i;
+
+function mpEhGastoPessoal(p) {
+    return MP_GASTOS_PESSOAIS.test(p.description || '');
+}
+
 function mpCategoria(p) {
     if ((p.transaction_amount || 0) < MP_VALOR_MIN) return 'extra';
     if (p.operation_type === 'recurring_payment') return 'assinatura';
@@ -2659,7 +2667,7 @@ async function mpBuscarPagamentos() {
         if (res.length < 100) break;
         if (mpDataISO(res[res.length - 1]) < corteISO) break;
     }
-    return todos.filter(p => p.status === 'approved' && mpDataISO(p) >= corteISO);
+    return todos.filter(p => p.status === 'approved' && mpDataISO(p) >= corteISO && !mpEhGastoPessoal(p));
 }
 
 async function mpCarregarRegistrados() {
