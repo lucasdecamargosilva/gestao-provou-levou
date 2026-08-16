@@ -3239,48 +3239,6 @@ function renderConcentracao(meses) {
     box.innerHTML = html;
 }
 
-function renderRankingSaude(meses) {
-    const tbody = document.getElementById('sa-rank-body');
-    if (!tbody) return;
-    const dentro = new Set(meses);
-    const agg = {};
-    saudeState.pagamentos.forEach(p => {
-        if (!dentro.has(p.mes)) return;
-        if (!agg[p.store]) agg[p.store] = { total: 0, meses: new Set(), ultimo: '' };
-        agg[p.store].total += p.valor;
-        agg[p.store].meses.add(p.mes);
-        // Provas extras são lançadas agrupadas no fim do mês: não valem como data de cobrança
-        const ehProvaExtra = /provas extras/i.test(p.descricao);
-        if (!ehProvaExtra && p.data > agg[p.store].ultimo) agg[p.store].ultimo = p.data;
-    });
-    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-    const linhas = Object.entries(agg).sort((a, b) => b[1].total - a[1].total).map(([store, d]) => {
-        const c = clients.find(x => String(x.id) === String(store));
-        const venc = d.ultimo ? addMonths(d.ultimo, 1) : null;
-        const atrasado = venc && venc < hoje;
-        const status = !c ? { txt: 'Sem cadastro', cls: 'status-pending' }
-            : c.status === 'Inativo' ? { txt: 'Cancelado', cls: 'status-inactive' }
-            : atrasado ? { txt: 'Em atraso', cls: 'status-inactive' }
-            : { txt: 'Em dia', cls: 'status-active' };
-        return { c, store, ...d, status };
-    });
-    setText('sa-rank-sub', `${linhas.length} cliente(s) com receita em ${meses.length} mês(es)`);
-    if (!linhas.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:30px 0;">Sem receita no período.</td></tr>';
-        return;
-    }
-    tbody.innerHTML = linhas.map(l => `
-        <tr>
-            <td style="font-weight:600">${esc(l.c ? (l.c.company || l.c.name) : 'Cliente removido')}</td>
-            <td style="color:var(--text-muted);max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(l.c ? getClientPlanLabel(l.c) : '')}">${esc(l.c ? getClientPlanLabel(l.c) : '—')}</td>
-            <td style="font-weight:600;font-variant-numeric:tabular-nums">${formatBRL(l.total)}</td>
-            <td style="font-variant-numeric:tabular-nums">${l.meses.size}</td>
-            <td style="color:var(--text-sub);font-variant-numeric:tabular-nums">${formatBRL(l.total / l.meses.size)}</td>
-            <td style="color:var(--text-muted)">${esc(formatDate(l.ultimo))}</td>
-            <td><span class="status-badge ${l.status.cls}">${esc(l.status.txt)}</span></td>
-        </tr>`).join('');
-}
-
 function renderKPIsSaude(meses) {
     const mesAtual = meses[meses.length - 1];
     const doMes = saudeState.pagamentos.filter(p => p.mes === mesAtual);
@@ -3324,7 +3282,6 @@ function renderSaude() {
     renderReceitaPorMes(meses);
     renderEntradaSaida(meses);
     renderConcentracao(analise);
-    renderRankingSaude(analise);
 }
 
 async function loadSaude(forcar) {
