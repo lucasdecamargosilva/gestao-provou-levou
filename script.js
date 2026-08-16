@@ -500,13 +500,14 @@ async function salvarPagamento() {
         });
         if (error) throw error;
 
-        // Se for mensalidade, atualiza last_payment do cliente
-        if (tipo === 'mensalidade') {
+        // Mensalidade define o último pagamento, mas só se for mais recente que o
+        // que já está lá — lançar um mês atrasado não pode voltar o ciclo do cliente
+        const idx = clients.findIndex(c => String(c.id) === String(_currentPagamentosStoreId));
+        const atual = idx !== -1 ? clients[idx].lastPayment : null;
+        if (tipo === 'mensalidade' && (!atual || atual === '-' || data > atual)) {
             await db.from('provou_levou_stores')
                 .update({ last_payment: data })
                 .eq('id', _currentPagamentosStoreId);
-            // Update local clients array
-            const idx = clients.findIndex(c => c.id === _currentPagamentosStoreId);
             if (idx !== -1) clients[idx].lastPayment = data;
         }
 
@@ -516,6 +517,13 @@ async function salvarPagamento() {
         await loadPagamentos(_currentPagamentosStoreId);
         updateStats();
         renderTable();
+        // o novo lançamento entra nos números da tela Financeiro
+        saudeState.carregado = false;
+        if (document.getElementById('pagamentos').classList.contains('active')) {
+            payState.rows = buildPagamentosRows();
+            renderPagamentos();
+            loadSaude(true);
+        }
     } catch (err) {
         console.error('Erro ao salvar pagamento:', err);
         alert('Erro ao salvar pagamento: ' + (err.message || err));
@@ -3542,9 +3550,12 @@ async function mpAtribuir(mpId, storeId, btn) {
         });
         if (error) throw error;
 
-        await db.from('provou_levou_stores').update({ last_payment: data }).eq('id', storeId);
         const idx = clients.findIndex(c => String(c.id) === String(storeId));
-        if (idx !== -1) clients[idx].lastPayment = data;
+        const atual = idx !== -1 ? clients[idx].lastPayment : null;
+        if (!atual || atual === '-' || data > atual) {
+            await db.from('provou_levou_stores').update({ last_payment: data }).eq('id', storeId);
+            if (idx !== -1) clients[idx].lastPayment = data;
+        }
 
         mpState.idsRegistrados.add(String(p.id));
         renderMercadoPago();
