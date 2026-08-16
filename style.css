@@ -2238,3 +2238,151 @@ select.form-control {
         transform: none;
     }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   Financeiro — refino de hierarquia
+   Papéis de tipo: HelveticaNow carrega números e títulos,
+   Inter carrega rótulo, tabela e texto de apoio.
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+    --font-num: 'HelveticaNow', 'Inter', system-ui, sans-serif;
+    --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Título da página com cor sólida: gradiente em texto lava a legibilidade */
+.page-title {
+    background: none;
+    -webkit-text-fill-color: currentColor;
+    color: var(--text);
+}
+
+/* Rótulo, tabela e apoio no tipo de interface */
+#pagamentos .stat-label,
+#pagamentos .prev-label,
+#pagamentos .mp-kpi-label,
+#pagamentos .chart-sub,
+#pagamentos .stat-sub,
+#pagamentos .prev-sub,
+#pagamentos .client-table,
+#pagamentos .pay-tab,
+#pagamentos .det-row {
+    font-family: var(--font-ui);
+}
+
+/* Números em HelveticaNow, tabulares, com tracking fechado */
+#pagamentos .stat-value,
+#pagamentos .prev-item strong,
+#pagamentos .mp-kpi strong,
+#pagamentos .det-valor,
+#pagamentos .pay-previsto-valor,
+#pagamentos .chart-badge {
+    font-family: var(--font-num);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.03em;
+}
+
+/* Os cinco indicadores não são iguais: o lucro é a conclusão dos outros */
+#pagamentos .stats-grid.is-compacto .stat-card::before,
+#pagamentos .stats-grid.is-compacto .stat-card::after {
+    display: none;
+}
+
+#pagamentos .stats-grid.is-compacto .stat-card {
+    background: var(--bg-elevated);
+    padding: 15px 16px 16px;
+}
+
+#pagamentos .stats-grid.is-compacto .stat-card:hover {
+    transform: none;
+    border-color: var(--border-strong);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+    background: var(--bg-elevated);
+}
+
+/* O card do lucro é o destaque: fundo tonal, número maior, régua embaixo */
+#pagamentos .stat-card.is-destaque {
+    background: var(--purple-soft);
+    border-color: rgba(124, 58, 237, 0.2);
+}
+
+#pagamentos .stat-card.is-destaque:hover {
+    background: var(--purple-soft);
+    border-color: rgba(124, 58, 237, 0.34);
+}
+
+#pagamentos .stat-card.is-destaque .stat-value {
+    font-size: 23px;
+    color: var(--text);
+}
+
+/* Régua do mês: quanto do faturamento virou custo e quanto sobrou.
+   Não é enfeite — é a proporção que define a saúde da operação. */
+.regua {
+    display: flex;
+    height: 4px;
+    border-radius: var(--pill);
+    overflow: hidden;
+    margin-top: 10px;
+    background: var(--bg-light-alt);
+}
+
+.regua span { display: block; height: 100%; }
+.regua .r-custo { background: var(--red); opacity: .55; }
+.regua .r-lucro { background: var(--green); }
+
+/* Rótulos: menor, mais espaçado, sem competir com o número */
+#pagamentos .stats-grid.is-compacto .stat-label {
+    font-size: 9.5px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 7px;
+}
+
+#pagamentos .stats-grid.is-compacto .stat-value {
+    font-size: 20px;
+    line-height: 1.15;
+    margin-bottom: 3px;
+}
+
+#pagamentos .stats-grid.is-compacto .stat-sub {
+    font-size: 10.5px;
+    color: var(--text-muted);
+}
+
+/* Seções: título menor e mais firme, subtítulo com respiro */
+#pagamentos .table-title {
+    font-size: 1.05rem;
+    font-weight: 500;
+    letter-spacing: -0.015em;
+}
+
+#pagamentos .chart-sub { margin-top: 3px; font-size: 11.5px; }
+
+/* Tabelas mais densas e legíveis */
+#pagamentos .client-table th {
+    font-size: 10px;
+    letter-spacing: 0.07em;
+    padding: 11px 14px;
+}
+
+#pagamentos .client-table td {
+    padding: 11px 14px;
+    font-size: 13px;
+}
+
+/* Abas: alvo maior, estado ativo mais claro */
+#pagamentos .pay-tab {
+    font-size: 13px;
+    padding: 15px 13px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #pagamentos .stats-grid.is-compacto .stat-card { transition: none; }
+}
+
+/* O destaque do lucro precisa vencer a regra compacta, que vem depois */
+#pagamentos .stats-grid.is-compacto .stat-card.is-destaque .stat-value {
+    font-size: 24px;
+}

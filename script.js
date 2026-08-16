@@ -3137,6 +3137,15 @@ function renderKPIsSaude(meses) {
     setText('sa-margem-sub', margem >= 50 ? 'operação saudável' : margem >= 20 ? 'margem apertada' : 'atenção: margem baixa');
     const el = document.getElementById('sa-margem');
     if (el) el.style.color = margem >= 50 ? 'var(--green)' : margem >= 20 ? 'var(--yellow)' : 'var(--red)';
+
+    // Régua: a fatia do faturamento que virou custo e a que sobrou
+    const regua = document.getElementById('sa-regua');
+    if (regua) {
+        const pCusto = recebido > 0 ? Math.min(100, (c.total / recebido) * 100) : 0;
+        regua.querySelector('.r-custo').style.width = pCusto + '%';
+        regua.querySelector('.r-lucro').style.width = Math.max(0, 100 - pCusto) + '%';
+        regua.title = `De cada R$ 100 que entraram, R$ ${pCusto.toFixed(0)} foram custo e R$ ${(100 - pCusto).toFixed(0)} sobraram`;
+    }
 }
 
 function renderSaude() {
