@@ -2853,6 +2853,49 @@ function agendaRecebimentos() {
     return itens.sort((a, b) => a.venc - b.venc);
 }
 
+// Quanto cada cliente pagou no período, do maior para o menor
+function renderFaturamentoDetalhado(meses) {
+    const box = document.getElementById('sa-detalhado');
+    if (!box) return;
+    const dentro = new Set(meses);
+
+    const porStore = {};
+    saudeState.pagamentos.forEach(p => {
+        if (!dentro.has(p.mes)) return;
+        if (!porStore[p.store]) porStore[p.store] = { total: 0, mens: 0, extra: 0 };
+        porStore[p.store].total += p.valor;
+        if (p.tipo === 'mensalidade') porStore[p.store].mens += p.valor;
+        else porStore[p.store].extra += p.valor;
+    });
+
+    const linhas = Object.entries(porStore).sort((a, b) => b[1].total - a[1].total);
+    const total = linhas.reduce((s, l) => s + l[1].total, 0);
+    const rotulo = meses.length === 1 ? mesLabel(meses[0]) : `${mesLabel(meses[0])} a ${mesLabel(meses[meses.length - 1])}`;
+
+    setText('det-sub', `${linhas.length} cliente(s) pagaram em ${rotulo}`);
+    setText('det-total', formatBRL(total));
+
+    if (!linhas.length) {
+        box.innerHTML = '<div class="chart-empty">Nenhum pagamento no período.</div>';
+        return;
+    }
+
+    const max = linhas[0][1].total;
+    box.innerHTML = linhas.map(([store, d]) => {
+        const c = clients.find(x => String(x.id) === String(store));
+        const nome = c ? (c.company || c.name) : 'Cliente removido';
+        const fatia = (d.total / total) * 100;
+        return `<div class="det-row" title="${esc(nome)}: ${formatBRL(d.total)} (${fatia.toFixed(1)}% do total)">
+            <div class="det-nome">${esc(nome)}</div>
+            <div class="det-barra">
+                <div class="det-fill" style="width:${(d.total / max) * 100}%"></div>
+                ${d.extra > 0 ? `<div class="det-fill-extra" style="width:${(d.extra / max) * 100}%"></div>` : ''}
+            </div>
+            <div class="det-valor">${formatBRL(d.total)}<span class="det-pct">${fatia.toFixed(0)}%</span></div>
+        </div>`;
+    }).join('');
+}
+
 // ─── Previsão de fechamento do mês ─────────────────────────────────────────────
 
 // Custo fixo da operação fora as provas (ferramentas, anúncios). Usa a média dos
@@ -3315,6 +3358,7 @@ function renderSaude() {
     if (!meses.length) return;
     const analise = janelaAnalise();
     renderKPIsSaude(analise);
+    renderFaturamentoDetalhado(analise);
     renderCustosCategoria(analise[analise.length - 1]);
     renderCascata(analise[analise.length - 1]);
     renderPrevisao();
