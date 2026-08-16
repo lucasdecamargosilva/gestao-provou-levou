@@ -1890,3 +1890,64 @@ select.form-control {
 }
 
 #sa-chart-concentracao { padding-top: 4px; }
+
+/* ─── A receber ──────────────────────────────────────────── */
+
+.rec-lista { display: flex; flex-direction: column; gap: 22px; }
+
+.rec-grupo-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding-bottom: 8px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+}
+
+.rec-grupo-head strong {
+    font-size: 14px;
+    text-transform: none;
+    letter-spacing: 0;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+}
+
+.rec-row {
+    display: grid;
+    grid-template-columns: 42px 1.6fr 1fr 1fr 150px;
+    align-items: center;
+    gap: 16px;
+    padding: 11px 10px;
+    border-radius: 12px;
+    transition: background 200ms ease;
+}
+
+.rec-row:hover { background: var(--bg-light); }
+.rec-row.is-late { background: rgba(239, 68, 68, 0.035); }
+
+.rec-valor {
+    text-align: right;
+    font-size: 15px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--green);
+}
+
+.rec-valor.is-late { color: var(--red); }
+
+.rec-base {
+    display: block;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+@media (max-width: 900px) {
+    .rec-row { grid-template-columns: 42px 1fr 110px; }
+}

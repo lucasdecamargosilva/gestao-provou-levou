@@ -2773,6 +2773,99 @@ function renderCustosCategoria(mes) {
     if (sub) sub.textContent = `Saídas de ${mesLabel(mes)}, do extrato do Mercado Pago`;
 }
 
+// ─── A receber: agenda das próximas cobranças ──────────────────────────────────
+
+// O previsto é o total que o cliente pagou no último mês em que teve mensalidade.
+// Isso pega tanto quem paga excedente junto (Cacife) quanto quem parcela o plano
+// em dois PIX (Rivello: 97 + 50). Provas extras de R$1 ficam de fora.
+function valorPrevisto(c) {
+    const plano = getClientMonthlyValue(c);
+    const meus = saudeState.pagamentos.filter(p => String(p.store) === String(c.id));
+    const mens = meus.filter(p => p.tipo === 'mensalidade').sort((a, b) => (a.data < b.data ? 1 : -1));
+    if (!mens.length) return { valor: plano, plano, base: 'plano' };
+    const mesRef = mens[0].mes;
+    const total = meus
+        .filter(p => p.mes === mesRef && !/provas extras/i.test(p.descricao))
+        .reduce((s, p) => s + p.valor, 0);
+    if (total <= 0) return { valor: plano, plano, base: 'plano' };
+    return {
+        valor: total,
+        plano,
+        base: Math.abs(total - plano) < 0.01 ? 'plano'
+            : total > plano ? 'acima do plano' : 'abaixo do plano'
+    };
+}
+
+function agendaRecebimentos() {
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    const itens = [];
+    clients.forEach(c => {
+        if (c.status === 'Inativo' || c.status === 'Teste Gratuito' || c.status === 'Permuta') return;
+        if (!c.lastPayment || c.lastPayment === '-') return;
+        const venc = addMonths(c.lastPayment, 1);
+        const dias = daysBetween(venc, hoje);
+        const p = valorPrevisto(c);
+        if (p.valor <= 0) return;
+        itens.push({ c, venc, dias, valor: p.valor, base: p.base, plano: p.plano });
+    });
+    return itens.sort((a, b) => a.venc - b.venc);
+}
+
+function renderAReceber() {
+    const lista = document.getElementById('rec-lista');
+    if (!lista) return;
+    const janela = parseInt((document.getElementById('rec-janela') || {}).value, 10) || 30;
+    const itens = agendaRecebimentos();
+
+    const vencidos = itens.filter(i => i.dias < 0);
+    const naJanela = itens.filter(i => i.dias >= 0 && i.dias <= janela);
+    const semana = naJanela.filter(i => i.dias <= 7);
+    const depois = naJanela.filter(i => i.dias > 7);
+
+    const soma = arr => arr.reduce((s, i) => s + i.valor, 0);
+    setText('rec-kpi-vencido', `${formatBRL(soma(vencidos))} · ${vencidos.length}`);
+    setText('rec-kpi-semana', `${formatBRL(soma(semana))} · ${semana.length}`);
+    setText('rec-kpi-depois', `${formatBRL(soma(depois))} · ${depois.length}`);
+    setText('rec-kpi-total', formatBRL(soma(vencidos) + soma(naJanela)));
+    setText('rec-total', `${formatBRL(soma(naJanela))} em ${janela} dias`);
+
+    const linha = i => {
+        const atrasado = i.dias < 0;
+        const quando = atrasado
+            ? `${Math.abs(i.dias)} dia(s) em atraso`
+            : i.dias === 0 ? 'vence hoje' : `em ${i.dias} dia(s)`;
+        return `<div class="rec-row ${atrasado ? 'is-late' : ''}">
+            ${payAvatar(i.c.company || i.c.name)}
+            <div style="min-width:0">
+                <div class="pay-client-name">${esc(i.c.company || i.c.name)}</div>
+                <div class="pay-client-email">${esc(getClientPlanLabel(i.c))}</div>
+            </div>
+            <div>${payMethodHTML(i.c.formaPagamento)}</div>
+            <div>
+                <div class="pay-next ${atrasado ? 'is-late' : ''}">${i.venc.toLocaleDateString('pt-BR')}</div>
+                <div class="pay-next-sub">${esc(quando)}</div>
+            </div>
+            <div class="rec-valor ${atrasado ? 'is-late' : ''}">${formatBRL(i.valor)}
+                ${i.base !== 'plano' ? `<span class="rec-base">${esc(i.base)} (${formatBRL(i.plano)})</span>` : ''}
+            </div>
+        </div>`;
+    };
+
+    const grupo = (titulo, arr, cor) => arr.length ? `
+        <div class="rec-grupo">
+            <div class="rec-grupo-head" style="color:${cor}">
+                <span>${titulo}</span>
+                <strong>${formatBRL(soma(arr))}</strong>
+            </div>
+            ${arr.map(linha).join('')}
+        </div>` : '';
+
+    const html = grupo(`Em atraso (${vencidos.length})`, vencidos, 'var(--red)')
+        + grupo(`Vence esta semana (${semana.length})`, semana, 'var(--yellow)')
+        + grupo(`Depois, dentro de ${janela} dias (${depois.length})`, depois, 'var(--text-muted)');
+    lista.innerHTML = html || '<div class="pay-empty">Nenhuma cobrança prevista no período.</div>';
+}
+
 // Cascata: faturou → tirou o custo da operação → sobrou
 function renderCascata(mes) {
     const box = document.getElementById('sa-cascata');
@@ -3162,6 +3255,7 @@ function renderSaude() {
     renderKPIsSaude(analise);
     renderCustosCategoria(analise[analise.length - 1]);
     renderCascata(analise[analise.length - 1]);
+    renderAReceber();
     renderLucroPorMes(meses);
     renderReceitaPorMes(meses);
     renderEntradaSaida(meses);
@@ -3195,6 +3289,8 @@ function setupSaudeUI() {
     if (sel) sel.addEventListener('change', renderSaude);
     const btn = document.getElementById('btn-saude-refresh');
     if (btn) btn.addEventListener('click', () => loadSaude(true));
+    const rec = document.getElementById('rec-janela');
+    if (rec) rec.addEventListener('change', renderAReceber);
 }
 
 // ─── Mercado Pago: recebimentos dos últimos 3 meses ────────────────────────────

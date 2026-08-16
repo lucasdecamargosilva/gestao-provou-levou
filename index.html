@@ -472,6 +472,34 @@
                     </div>
                 </div>
 
+                <div class="section-container glass" style="margin-top:20px;">
+                    <div class="table-header">
+                        <div>
+                            <h2 class="table-title">A receber</h2>
+                            <span class="chart-sub">Próximas cobranças, na ordem em que vencem</span>
+                        </div>
+                        <div class="chart-head-right">
+                            <select id="rec-janela" class="chart-select">
+                                <option value="7">Próximos 7 dias</option>
+                                <option value="30" selected>Próximos 30 dias</option>
+                                <option value="60">Próximos 60 dias</option>
+                            </select>
+                            <span id="rec-total" class="chart-badge">—</span>
+                        </div>
+                    </div>
+
+                    <div class="mp-kpis">
+                        <div class="mp-kpi"><span class="mp-kpi-label">Vencido</span><strong id="rec-kpi-vencido" style="color:var(--red)">—</strong></div>
+                        <div class="mp-kpi"><span class="mp-kpi-label">Vence esta semana</span><strong id="rec-kpi-semana">—</strong></div>
+                        <div class="mp-kpi"><span class="mp-kpi-label">Resto do período</span><strong id="rec-kpi-depois">—</strong></div>
+                        <div class="mp-kpi"><span class="mp-kpi-label">Total previsto</span><strong id="rec-kpi-total" style="color:var(--green)">—</strong></div>
+                    </div>
+
+                    <div id="rec-lista" class="rec-lista">
+                        <div class="pay-empty">Carregando...</div>
+                    </div>
+                </div>
+
                 <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr);">
                     <div class="stat-card glass">
                         <div class="stat-label">MRR Ativo</div>
