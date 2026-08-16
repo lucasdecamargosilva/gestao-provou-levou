@@ -2622,9 +2622,13 @@ const mpState = { pagamentos: [], jaRegistrados: new Set(), idsRegistrados: new 
 // entram como "pagamento aprovado" e não são receita de cliente.
 const MP_GASTOS_PESSOAIS = /anthropic|claude|openai|hostinger|google|uber|ifood|tiktok|bytedance|power bank|magnific|uazapi/i;
 
-// Contas bancárias do próprio Lucas: entram como "pagamento aprovado" mas são
-// aporte/transferência entre contas dele, não receita de lojista.
-const MP_CONTAS_PROPRIAS = ['86502893'];
+// Contas que entram como "pagamento aprovado" mas não são receita de lojista:
+// conta pessoal do Lucas, venda de item pessoal e PIX de amigo.
+const MP_CONTAS_PROPRIAS = [
+    '86502893',   // Nubank pessoal do Lucas
+    '930031024',  // venda do MacBook pessoal
+    '9459316182'  // PIX pessoal de amigo
+];
 
 function mpContaOrigem(p) {
     const td = (p.point_of_interaction || {}).transaction_data || {};
