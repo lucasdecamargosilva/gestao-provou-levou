@@ -2091,3 +2091,16 @@ select.form-control {
     font-weight: 500;
     color: var(--text-muted);
 }
+
+/* Tabela alta com rolagem própria e cabeçalho fixo */
+.tabela-rolagem {
+    max-height: 420px;
+    overflow-y: auto;
+}
+
+.tabela-rolagem thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--bg-elevated);
+}
