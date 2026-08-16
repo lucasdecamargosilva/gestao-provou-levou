@@ -2771,15 +2771,34 @@ Lucro: ${formatBRL(d.lucro)}${d.receita > 0 ? ' · margem ' + ((d.lucro / d.rece
     }
 }
 
+function periodoSelecionado() {
+    return (document.getElementById('saude-periodo') || {}).value || '6';
+}
+
+function mesRelativo(delta) {
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + delta);
+    return d.toISOString().slice(0, 7);
+}
+
+// Os gráficos sempre mostram contexto (6 meses no mínimo); um gráfico de uma
+// barra só não diz nada sobre tendência.
 function janelaSaude() {
-    const n = parseInt((document.getElementById('saude-periodo') || {}).value, 10);
     const pagos = saudeState.pagamentos;
     if (!pagos.length) return [];
-    const ultimo = pagos[pagos.length - 1].mes;
-    const primeiro = pagos[0].mes;
-    if (!n) return mesesEntre(primeiro, ultimo);
-    const todos = mesesEntre(primeiro, ultimo);
+    const todos = mesesEntre(pagos[0].mes, pagos[pagos.length - 1].mes);
+    const p = periodoSelecionado();
+    const n = (p === 'mes-atual' || p === 'mes-passado') ? 6 : (parseInt(p, 10) || 6);
     return todos.slice(Math.max(0, todos.length - n));
+}
+
+// Já os números do mês (KPIs, ranking, concentração) seguem o filtro escolhido.
+function janelaAnalise() {
+    const p = periodoSelecionado();
+    if (p === 'mes-atual') return [mesRelativo(0)];
+    if (p === 'mes-passado') return [mesRelativo(-1)];
+    return janelaSaude();
 }
 
 // Barras empilhadas: mensalidade embaixo, extras em cima, com a variação no topo
@@ -3018,12 +3037,13 @@ function renderKPIsSaude(meses) {
 function renderSaude() {
     const meses = janelaSaude();
     if (!meses.length) return;
-    renderKPIsSaude(meses);
+    const analise = janelaAnalise();
+    renderKPIsSaude(analise);
     renderLucroPorMes(meses);
     renderReceitaPorMes(meses);
     renderEntradaSaida(meses);
-    renderConcentracao(meses);
-    renderRankingSaude(meses);
+    renderConcentracao(analise);
+    renderRankingSaude(analise);
 }
 
 async function loadSaude(forcar) {
