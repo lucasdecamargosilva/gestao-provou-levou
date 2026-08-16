@@ -3675,7 +3675,27 @@ function setupPagamentosUI() {
     document.addEventListener('click', () => closePayMenus());
 }
 
+const VIEW_PADRAO = 'dashboard';
+const VIEW_STORAGE_KEY = 'gestaoViewAtual';
+
+// Guarda a aba aberta para o F5 não jogar o usuário de volta pro início
+function lembrarView(viewId) {
+    try { localStorage.setItem(VIEW_STORAGE_KEY, viewId); } catch (e) { /* modo privado */ }
+    if (location.hash.slice(1) !== viewId) {
+        history.replaceState(null, '', '#' + viewId);
+    }
+}
+
+function viewInicial() {
+    const daUrl = location.hash.slice(1);
+    let salva = null;
+    try { salva = localStorage.getItem(VIEW_STORAGE_KEY); } catch (e) { /* modo privado */ }
+    const alvo = daUrl || salva || VIEW_PADRAO;
+    return document.getElementById(alvo) ? alvo : VIEW_PADRAO;
+}
+
 function switchView(viewId) {
+    lembrarView(viewId);
     document.querySelectorAll('.nav-item').forEach(el => {
         el.classList.toggle('active', el.dataset.view === viewId);
     });
@@ -3847,6 +3867,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 loginView.style.display = 'none';
                 appView.style.display = 'flex';
                 loadClients();
+                switchView(viewInicial());
             } else {
                 loginView.style.display = 'flex';
                 appView.style.display = 'none';
@@ -3877,6 +3898,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (userEmailEl) userEmailEl.textContent = email;
 
             loadClients();
+            switchView(viewInicial());
         } else {
             loginView.style.display = 'flex';
             appView.style.display = 'none';
