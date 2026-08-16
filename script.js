@@ -2357,11 +2357,18 @@ function buildPagamentosRows() {
 
 function payFilteredRows() {
     const q = payState.search.trim().toLowerCase();
-    return payState.rows.filter(r => {
+    const filtradas = payState.rows.filter(r => {
         if (payState.tab !== 'todos' && r.tab !== payState.tab) return false;
         if (!q) return true;
         return [r.c.name, r.c.company, r.c.email, r.c.website, r.c.plan]
             .some(v => String(v || '').toLowerCase().includes(q));
+    });
+    // Quem está mais perto de estourar o limite aparece primeiro; sem uso vai pro fim
+    return filtradas.sort((a, b) => {
+        const pa = a.pct == null ? -1 : a.pct;
+        const pb = b.pct == null ? -1 : b.pct;
+        if (pb !== pa) return pb - pa;
+        return (b.usadas || 0) - (a.usadas || 0);
     });
 }
 
