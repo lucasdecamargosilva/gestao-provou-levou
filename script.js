@@ -2837,15 +2837,24 @@ function renderAReceber() {
         const quando = atrasado
             ? `${Math.abs(i.dias)} dia(s) em atraso`
             : i.dias === 0 ? 'vence hoje' : `em ${i.dias} dia(s)`;
-        const uso = i.limite && i.usadas != null
-            ? `${i.usadas.toLocaleString('pt-BR')} / ${i.limite.toLocaleString('pt-BR')} provas`
-            : 'uso não medido';
+        const pct = (i.limite && i.usadas != null && i.limite !== Infinity)
+            ? (i.usadas / i.limite) * 100 : null;
+        const corUso = pct == null ? 'var(--text-muted)'
+            : pct >= 100 ? 'var(--red)' : pct >= 80 ? 'var(--yellow)' : 'var(--purple)';
+        const uso = pct == null
+            ? '<div class="pay-usage-nums" style="color:var(--text-muted);font-size:13px">uso não medido</div>'
+            : `<div class="pay-usage-nums">${i.usadas.toLocaleString('pt-BR')} / ${i.limite.toLocaleString('pt-BR')}</div>
+               <div class="pay-usage-bottom">
+                   <div class="pay-usage-track" style="width:78px"><div class="pay-usage-fill" style="width:${Math.min(100, pct)}%;background:${corUso}"></div></div>
+                   <span class="pay-usage-pct" style="color:${corUso}">${pct.toFixed(0)}%</span>
+               </div>`;
         return `<div class="rec-row ${atrasado ? 'is-late' : ''}">
             ${payAvatar(i.c.company || i.c.name)}
             <div style="min-width:0">
                 <div class="pay-client-name">${esc(i.c.company || i.c.name)}</div>
-                <div class="pay-client-email">${esc(uso)}</div>
+                <div class="pay-client-email">${esc(getClientPlanLabel(i.c))}</div>
             </div>
+            <div>${uso}</div>
             <div>${payMethodHTML(i.c.formaPagamento)}</div>
             <div>
                 <div class="pay-next ${atrasado ? 'is-late' : ''}">${i.venc.toLocaleDateString('pt-BR')}</div>
@@ -2872,6 +2881,75 @@ function renderAReceber() {
         + grupo(`Vence esta semana (${semana.length})`, semana, 'var(--yellow)')
         + grupo(`Depois, dentro de ${janela} dias (${depois.length})`, depois, 'var(--text-muted)');
     lista.innerHTML = html || '<div class="pay-empty">Nenhuma cobrança prevista no período.</div>';
+}
+
+// ─── Previsão de fechamento do mês ─────────────────────────────────────────────
+
+// Custo fixo da operação fora as provas (ferramentas, anúncios). Usa a média dos
+// meses com extrato, ignorando estorno, que é evento pontual.
+function custoFixoMedio() {
+    const meses = Object.keys(saudeState.categorias);
+    if (!meses.length) return 0;
+    const valores = meses.map(m => {
+        const cat = saudeState.categorias[m];
+        return Object.entries(cat.categorias)
+            .filter(([k]) => cat.negocio[k] && !/provas|estorno/i.test(k))
+            .reduce((s, l) => s + l[1], 0);
+    });
+    return valores.reduce((a, b) => a + b, 0) / valores.length;
+}
+
+function renderPrevisao() {
+    const mes = new Date().toISOString().slice(0, 7);
+    const hoje = new Date();
+    const diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
+    const diaAtual = hoje.getDate();
+    const fimDoMes = new Date(hoje.getFullYear(), hoje.getMonth(), diasNoMes);
+
+    // receita: o que já entrou no mês + as cobranças que vencem até o fim dele
+    const entrou = saudeState.pagamentos.filter(p => p.mes === mes).reduce((s, p) => s + p.valor, 0);
+    const agenda = agendaRecebimentos();
+    const aReceber = agenda.filter(i => i.venc <= fimDoMes);
+    const somaReceber = aReceber.reduce((s, i) => s + i.valor, 0);
+    const atrasados = aReceber.filter(i => i.dias < 0).length;
+    const faturamento = entrou + somaReceber;
+
+    // custo: provas do mês projetadas até o fim + fixo médio
+    const provasAteAgora = saudeState.provas[mes];
+    const custoReal = saudeState.custos[mes];
+    let custoProvas, baseProvas;
+    if (provasAteAgora != null) {
+        const projetadas = Math.round(provasAteAgora / diaAtual * diasNoMes);
+        custoProvas = projetadas * CUSTO_MEDIO_PROVA;
+        baseProvas = `${projetadas.toLocaleString('pt-BR')} provas projetadas`;
+    } else if (custoReal) {
+        custoProvas = custoReal.provas;
+        baseProvas = 'custo lançado do mês';
+    } else {
+        custoProvas = 0;
+        baseProvas = 'sem medição de provas';
+    }
+    const fixo = custoFixoMedio();
+    const custo = custoProvas + fixo;
+    const lucro = faturamento - custo;
+    const margem = faturamento > 0 ? (lucro / faturamento) * 100 : 0;
+
+    setText('prev-entrou', formatBRL(entrou));
+    setText('prev-entrou-sub', `até ${diaAtual}/${String(hoje.getMonth() + 1).padStart(2, '0')}`);
+    setText('prev-receber', formatBRL(somaReceber));
+    setText('prev-receber-sub', `${aReceber.length} cobrança(s)${atrasados ? ` · ${atrasados} em atraso` : ''}`);
+    setText('prev-faturamento', formatBRL(faturamento));
+    setText('prev-custo', formatBRL(custo));
+    setText('prev-custo-sub', `${formatBRL(custoProvas)} em provas (${baseProvas}) + ${formatBRL(fixo)} fixos`);
+    setText('prev-lucro', formatBRL(lucro));
+    setText('prev-lucro-sub', `faturamento previsto menos custo previsto`);
+
+    const badge = document.getElementById('prev-margem');
+    if (badge) {
+        badge.className = 'chart-badge ' + (margem >= 50 ? 'is-up' : margem < 20 ? 'is-down' : '');
+        badge.textContent = `margem prevista ${margem.toFixed(0)}%`;
+    }
+    setText('prev-sub', `Fechamento de ${mesLabel(mes)} · faltam ${diasNoMes - diaAtual} dia(s)`);
 }
 
 // Cascata: faturou → tirou o custo da operação → sobrou
@@ -3264,6 +3342,7 @@ function renderSaude() {
     renderCustosCategoria(analise[analise.length - 1]);
     renderCascata(analise[analise.length - 1]);
     renderAReceber();
+    renderPrevisao();
     renderLucroPorMes(meses);
     renderReceitaPorMes(meses);
     renderEntradaSaida(meses);
