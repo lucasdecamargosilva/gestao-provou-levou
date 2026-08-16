@@ -3066,83 +3066,6 @@ function janelaAnalise() {
     return janelaSaude();
 }
 
-// Barras empilhadas: mensalidade embaixo, extras em cima, com a variação no topo
-function renderReceitaPorMes(meses) {
-    const box = document.getElementById('sa-chart-receita');
-    const badge = document.getElementById('sa-delta');
-    if (!box) return;
-
-    const mesCorrente = new Date().toISOString().slice(0, 7);
-    const dados = meses.map(mes => {
-        const doMes = saudeState.pagamentos.filter(p => p.mes === mes);
-        const mens = doMes.filter(p => p.tipo === 'mensalidade').reduce((s, p) => s + p.valor, 0);
-        const avulsas = doMes.filter(p => /provas extras/i.test(p.descricao)).reduce((s, p) => s + p.valor, 0);
-        const extra = doMes.filter(p => p.tipo !== 'mensalidade' && !/provas extras/i.test(p.descricao))
-            .reduce((s, p) => s + p.valor, 0);
-        return {
-            mes, mens, extra, avulsas, total: mens + extra + avulsas,
-            clientes: new Set(doMes.map(p => p.store)).size,
-            parcial: mes === mesCorrente
-        };
-    });
-    if (!dados.length) { box.innerHTML = '<div class="chart-empty">Sem pagamentos registrados.</div>'; return; }
-
-    const W = 900, H = 300, padL = 10, padR = 10, padT = 40, padB = 42;
-    const max = Math.max(...dados.map(d => d.total)) * 1.2 || 1;
-    const faixa = (W - padL - padR) / dados.length;
-    const larg = Math.min(56, faixa * 0.6);
-    const alturaUtil = H - padT - padB;
-
-    const barras = dados.map((d, i) => {
-        const x = padL + faixa * i + (faixa - larg) / 2;
-        const hMens = (d.mens / max) * alturaUtil;
-        const hExtra = (d.extra / max) * alturaUtil;
-        const hAvul = (d.avulsas / max) * alturaUtil;
-        const yMens = H - padB - hMens;
-        const yExtra = yMens - hExtra;
-        const yAvul = yExtra - hAvul;
-        const antes = i > 0 ? dados[i - 1].total : null;
-        const dif = antes != null ? d.total - antes : null;
-        const fmt = v => v >= 1000 ? (v / 1000).toFixed(1).replace('.', ',') + 'k' : v.toFixed(0);
-        return `<g class="chart-bar">
-            <title>${esc(mesLabel(d.mes))}
-Mensalidade: ${formatBRL(d.mens)}
-Excedente e extras: ${formatBRL(d.extra)}
-Provas avulsas: ${formatBRL(d.avulsas)}
-Total: ${formatBRL(d.total)} · ${d.clientes} cliente(s)</title>
-            <rect x="${x.toFixed(1)}" y="${yMens.toFixed(1)}" width="${larg.toFixed(1)}" height="${Math.max(1, hMens).toFixed(1)}" rx="5" fill="var(--purple)" opacity="${d.parcial ? 0.45 : 1}"></rect>
-            ${d.extra > 0 ? `<rect x="${x.toFixed(1)}" y="${yExtra.toFixed(1)}" width="${larg.toFixed(1)}" height="${Math.max(1, hExtra).toFixed(1)}" rx="5" fill="var(--purple-light)" opacity="${d.parcial ? 0.45 : 1}"></rect>` : ''}
-            ${d.avulsas > 0 ? `<rect x="${x.toFixed(1)}" y="${yAvul.toFixed(1)}" width="${larg.toFixed(1)}" height="${Math.max(1, hAvul).toFixed(1)}" rx="5" fill="var(--green)" opacity="${d.parcial ? 0.45 : 1}"></rect>` : ''}
-            <text x="${(x + larg / 2).toFixed(1)}" y="${(yAvul - 20).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">${fmt(d.total)}</text>
-            ${d.parcial
-                ? `<text x="${(x + larg / 2).toFixed(1)}" y="${(yAvul - 6).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="600" fill="var(--text-muted)">em curso</text>`
-                : (dif != null && Math.abs(dif) > 0.5 ? `<text x="${(x + larg / 2).toFixed(1)}" y="${(yAvul - 6).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="600" fill="${dif > 0 ? 'var(--green)' : 'var(--red)'}">${dif > 0 ? '▲' : '▼'} ${fmt(Math.abs(dif))}</text>` : '')}
-            <text x="${(x + larg / 2).toFixed(1)}" y="${H - padB + 18}" text-anchor="middle" font-size="11" fill="var(--text-muted)">${esc(mesLabel(d.mes))}</text>
-            <text x="${(x + larg / 2).toFixed(1)}" y="${H - padB + 32}" text-anchor="middle" font-size="10" fill="var(--text-muted)">${d.clientes} cli</text>
-        </g>`;
-    }).join('');
-
-    box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Receita confirmada por mês">
-        <line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="var(--border)"></line>
-        ${barras}
-    </svg>`;
-
-    // A comparação só vale entre meses fechados; o mês corrente ainda está enchendo
-    if (badge && dados.length > 1) {
-        const fechados = dados.filter(d => !d.parcial);
-        if (fechados.length < 2) {
-            badge.className = 'chart-badge';
-            badge.textContent = 'mês em curso';
-        } else {
-            const ult = fechados[fechados.length - 1], pen = fechados[fechados.length - 2];
-            const dif = ult.total - pen.total;
-            const pct = pen.total > 0 ? ` (${dif >= 0 ? '+' : ''}${((dif / pen.total) * 100).toFixed(0)}%)` : '';
-            badge.className = 'chart-badge ' + (dif > 0 ? 'is-up' : dif < 0 ? 'is-down' : '');
-            badge.textContent = `${mesLabel(ult.mes)}: ${dif >= 0 ? '▲' : '▼'} ${formatBRL(Math.abs(dif))}${pct}`;
-        }
-    }
-}
-
 // Entradas e saídas: mês em que cada cliente aparece pela 1ª vez e mês em que some
 function renderEntradaSaida(meses) {
     const box = document.getElementById('sa-chart-clientes');
@@ -3236,7 +3159,6 @@ function renderSaude() {
     renderCustosCategoria(analise[analise.length - 1]);
     renderPrevisao();
     renderLucroPorMes(meses);
-    renderReceitaPorMes(meses);
     renderEntradaSaida(meses);
 }
 

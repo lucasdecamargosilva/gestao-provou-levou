@@ -491,17 +491,19 @@
                     <div class="section-container glass chart-card">
                         <div class="table-header">
                             <div>
-                                <h2 class="table-title">De onde entrou o dinheiro</h2>
-                                <span class="chart-sub">Faturamento de cada mês por tipo de cobrança</span>
+                                <h2 class="table-title">Evolução do MRR</h2>
+                                <span class="chart-sub">Receita recorrente por mês e a variação de cada mês</span>
                             </div>
                             <div class="chart-head-right">
-                                <span class="chart-legenda"><i class="dot" style="background:var(--purple)"></i> Mensalidade</span>
-                                <span class="chart-legenda"><i class="dot" style="background:var(--purple-light)"></i> Excedente</span>
-                                <span class="chart-legenda"><i class="dot" style="background:var(--green)"></i> Provas avulsas</span>
-                                <span id="sa-delta" class="chart-badge">—</span>
+                                <span id="mrr-delta-badge" class="chart-badge">—</span>
+                                <select id="mrr-range" class="chart-select">
+                                    <option value="6">6 meses</option>
+                                    <option value="12" selected>12 meses</option>
+                                    <option value="18">18 meses</option>
+                                </select>
                             </div>
                         </div>
-                        <div id="sa-chart-receita" class="chart-box"></div>
+                        <div id="mrr-chart" class="chart-box"></div>
                     </div>
 
                     <div class="section-container glass chart-card">
@@ -581,23 +583,6 @@
                 </div>
 
                 <div class="chart-grid">
-                    <div class="section-container glass chart-card">
-                        <div class="table-header">
-                            <div>
-                                <h2 class="table-title">Evolução do MRR</h2>
-                                <span class="chart-sub">Receita recorrente por mês e a variação de cada mês</span>
-                            </div>
-                            <div class="chart-head-right">
-                                <span id="mrr-delta-badge" class="chart-badge">—</span>
-                                <select id="mrr-range" class="chart-select">
-                                    <option value="6">6 meses</option>
-                                    <option value="12" selected>12 meses</option>
-                                    <option value="18">18 meses</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div id="mrr-chart" class="chart-box"></div>
-                    </div>
 
                     <div class="section-container glass chart-card">
                         <div class="table-header">
