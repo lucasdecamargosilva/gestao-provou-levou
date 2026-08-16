@@ -2386,3 +2386,67 @@ select.form-control {
 #pagamentos .stats-grid.is-compacto .stat-card.is-destaque .stat-value {
     font-size: 24px;
 }
+
+/* ─── Ícones de traço + escala de texto do Financeiro ────── */
+
+.ic {
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 auto;
+    line-height: 0;
+}
+
+.ic svg { width: 100%; height: 100%; display: block; }
+
+/* Indicador: a caixinha tonal segura um ícone de 13px */
+#pagamentos .stat-ic { width: 24px; height: 24px; border-radius: 8px; }
+#pagamentos .stat-ic .ic { width: 13px; height: 13px; }
+
+/* Título de seção */
+#pagamentos .table-title .ic {
+    width: 16px;
+    height: 16px;
+    color: var(--purple);
+    opacity: 0.8;
+}
+
+/* Rótulos menores: previsão, resumo e abas */
+#pagamentos .prev-label .ic,
+#pagamentos .mp-kpi-label .ic {
+    width: 13px;
+    height: 13px;
+    color: var(--text-muted);
+}
+
+#pagamentos .prev-item.is-total .prev-label .ic { color: var(--purple); }
+
+#pagamentos .pay-tab .ic {
+    width: 14px;
+    height: 14px;
+    margin-right: 7px;
+    vertical-align: -2px;
+    opacity: 0.5;
+}
+
+#pagamentos .pay-tab.active .ic { opacity: 1; }
+
+#pagamentos .pay-tab {
+    display: inline-flex;
+    align-items: center;
+    font-size: 12.5px;
+    padding: 13px 11px;
+}
+
+/* Texto mais contido: os números não precisam gritar */
+#pagamentos .stats-grid.is-compacto .stat-value { font-size: 17px; }
+#pagamentos .stats-grid.is-compacto .stat-card.is-destaque .stat-value { font-size: 20px; }
+#pagamentos .stats-grid.is-compacto .stat-sub { font-size: 10px; }
+
+#pagamentos .prev-item strong { font-size: 16px; }
+#pagamentos .prev-item.is-total strong { font-size: 18px; }
+#pagamentos .prev-label { font-size: 10px; letter-spacing: 0.06em; }
+#pagamentos .prev-sub { font-size: 10px; }
+#pagamentos .prev-item { padding: 13px 14px; }
+
+#pagamentos .mp-kpi strong { font-size: 16px; }
+#pagamentos .mp-kpi-label { font-size: 10px; }

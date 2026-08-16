@@ -2664,6 +2664,49 @@ function renderPayCharts() {
     renderMrrPorPlano();
 }
 
+// ─── Ícones de traço ───────────────────────────────────────────────────────────
+// Desenho próprio, grade de 24, traço 1.75. Ícone cheio em 10px fica borrado;
+// traço uniforme mantém a forma legível em qualquer tamanho.
+const ICONES = {
+    entrada: '<path d="M3 16.5 9 10.5l4 4 7-7"/><path d="M20 11.5v-4h-4"/>',
+    provas: '<rect x="3" y="4" width="18" height="14" rx="2"/><path d="m3 14 4-4 3 3 4-4 7 6"/><circle cx="8.5" cy="8.5" r="1.2"/>',
+    lucro: '<path d="M3 8.5A2.5 2.5 0 0 1 5.5 6H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5.5A2.5 2.5 0 0 1 3 16.5z"/><path d="M3 8.5V7a2 2 0 0 1 2-2h11"/><path d="M16.5 12.5h.01"/>',
+    margem: '<path d="m19 5-14 14"/><circle cx="7.5" cy="7.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/>',
+    recorrencia: '<path d="M20.5 9a8 8 0 0 0-14.2-2.3L4 9"/><path d="M4 4.5V9h4.5"/><path d="M3.5 15a8 8 0 0 0 14.2 2.3L20 15"/><path d="M20 19.5V15h-4.5"/>',
+    calendario: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="m9 15 2 2 4-4"/>',
+    barras: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+    recibo: '<path d="M5 3h14v18l-2.5-1.6L14 21l-2-1.4L10 21l-2.5-1.6L5 21z"/><path d="M9 8h6M9 12h6"/>',
+    balanca: '<path d="M12 4v16M7 20h10M4 8h16"/><path d="m4 8-2.5 5.5a3 3 0 0 0 5 0z"/><path d="m20 8-2.5 5.5a3 3 0 0 0 5 0z"/>',
+    transferencia: '<path d="M4 8h15"/><path d="m16 5 3 3-3 3"/><path d="M20 16H5"/><path d="m8 13-3 3 3 3"/>',
+    pulso: '<path d="M3 12h3.5l2.5 7 4-15 2.5 8H21"/>',
+    camadas: '<path d="m12 3 8.5 4.5L12 12 3.5 7.5z"/><path d="m3.5 12.5 8.5 4.5 8.5-4.5"/>',
+    lista: '<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2"/><circle cx="4.5" cy="12" r="1.2"/><circle cx="4.5" cy="18" r="1.2"/>',
+    ok: '<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
+    alerta: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5"/><path d="M12 16.2h.01"/>',
+    teste: '<path d="M9 3h6"/><path d="M10 3v6.5L4.7 18a2 2 0 0 0 1.7 3h11.2a2 2 0 0 0 1.7-3L14 9.5V3"/><path d="M7 15h10"/>',
+    cancelado: '<circle cx="12" cy="12" r="9"/><path d="m6 6 12 12"/>',
+    moedas: '<ellipse cx="9" cy="7" rx="6" ry="3"/><path d="M3 7v4c0 1.7 2.7 3 6 3s6-1.3 6-3V7"/><path d="M9 14v3c0 1.7 2.7 3 6 3s6-1.3 6-3v-4"/><ellipse cx="15" cy="13" rx="6" ry="3"/>',
+    check: '<path d="m4 12.5 5 5L20 6.5"/>',
+    relogio: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5.2l3.2 2"/>',
+    alvo: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/>',
+    chama: '<path d="M12 3c3.5 4 5.5 6.5 5.5 9.5a5.5 5.5 0 0 1-11 0C6.5 10.7 7.5 9 9 7.5c0 2 1 3 2 3.5.5-3 1-5.5 1-8z"/>'
+};
+
+function svgIcone(nome) {
+    const corpo = ICONES[nome];
+    if (!corpo) return '';
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
+        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${corpo}</svg>`;
+}
+
+// Troca todo [data-ic] pelo desenho correspondente
+function aplicarIcones(raiz) {
+    (raiz || document).querySelectorAll('[data-ic]').forEach(el => {
+        if (el.firstElementChild) return;
+        el.innerHTML = svgIcone(el.dataset.ic);
+    });
+}
+
 // ─── Saúde do Negócio ──────────────────────────────────────────────────────────
 const saudeState = { pagamentos: [], custos: {}, provas: {}, categorias: {}, carregado: false, carregando: false };
 
@@ -3766,6 +3809,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 9b. Tela de Pagamentos (abas, busca, exportar, menus de ação)
     setupPagamentosUI();
     setupSaudeUI();
+    aplicarIcones();
 
     // 10. Lógica do Modal da API Key Gerada
     const btnCloseApiKey = document.getElementById('btn-close-apikey');
