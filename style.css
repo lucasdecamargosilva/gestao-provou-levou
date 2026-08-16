@@ -2104,3 +2104,29 @@ select.form-control {
     z-index: 2;
     background: var(--bg-elevated);
 }
+
+/* Cinco indicadores na mesma linha: cabem apertados, então tudo encolhe junto */
+.stats-grid.is-compacto {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.stats-grid.is-compacto .stat-card { padding: 16px 16px; }
+
+.stats-grid.is-compacto .stat-value {
+    font-size: 19px;
+    letter-spacing: -0.03em;
+    white-space: nowrap;
+}
+
+.stats-grid.is-compacto .stat-label,
+.stats-grid.is-compacto .stat-sub {
+    font-size: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@media (max-width: 1150px) {
+    .stats-grid.is-compacto { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
