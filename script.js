@@ -2775,24 +2775,23 @@ function renderCustosCategoria(mes) {
 
 // ─── A receber: agenda das próximas cobranças ──────────────────────────────────
 
-// O previsto é o total que o cliente pagou no último mês em que teve mensalidade.
-// Isso pega tanto quem paga excedente junto (Cacife) quanto quem parcela o plano
-// em dois PIX (Rivello: 97 + 50). Provas extras de R$1 ficam de fora.
+// O previsto é a mensalidade do plano mais as provas que passaram da franquia
+// desde o último pagamento. O preço da prova excedente é o próprio plano dividido
+// pela franquia — quem contratou 3.000 fotos por R$ 2.200 paga R$ 0,73 por prova a mais.
 function valorPrevisto(c) {
     const plano = getClientMonthlyValue(c);
-    const meus = saudeState.pagamentos.filter(p => String(p.store) === String(c.id));
-    const mens = meus.filter(p => p.tipo === 'mensalidade').sort((a, b) => (a.data < b.data ? 1 : -1));
-    if (!mens.length) return { valor: plano, plano, base: 'plano' };
-    const mesRef = mens[0].mes;
-    const total = meus
-        .filter(p => p.mes === mesRef && !/provas extras/i.test(p.descricao))
-        .reduce((s, p) => s + p.valor, 0);
-    if (total <= 0) return { valor: plano, plano, base: 'plano' };
+    const limite = payPlanLimit(c);
+    const usadas = payState.counts[normalizeDomain(c.website)];
+
+    if (!limite || limite === Infinity || usadas == null) {
+        return { valor: plano, plano, excedente: 0, provasExtras: 0, usadas, limite };
+    }
+    const provasExtras = Math.max(0, usadas - limite);
+    const precoProva = plano / limite;
+    const excedente = provasExtras * precoProva;
     return {
-        valor: total,
-        plano,
-        base: Math.abs(total - plano) < 0.01 ? 'plano'
-            : total > plano ? 'acima do plano' : 'abaixo do plano'
+        valor: plano + excedente,
+        plano, excedente, provasExtras, usadas, limite, precoProva
     };
 }
 
@@ -2806,7 +2805,7 @@ function agendaRecebimentos() {
         const dias = daysBetween(venc, hoje);
         const p = valorPrevisto(c);
         if (p.valor <= 0) return;
-        itens.push({ c, venc, dias, valor: p.valor, base: p.base, plano: p.plano });
+        itens.push({ c, venc, dias, ...p });
     });
     return itens.sort((a, b) => a.venc - b.venc);
 }
@@ -2823,10 +2822,14 @@ function renderAReceber() {
     const depois = naJanela.filter(i => i.dias > 7);
 
     const soma = arr => arr.reduce((s, i) => s + i.valor, 0);
+    const todos = vencidos.concat(naJanela);
+    const excedenteTotal = todos.reduce((s, i) => s + (i.excedente || 0), 0);
+    const comExcedente = todos.filter(i => i.excedente > 0).length;
+
     setText('rec-kpi-vencido', `${formatBRL(soma(vencidos))} · ${vencidos.length}`);
     setText('rec-kpi-semana', `${formatBRL(soma(semana))} · ${semana.length}`);
-    setText('rec-kpi-depois', `${formatBRL(soma(depois))} · ${depois.length}`);
-    setText('rec-kpi-total', formatBRL(soma(vencidos) + soma(naJanela)));
+    setText('rec-kpi-excedente', `${formatBRL(excedenteTotal)} · ${comExcedente}`);
+    setText('rec-kpi-total', formatBRL(soma(todos)));
     setText('rec-total', `${formatBRL(soma(naJanela))} em ${janela} dias`);
 
     const linha = i => {
@@ -2834,11 +2837,14 @@ function renderAReceber() {
         const quando = atrasado
             ? `${Math.abs(i.dias)} dia(s) em atraso`
             : i.dias === 0 ? 'vence hoje' : `em ${i.dias} dia(s)`;
+        const uso = i.limite && i.usadas != null
+            ? `${i.usadas.toLocaleString('pt-BR')} / ${i.limite.toLocaleString('pt-BR')} provas`
+            : 'uso não medido';
         return `<div class="rec-row ${atrasado ? 'is-late' : ''}">
             ${payAvatar(i.c.company || i.c.name)}
             <div style="min-width:0">
                 <div class="pay-client-name">${esc(i.c.company || i.c.name)}</div>
-                <div class="pay-client-email">${esc(getClientPlanLabel(i.c))}</div>
+                <div class="pay-client-email">${esc(uso)}</div>
             </div>
             <div>${payMethodHTML(i.c.formaPagamento)}</div>
             <div>
@@ -2846,7 +2852,9 @@ function renderAReceber() {
                 <div class="pay-next-sub">${esc(quando)}</div>
             </div>
             <div class="rec-valor ${atrasado ? 'is-late' : ''}">${formatBRL(i.valor)}
-                ${i.base !== 'plano' ? `<span class="rec-base">${esc(i.base)} (${formatBRL(i.plano)})</span>` : ''}
+                ${i.excedente > 0
+                    ? `<span class="rec-base is-extra">${formatBRL(i.plano)} + ${formatBRL(i.excedente)} de ${i.provasExtras.toLocaleString('pt-BR')} provas extras</span>`
+                    : '<span class="rec-base">mensalidade do plano</span>'}
             </div>
         </div>`;
     };
@@ -3603,6 +3611,8 @@ async function loadPagamentosView() {
             payState.loaded = true;
             payState.rows = buildPagamentosRows();
             renderPagamentos();
+            // o previsto a receber depende dessa contagem para calcular excedente
+            if (saudeState.carregado) renderAReceber();
         } catch (err) {
             console.warn('Pagamentos: contagem de provas falhou:', err);
         }

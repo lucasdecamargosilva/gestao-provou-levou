@@ -1951,3 +1951,5 @@ select.form-control {
 @media (max-width: 900px) {
     .rec-row { grid-template-columns: 42px 1fr 110px; }
 }
+
+.rec-base.is-extra { color: var(--purple); font-weight: 600; }
