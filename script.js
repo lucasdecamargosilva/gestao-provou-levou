@@ -3196,49 +3196,6 @@ function renderEntradaSaida(meses) {
     </svg>`;
 }
 
-function renderConcentracao(meses) {
-    const box = document.getElementById('sa-chart-concentracao');
-    if (!box) return;
-    const dentro = new Set(meses);
-    const porStore = {};
-    saudeState.pagamentos.forEach(p => {
-        if (!dentro.has(p.mes)) return;
-        porStore[p.store] = (porStore[p.store] || 0) + p.valor;
-    });
-    const lista = Object.entries(porStore).sort((a, b) => b[1] - a[1]);
-    if (!lista.length) { box.innerHTML = '<div class="chart-empty">Sem receita no período.</div>'; return; }
-    const total = lista.reduce((s, l) => s + l[1], 0);
-
-    const faixas = [
-        { nome: 'Top 3 clientes', n: 3 },
-        { nome: 'Top 10 clientes', n: 10 },
-        { nome: 'Todos os outros', n: lista.length }
-    ];
-    let html = '';
-    faixas.forEach((f, i) => {
-        const soma = i === 2
-            ? lista.slice(10).reduce((s, l) => s + l[1], 0)
-            : lista.slice(0, f.n).reduce((s, l) => s + l[1], 0);
-        const pct = (soma / total) * 100;
-        const cor = i === 0 ? 'var(--red)' : i === 1 ? 'var(--yellow)' : 'var(--green)';
-        html += `<div style="margin-bottom:16px">
-            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
-                <span style="font-weight:600">${f.nome}</span>
-                <span style="font-variant-numeric:tabular-nums;color:var(--text-sub)">${formatBRL(soma)} <strong style="color:${cor}">${pct.toFixed(0)}%</strong></span>
-            </div>
-            <div class="pay-usage-track" style="width:100%;max-width:none;height:9px">
-                <div class="pay-usage-fill" style="width:${Math.min(100, pct)}%;background:${cor}"></div>
-            </div>
-        </div>`;
-    });
-    const nomeTop = clients.find(c => String(c.id) === String(lista[0][0]));
-    html += `<p style="font-size:12px;color:var(--text-muted);margin-top:14px;line-height:1.5">
-        Maior cliente: <strong style="color:var(--text)">${esc(nomeTop ? (nomeTop.company || nomeTop.name) : '—')}</strong>
-        com ${formatBRL(lista[0][1])} (${((lista[0][1] / total) * 100).toFixed(0)}% de tudo).
-        ${lista.length} cliente(s) pagaram no período.</p>`;
-    box.innerHTML = html;
-}
-
 function renderKPIsSaude(meses) {
     const mesAtual = meses[meses.length - 1];
     const doMes = saudeState.pagamentos.filter(p => p.mes === mesAtual);
@@ -3281,7 +3238,6 @@ function renderSaude() {
     renderLucroPorMes(meses);
     renderReceitaPorMes(meses);
     renderEntradaSaida(meses);
-    renderConcentracao(analise);
 }
 
 async function loadSaude(forcar) {
