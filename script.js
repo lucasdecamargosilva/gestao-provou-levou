@@ -2620,10 +2620,20 @@ const mpState = { pagamentos: [], jaRegistrados: new Set(), idsRegistrados: new 
 
 // A conta é pessoa jurídica + pessoal do Lucas: cobranças de ferramenta/consumo
 // entram como "pagamento aprovado" e não são receita de cliente.
-const MP_GASTOS_PESSOAIS = /anthropic|claude|openai|hostinger|google|uber|ifood|tiktok|bytedance|power bank/i;
+const MP_GASTOS_PESSOAIS = /anthropic|claude|openai|hostinger|google|uber|ifood|tiktok|bytedance|power bank|magnific|uazapi/i;
+
+// Contas bancárias do próprio Lucas: entram como "pagamento aprovado" mas são
+// aporte/transferência entre contas dele, não receita de lojista.
+const MP_CONTAS_PROPRIAS = ['86502893'];
+
+function mpContaOrigem(p) {
+    const td = (p.point_of_interaction || {}).transaction_data || {};
+    return String(((td.bank_info || {}).payer || {}).account_id || '');
+}
 
 function mpEhGastoPessoal(p) {
-    return MP_GASTOS_PESSOAIS.test(p.description || '');
+    if (MP_GASTOS_PESSOAIS.test(p.description || '')) return true;
+    return MP_CONTAS_PROPRIAS.includes(mpContaOrigem(p));
 }
 
 function mpCategoria(p) {
