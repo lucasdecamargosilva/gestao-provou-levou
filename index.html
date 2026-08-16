@@ -400,123 +400,194 @@
                 </div>
             </section>
 
-            <!-- Pagamentos View -->
-            <section id="pagamentos" class="view">
-                <div class="pay-topbar">
-                    <div>
-                        <h1 class="page-title">Financeiro</h1>
-                        <p class="pay-subtitle">Faturamento, custo, lucro e a régua de cobrança dos clientes.</p>
-                    </div>
-                    <div class="pay-topbar-actions">
-                        <select id="saude-periodo" class="chart-select">
-                            <option value="mes-atual">Este mês</option>
-                            <option value="mes-passado">Mês passado</option>
-                            <option value="6" selected>6 meses</option>
-                            <option value="12">12 meses</option>
-                        </select>
-                        <div class="pay-search">
-                            <i class="fas fa-search"></i>
-                            <input type="text" id="pay-search" placeholder="Buscar cliente...">
+            <!-- Dashboard Financeiro -->
+            <section id="pagamentos" class="view fin">
+
+                <div class="fin-toolbar">
+                    <div class="fin-periodo">
+                        <span class="fin-periodo-rot">Período:</span>
+                        <div class="pill-group" id="fin-periodo">
+                            <button class="pill active" data-p="mes-atual">Este mês</button>
+                            <button class="pill" data-p="mes-passado">Mês passado</button>
+                            <button class="pill" data-p="6">6 meses</button>
+                            <button class="pill" data-p="12">12 meses</button>
                         </div>
-                        <button id="btn-pay-export" class="btn-ghost">
-                            <i class="fas fa-download"></i> Exportar
-                        </button>
-                        <button id="btn-saude-refresh" class="btn-ghost">
-                            <i class="fas fa-sync-alt"></i> Atualizar
-                        </button>
+                        <label class="fin-mes">
+                            <span class="ic" data-ic="calendario"></span>
+                            <select id="fin-mes"></select>
+                        </label>
+                        <span id="fin-badge-curso" class="chip is-curso">Mês em curso</span>
                     </div>
+                    <button id="btn-saude-refresh" class="btn-ghost">
+                        <span class="ic" data-ic="recorrencia"></span> Atualizar dados
+                    </button>
                 </div>
 
-                <div class="stats-grid is-compacto">
-                    <div class="stat-card glass">
-                        <div class="stat-label"><span class="stat-ic is-verde"><span class="ic" data-ic="entrada"></span></span>Faturamento do mês</div>
-                        <div id="sa-recebido" class="stat-value">—</div>
-                        <div id="sa-recebido-sub" class="stat-sub">pagamentos confirmados</div>
-                    </div>
-                    <div class="stat-card glass">
-                        <div class="stat-label"><span class="stat-ic is-vermelho"><span class="ic" data-ic="provas"></span></span>Custo de provas</div>
-                        <div id="sa-custo" class="stat-value" style="color: var(--red);">—</div>
-                        <div id="sa-custo-sub" class="stat-sub">geração de imagens</div>
-                    </div>
-                    <div class="stat-card glass is-destaque">
-                        <div class="stat-label"><span class="stat-ic is-verde"><span class="ic" data-ic="lucro"></span></span>Lucro do mês</div>
-                        <div id="sa-lucro" class="stat-value">—</div>
-                        <div id="sa-lucro-sub" class="stat-sub">faturamento menos custo</div>
-                        <div class="regua" id="sa-regua" title="Proporção do faturamento: custo e lucro">
-                            <span class="r-custo" style="width:0%"></span>
-                            <span class="r-lucro" style="width:0%"></span>
-                        </div>
-                    </div>
-                    <div class="stat-card glass">
-                        <div class="stat-label"><span class="stat-ic is-roxo"><span class="ic" data-ic="margem"></span></span>Margem</div>
-                        <div id="sa-margem" class="stat-value">—</div>
-                        <div id="sa-margem-sub" class="stat-sub">do que entra, quanto sobra</div>
-                    </div>
-                    <div class="stat-card glass">
-                        <div class="stat-label"><span class="stat-ic is-roxo"><span class="ic" data-ic="recorrencia"></span></span>MRR Ativo</div>
-                        <div id="pay-kpi-mrr" class="stat-value" style="color: var(--purple);">R$ 0</div>
-                        <div id="pay-kpi-mrr-sub" class="stat-sub">0 clientes pagantes</div>
-                    </div>
+                <div class="fin-cards">
+                    <article class="fin-card">
+                        <header>
+                            <h3>Faturamento <small>(já entrou)</small></h3>
+                            <span id="sa-recebido-var" class="var">—</span>
+                        </header>
+                        <strong id="sa-recebido">—</strong>
+                        <p id="sa-recebido-sub">—</p>
+                    </article>
+
+                    <article class="fin-card">
+                        <header>
+                            <h3>Custo de operação</h3>
+                            <span id="sa-custo-var" class="var">—</span>
+                        </header>
+                        <strong id="sa-custo">—</strong>
+                        <p id="sa-custo-sub">—</p>
+                    </article>
+
+                    <article class="fin-card is-lucro">
+                        <header>
+                            <h3>Lucro</h3>
+                            <span id="sa-lucro-var" class="var">—</span>
+                        </header>
+                        <strong id="sa-lucro">—</strong>
+                        <p><span id="sa-margem-linha">Margem: —</span></p>
+                    </article>
+
+                    <article class="fin-card">
+                        <header>
+                            <h3>Gasto pessoal <small>(não entra no lucro)</small></h3>
+                            <span id="sa-pessoal-var" class="var">—</span>
+                        </header>
+                        <strong id="sa-pessoal">—</strong>
+                        <p id="sa-pessoal-sub">—</p>
+                    </article>
                 </div>
 
-                <div class="section-container glass chart-card">
-                    <div class="table-header">
-                        <div>
-                            <h2 class="table-title"><span class="ic" data-ic="calendario"></span>Previsão para fechar o mês</h2>
-                            <span id="prev-sub" class="chart-sub">O que ainda entra, o que ainda sai e quanto deve sobrar</span>
-                        </div>
-                        <span id="prev-margem" class="chart-badge">—</span>
-                    </div>
-                    <div class="prev-grid">
-                        <div class="prev-item">
-                            <span class="prev-label"><span class="ic" data-ic="check"></span>Já entrou</span>
-                            <strong id="prev-entrou">—</strong>
-                            <span id="prev-entrou-sub" class="prev-sub">—</span>
-                        </div>
-                        <div class="prev-item">
-                            <span class="prev-label"><span class="ic" data-ic="relogio"></span>Ainda a receber</span>
-                            <strong id="prev-receber" style="color:var(--blue)">—</strong>
-                            <span id="prev-receber-sub" class="prev-sub">—</span>
-                        </div>
-                        <div class="prev-item is-total">
-                            <span class="prev-label"><span class="ic" data-ic="alvo"></span>Faturamento previsto</span>
-                            <strong id="prev-faturamento" style="color:var(--purple)">—</strong>
-                            <span class="prev-sub">no fechamento do mês</span>
-                        </div>
-                        <div class="prev-item">
-                            <span class="prev-label"><span class="ic" data-ic="chama"></span>Custo previsto</span>
-                            <strong id="prev-custo" style="color:var(--red)">—</strong>
-                            <span id="prev-custo-sub" class="prev-sub">—</span>
-                        </div>
-                        <div class="prev-item is-total">
-                            <span class="prev-label"><span class="ic" data-ic="lucro"></span>Lucro líquido previsto</span>
-                            <strong id="prev-lucro" style="color:var(--green)">—</strong>
-                            <span id="prev-lucro-sub" class="prev-sub">—</span>
-                        </div>
-                    </div>
+                <div class="fin-linha fin-linha-3">
+                    <section class="painel">
+                        <header class="painel-head">
+                            <h2>Previsão de fechamento <small>(estimativa)</small></h2>
+                            <span class="chip is-estimativa">Estimativa</span>
+                        </header>
+                        <dl class="prev-lista">
+                            <div><dt>Já entrou</dt><dd id="prev-entrou">—</dd></div>
+                            <div><dt id="prev-vencer-rot">A vencer no mês</dt><dd id="prev-receber">—</dd></div>
+                            <div class="is-subtotal"><dt>Total previsto de entradas</dt><dd id="prev-faturamento">—</dd></div>
+                            <div class="tem-espaco"><dt>Custo variável <small>(imagens projetadas)</small></dt><dd id="prev-custo-var">—</dd></div>
+                            <div><dt>Custos fixos <small>(média/mês)</small></dt><dd id="prev-custo-fixo">—</dd></div>
+                            <div class="is-subtotal is-saida"><dt>Total previsto de saídas</dt><dd id="prev-custo">—</dd></div>
+                            <div class="is-total"><dt>Previsão de lucro</dt><dd id="prev-lucro">—</dd></div>
+                        </dl>
+                        <p class="prev-rodape"><span id="prev-margem">—</span></p>
+                    </section>
+
+                    <section class="painel">
+                        <header class="painel-head">
+                            <h2>Resumo do mês</h2>
+                            <div class="legenda">
+                                <span><i style="background:var(--purple)"></i>Receita</span>
+                                <span><i style="background:var(--red)"></i>Custo</span>
+                                <span><i style="background:var(--green)"></i>Lucro</span>
+                            </div>
+                        </header>
+                        <div id="sa-chart-acumulado" class="chart-box"></div>
+                        <p class="painel-nota">Mês em curso. Valores acumulados por dia.</p>
+                    </section>
+
+                    <section class="painel">
+                        <header class="painel-head"><h2>Alertas importantes</h2></header>
+                        <div id="fin-alertas" class="alertas"></div>
+                    </section>
                 </div>
 
-                <div class="section-container glass pay-panel">
+                <div class="fin-linha fin-linha-3">
+                    <section class="painel">
+                        <header class="painel-head">
+                            <h2>Quem me deve</h2>
+                            <button class="link-acao" data-aba="inadimplentes">Ver todos <span id="fin-devedores-n">(0)</span></button>
+                        </header>
+                        <div id="fin-devedores" class="mini-tabela"></div>
+                    </section>
+
+                    <section class="painel">
+                        <header class="painel-head">
+                            <h2>Quem paga mais <small id="det-sub">—</small></h2>
+                            <span id="det-total" class="chip">—</span>
+                        </header>
+                        <div id="sa-detalhado" class="det-box"></div>
+                    </section>
+
+                    <section class="painel">
+                        <header class="painel-head">
+                            <h2>Quem custa mais</h2>
+                            <span id="cli-total" class="chip">—</span>
+                        </header>
+                        <div class="mini-tabela" id="cli-custo-body"></div>
+                        <p class="painel-nota" id="cli-sub">—</p>
+                    </section>
+                </div>
+
+                <div class="fin-linha fin-linha-3">
+                    <section class="painel">
+                        <header class="painel-head">
+                            <h2>Para onde foi o dinheiro <small>(saídas do mês)</small></h2>
+                            <span id="sa-custos-total" class="chip">—</span>
+                        </header>
+                        <div id="sa-custos-cat"></div>
+                        <p class="painel-nota" id="sa-custos-sub">—</p>
+                    </section>
+
+                    <section class="painel">
+                        <header class="painel-head">
+                            <h2>Evolução dos últimos 6 meses</h2>
+                            <div class="legenda">
+                                <span><i style="background:var(--purple)"></i>Receita</span>
+                                <span><i style="background:var(--red)"></i>Custo</span>
+                                <span><i style="background:var(--green)"></i>Lucro</span>
+                            </div>
+                        </header>
+                        <div id="sa-chart-lucro" class="chart-box"></div>
+                        <p class="painel-nota"><span id="sa-delta-lucro">—</span></p>
+                    </section>
+
+                    <section class="painel">
+                        <header class="painel-head"><h2>Resumo do período <small id="resumo-rot">—</small></h2></header>
+                        <div class="resumo-periodo">
+                            <dl class="resumo-lista">
+                                <div><dt>Receita total</dt><dd id="res-receita">—</dd></div>
+                                <div><dt>Custo de operação</dt><dd id="res-custo">—</dd></div>
+                                <div class="is-total"><dt>Lucro total</dt><dd id="res-lucro">—</dd></div>
+                                <div><dt>Margem média</dt><dd id="res-margem">—</dd></div>
+                            </dl>
+                            <div id="res-donut" class="donut"></div>
+                        </div>
+                    </section>
+                </div>
+
+                <section class="painel pay-panel">
                     <div class="pay-tabs" id="pay-tabs">
                         <button class="pay-tab active" data-tab="todos"><span class="ic" data-ic="lista"></span>Todos <span class="pay-tab-count" id="pay-count-todos">0</span></button>
                         <button class="pay-tab" data-tab="ativos"><span class="ic" data-ic="ok"></span>Ativos <span class="pay-tab-count" id="pay-count-ativos">0</span></button>
                         <button class="pay-tab" data-tab="inadimplentes"><span class="ic" data-ic="alerta"></span>Inadimplentes <span class="pay-tab-count" id="pay-count-inadimplentes">0</span></button>
                         <button class="pay-tab" data-tab="testes"><span class="ic" data-ic="teste"></span>Testes <span class="pay-tab-count" id="pay-count-testes">0</span></button>
                         <button class="pay-tab" data-tab="cancelados"><span class="ic" data-ic="cancelado"></span>Cancelados <span class="pay-tab-count" id="pay-count-cancelados">0</span></button>
-                        <button class="pay-tab is-destaque" data-tab="areceber"><span class="ic" data-ic="moedas"></span>A receber <span class="pay-tab-count" id="pay-count-areceber">0</span></button>
+                        <button class="pay-tab" data-tab="areceber"><span class="ic" data-ic="moedas"></span>A receber <span class="pay-tab-count" id="pay-count-areceber">0</span></button>
+                        <div class="pay-tabs-busca">
+                            <span class="ic" data-ic="lista"></span>
+                            <input type="text" id="pay-search" placeholder="Buscar cliente...">
+                            <button id="btn-pay-export" class="btn-ghost is-mini">Exportar</button>
+                        </div>
                     </div>
 
                     <div id="rec-resumo" class="rec-resumo" style="display:none;">
                         <div class="mp-kpi"><span class="mp-kpi-label"><span class="ic" data-ic="alerta"></span>Vencido</span><strong id="rec-kpi-vencido" style="color:var(--red)">—</strong></div>
                         <div class="mp-kpi"><span class="mp-kpi-label"><span class="ic" data-ic="calendario"></span>Vence esta semana</span><strong id="rec-kpi-semana">—</strong></div>
-                        <div class="mp-kpi"><span class="mp-kpi-label"><span class="ic" data-ic="provas"></span>Provas excedentes</span><strong id="rec-kpi-excedente" style="color:var(--purple)">—</strong></div>
+                        <div class="mp-kpi"><span class="mp-kpi-label"><span class="ic" data-ic="provas"></span>Imagens excedentes</span><strong id="rec-kpi-excedente" style="color:var(--purple)">—</strong></div>
                         <div class="mp-kpi"><span class="mp-kpi-label"><span class="ic" data-ic="moedas"></span>Total previsto (30 dias)</span><strong id="rec-kpi-total" style="color:var(--green)">—</strong></div>
                     </div>
 
                     <div class="pay-head">
                         <div>Cliente</div>
                         <div>Plano</div>
-                        <div>Fotos <i class="fas fa-circle-info" title="Provas geradas desde o último pagamento"></i></div>
+                        <div>Imagens</div>
                         <div>Pagamento</div>
                         <div>Próxima cobrança</div>
                         <div>Vai pagar</div>
@@ -524,118 +595,18 @@
                         <div></div>
                     </div>
 
-                    <div id="pay-list" class="pay-list">
-                        <div class="pay-empty">Carregando...</div>
-                    </div>
+                    <div id="pay-list" class="pay-list"><div class="pay-empty">Carregando...</div></div>
 
                     <div class="pay-footer">
                         <span id="pay-range" class="pay-range">—</span>
                         <div id="pay-pager" class="pay-pager"></div>
                     </div>
-                </div>
+                </section>
 
-                <div class="chart-grid" style="grid-template-columns: 1.35fr 1fr;">
-                    <div class="section-container glass chart-card">
-                        <div class="table-header">
-                            <div>
-                                <h2 class="table-title"><span class="ic" data-ic="barras"></span>Evolução do MRR</h2>
-                                <span class="chart-sub">Receita recorrente por mês e a variação de cada mês</span>
-                            </div>
-                            <div class="chart-head-right">
-                                <span id="mrr-delta-badge" class="chart-badge">—</span>
-                                <select id="mrr-range" class="chart-select">
-                                    <option value="6">6 meses</option>
-                                    <option value="12" selected>12 meses</option>
-                                    <option value="18">18 meses</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div id="mrr-chart" class="chart-box"></div>
-                    </div>
-
-                    <div class="section-container glass chart-card">
-                        <div class="table-header">
-                            <div>
-                                <h2 class="table-title"><span class="ic" data-ic="recibo"></span>Quanto cada cliente pagou</h2>
-                                <span id="det-sub" class="chart-sub">—</span>
-                            </div>
-                            <span id="det-total" class="chart-badge">—</span>
-                        </div>
-                        <div id="sa-detalhado" class="chart-box det-box"></div>
-                    </div>
-                </div>
-
-                <div class="section-container glass chart-card">
-                    <div class="table-header">
-                        <div>
-                            <h2 class="table-title"><span class="ic" data-ic="balanca"></span>Quanto cada cliente custa</h2>
-                            <span id="cli-sub" class="chart-sub">Provas geradas no ciclo atual e o que sobra depois do custo</span>
-                        </div>
-                        <span id="cli-total" class="chart-badge">—</span>
-                    </div>
-                    <div class="tabela-rolagem">
-                    <table class="client-table">
-                        <thead>
-                            <tr>
-                                <th>Cliente</th>
-                                <th>Categoria</th>
-                                <th>Provas no ciclo</th>
-                                <th>Custo</th>
-                                <th>Vai pagar</th>
-                                <th>Sobra</th>
-                                <th>Margem</th>
-                            </tr>
-                        </thead>
-                        <tbody id="cli-custo-body">
-                            <tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:30px 0;">Carregando...</td></tr>
-                        </tbody>
-                    </table>
-                    </div>
-                </div>
-
-                <div class="chart-grid" style="grid-template-columns: 1fr;">
-                    <div class="section-container glass chart-card">
-                        <div class="table-header">
-                            <div>
-                                <h2 class="table-title"><span class="ic" data-ic="transferencia"></span>Para onde foi o dinheiro</h2>
-                                <span id="sa-custos-sub" class="chart-sub">Saídas do mês, separando o que é da operação</span>
-                            </div>
-                            <span id="sa-custos-total" class="chart-badge">—</span>
-                        </div>
-                        <div id="sa-custos-cat" class="chart-box"></div>
-                    </div>
-                </div>
-
-                <div class="section-container glass chart-card">
-                    <div class="table-header">
-                        <div>
-                            <h2 class="table-title"><span class="ic" data-ic="pulso"></span>Faturamento, custo e lucro</h2>
-                            <span class="chart-sub">Quanto entrou, quanto a operação custou e o que sobrou em cada mês</span>
-                        </div>
-                        <div class="chart-head-right">
-                            <span class="chart-legenda"><i class="dot" style="background:var(--purple)"></i> Faturamento</span>
-                            <span class="chart-legenda"><i class="dot" style="background:var(--red)"></i> Custo</span>
-                            <span class="chart-legenda"><i class="dot" style="background:var(--green)"></i> Lucro</span>
-                            <span id="sa-delta-lucro" class="chart-badge">—</span>
-                        </div>
-                    </div>
-                    <div id="sa-chart-lucro" class="chart-box"></div>
-                </div>
-
-
-                <div class="chart-grid">
-
-                    <div class="section-container glass chart-card">
-                        <div class="table-header">
-                            <div>
-                                <h2 class="table-title"><span class="ic" data-ic="camadas"></span>MRR por plano</h2>
-                                <span class="chart-sub">De onde vem a receita hoje</span>
-                            </div>
-                        </div>
-                        <div id="mrr-plan-chart" class="chart-box"></div>
-                    </div>
-                </div>
-
+                <p class="fin-rodape">
+                    <span class="ic" data-ic="alerta"></span>
+                    Valores calculados pelas regras do sistema. Estimativas usam o ritmo atual de uso e pagamento.
+                </p>
             </section>
 
             <!-- Fluxo de Caixa View -->
