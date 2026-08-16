@@ -2965,55 +2965,6 @@ function renderPrevisao() {
     setText('prev-sub', `Fechamento de ${mesLabel(mes)} · faltam ${diasNoMes - diaAtual} dia(s)`);
 }
 
-// Cascata: faturou → tirou o custo da operação → sobrou
-function renderCascata(mes) {
-    const box = document.getElementById('sa-cascata');
-    if (!box) return;
-    const receita = saudeState.pagamentos.filter(p => p.mes === mes).reduce((s, p) => s + p.valor, 0);
-    const cat = saudeState.categorias[mes];
-    let itens;
-    if (cat && cat.categorias) {
-        itens = Object.entries(cat.categorias)
-            .filter(([k, v]) => cat.negocio[k] && v > 0)
-            .sort((a, b) => b[1] - a[1]);
-    } else {
-        const c = custoDoMes(mes);
-        itens = c.total > 0 ? [['Custo estimado de provas', c.total]] : [];
-    }
-    const custo = itens.reduce((s, l) => s + l[1], 0);
-    const lucro = receita - custo;
-
-    const W = 400, H = 250, padT = 20, padB = 34, padL = 8, padR = 8;
-    const max = Math.max(receita, 1);
-    const alt = H - padT - padB;
-    const larg = 74;
-    const x1 = padL + 20, x2 = W / 2 - larg / 2, x3 = W - padR - larg - 20;
-    const hRec = (receita / max) * alt;
-    const hLucro = (Math.max(0, lucro) / max) * alt;
-
-    let acumulado = 0;
-    const pilha = itens.map(([nome, val]) => {
-        const h = (val / max) * alt;
-        const y = H - padB - hRec + acumulado;
-        acumulado += h;
-        return `<rect x="${x2}" y="${y.toFixed(1)}" width="${larg}" height="${Math.max(1, h).toFixed(1)}" fill="${CORES_CATEGORIA[nome] || 'var(--red)'}" opacity=".85"><title>${esc(nome)}: ${formatBRL(val)}</title></rect>`;
-    }).join('');
-
-    box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Do faturamento ao lucro">
-        <line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="var(--border)"></line>
-        <rect x="${x1}" y="${(H - padB - hRec).toFixed(1)}" width="${larg}" height="${hRec.toFixed(1)}" rx="4" fill="var(--purple)"></rect>
-        <text x="${x1 + larg / 2}" y="${(H - padB - hRec - 8).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">${formatBRL(receita)}</text>
-        <text x="${x1 + larg / 2}" y="${H - padB + 16}" text-anchor="middle" font-size="11" fill="var(--text-muted)">Faturou</text>
-        ${pilha}
-        <text x="${x2 + larg / 2}" y="${(H - padB - hRec - 8).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--red)">−${formatBRL(custo)}</text>
-        <text x="${x2 + larg / 2}" y="${H - padB + 16}" text-anchor="middle" font-size="11" fill="var(--text-muted)">Custou</text>
-        <rect x="${x3}" y="${(H - padB - hLucro).toFixed(1)}" width="${larg}" height="${Math.max(1, hLucro).toFixed(1)}" rx="4" fill="var(--green)"></rect>
-        <text x="${x3 + larg / 2}" y="${(H - padB - hLucro - 8).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--green)">${formatBRL(lucro)}</text>
-        <text x="${x3 + larg / 2}" y="${H - padB + 16}" text-anchor="middle" font-size="11" fill="var(--text-muted)">Sobrou</text>
-        <text x="${x3 + larg / 2}" y="${H - padB + 30}" text-anchor="middle" font-size="10" font-weight="600" fill="var(--green)">${receita > 0 ? ((lucro / receita) * 100).toFixed(0) + '% de margem' : ''}</text>
-    </svg>`;
-}
-
 // Faturamento x custo x lucro, lado a lado, com a linha de lucro por cima
 function renderLucroPorMes(meses) {
     const box = document.getElementById('sa-chart-lucro');
@@ -3360,7 +3311,6 @@ function renderSaude() {
     renderKPIsSaude(analise);
     renderFaturamentoDetalhado(analise);
     renderCustosCategoria(analise[analise.length - 1]);
-    renderCascata(analise[analise.length - 1]);
     renderPrevisao();
     renderLucroPorMes(meses);
     renderReceitaPorMes(meses);
