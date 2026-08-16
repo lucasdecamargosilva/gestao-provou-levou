@@ -2130,3 +2130,111 @@ select.form-control {
 @media (max-width: 1150px) {
     .stats-grid.is-compacto { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+/* ─── Financeiro: acabamento visual ──────────────────────── */
+
+/* Ícone dos indicadores: caixinha tonal, mesmo tamanho em todos */
+.stat-ic {
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    display: inline-grid;
+    place-items: center;
+    margin-right: 8px;
+    flex: 0 0 auto;
+}
+
+.stat-ic i { font-size: 10px; }
+
+.stat-ic.is-roxo { background: rgba(124, 58, 237, 0.12); color: #6d28d9; }
+.stat-ic.is-verde { background: rgba(16, 185, 129, 0.14); color: #047857; }
+.stat-ic.is-vermelho { background: rgba(239, 68, 68, 0.12); color: #b91c1c; }
+
+.stats-grid.is-compacto .stat-label {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    color: var(--text-sub);
+}
+
+/* O card inteiro reage ao ponteiro, sem virar botão */
+.stats-grid.is-compacto .stat-card {
+    transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.stats-grid.is-compacto .stat-card:hover {
+    border-color: var(--border-strong);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+    transform: translateY(-1px);
+}
+
+/* Título de seção com ícone: alinhado pela linha de base do texto */
+.table-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.table-title > i {
+    font-size: 13px;
+    color: var(--purple);
+    opacity: 0.75;
+    width: 18px;
+    text-align: center;
+}
+
+/* Previsão: ícone antes do rótulo */
+.prev-label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.prev-label > i { font-size: 10px; opacity: 0.55; }
+.prev-item.is-total .prev-label > i { opacity: 0.8; color: var(--purple); }
+
+.prev-item {
+    transition: border-color 180ms ease, background 180ms ease;
+}
+
+.prev-item:hover { border-color: var(--border-strong); }
+
+/* Resumo do a receber */
+.mp-kpi-label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.mp-kpi-label > i { font-size: 10px; opacity: 0.55; }
+
+/* Abas com ícone */
+.pay-tab > i {
+    font-size: 11px;
+    margin-right: 7px;
+    opacity: 0.55;
+}
+
+.pay-tab.active > i { opacity: 1; }
+
+/* O ponto da aba destacada some: o ícone já cumpre esse papel */
+.pay-tab.is-destaque::before { display: none; }
+
+/* Tabelas: linha inteira responde ao ponteiro */
+.client-table tbody tr { transition: background 160ms ease; }
+
+/* As barras do detalhado são reconstruídas a cada render, então não animam:
+   entram já na largura final, sem transição de layout. */
+.det-fill,
+.det-fill-extra { transition: none; }
+
+@media (prefers-reduced-motion: reduce) {
+    .stats-grid.is-compacto .stat-card,
+    .stats-grid.is-compacto .stat-card:hover,
+    .prev-item,
+    .client-table tbody tr,
+    .pay-usage-fill {
+        transition: none;
+        transform: none;
+    }
+}
