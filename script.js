@@ -2904,6 +2904,54 @@ function renderFaturamentoDetalhado(meses) {
     }).join('');
 }
 
+// Quanto cada cliente custa no ciclo atual (provas desde o último pagamento)
+function renderCustoPorCliente() {
+    const tbody = document.getElementById('cli-custo-body');
+    if (!tbody) return;
+
+    const linhas = [];
+    clients.forEach(c => {
+        if (c.status === 'Inativo') return;
+        const usadas = payState.counts[normalizeDomain(c.website)];
+        if (usadas == null) return;
+        const custoUnit = getCategoryCost(c.categoria) != null
+            ? (c.categoria === 'roupa' ? 0.37 : 0.28)
+            : 0.28;
+        const custo = usadas * custoUnit;
+        const prev = valorPrevisto(c);
+        const receita = c.status === 'Teste Gratuito' ? 0 : prev.valor;
+        const sobra = receita - custo;
+        const margem = receita > 0 ? (sobra / receita) * 100 : null;
+        linhas.push({ c, usadas, custo, receita, sobra, margem, custoUnit });
+    });
+
+    linhas.sort((a, b) => b.custo - a.custo);
+    const totalCusto = linhas.reduce((s, l) => s + l.custo, 0);
+    const totalSobra = linhas.reduce((s, l) => s + l.sobra, 0);
+    setText('cli-total', `${formatBRL(totalCusto)} de custo`);
+    setText('cli-sub', `${linhas.length} loja(s) com provas medidas · sobra ${formatBRL(totalSobra)} no total`);
+
+    if (!linhas.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:30px 0;">Sem contagem de provas ainda.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = linhas.map(l => {
+        const corMargem = l.margem == null ? 'var(--text-muted)'
+            : l.margem >= 60 ? 'var(--green)' : l.margem >= 30 ? 'var(--yellow)' : 'var(--red)';
+        const teste = l.c.status === 'Teste Gratuito';
+        return `<tr>
+            <td style="font-weight:600">${esc(l.c.company || l.c.name)}${teste ? ' <span class="status-badge status-pending" style="margin-left:6px">teste</span>' : ''}</td>
+            <td style="color:var(--text-muted)">${l.c.categoria === 'roupa' ? 'Roupa' : 'Óculos'} · R$ ${l.custoUnit.toFixed(2).replace('.', ',')}/prova</td>
+            <td style="font-variant-numeric:tabular-nums">${l.usadas.toLocaleString('pt-BR')}</td>
+            <td style="color:var(--red);font-weight:600;font-variant-numeric:tabular-nums">${formatBRL(l.custo)}</td>
+            <td style="font-variant-numeric:tabular-nums">${teste ? '—' : formatBRL(l.receita)}</td>
+            <td style="font-weight:600;font-variant-numeric:tabular-nums;color:${l.sobra >= 0 ? 'var(--green)' : 'var(--red)'}">${formatBRL(l.sobra)}</td>
+            <td style="font-weight:600;color:${corMargem}">${l.margem == null ? '—' : l.margem.toFixed(0) + '%'}</td>
+        </tr>`;
+    }).join('');
+}
+
 // ─── Previsão de fechamento do mês ─────────────────────────────────────────────
 
 // Custo fixo da operação fora as provas (ferramentas, anúncios). Usa a média dos
@@ -3066,59 +3114,6 @@ function janelaAnalise() {
     return janelaSaude();
 }
 
-// Entradas e saídas: mês em que cada cliente aparece pela 1ª vez e mês em que some
-function renderEntradaSaida(meses) {
-    const box = document.getElementById('sa-chart-clientes');
-    if (!box) return;
-
-    const porCliente = {};
-    saudeState.pagamentos.forEach(p => {
-        if (!porCliente[p.store]) porCliente[p.store] = new Set();
-        porCliente[p.store].add(p.mes);
-    });
-
-    const ultimoMes = meses[meses.length - 1];
-    const dados = meses.map((mes, i) => {
-        let novos = 0, saiu = 0;
-        Object.values(porCliente).forEach(ms => {
-            const pagouAgora = ms.has(mes);
-            const pagouAntes = [...ms].some(m => m < mes);
-            if (pagouAgora && !pagouAntes) novos++;
-            // saiu = pagou no mês anterior e não pagou mais em nenhum mês seguinte
-            if (i > 0 && mes !== ultimoMes) {
-                const ant = meses[i - 1];
-                if (ms.has(ant) && ![...ms].some(m => m >= mes)) saiu++;
-            }
-        });
-        return { mes, novos, saiu };
-    });
-
-    const W = 460, H = 260, padL = 10, padR = 10, padT = 26, padB = 40;
-    const max = Math.max(1, ...dados.map(d => Math.max(d.novos, d.saiu)));
-    const faixa = (W - padL - padR) / dados.length;
-    const larg = Math.min(16, faixa * 0.32);
-    const meio = (H - padT - padB) / 2 + padT;
-
-    const barras = dados.map((d, i) => {
-        const cx = padL + faixa * i + faixa / 2;
-        const hN = (d.novos / max) * (meio - padT);
-        const hS = (d.saiu / max) * (H - padB - meio);
-        return `<g class="chart-bar">
-            <title>${esc(mesLabel(d.mes))}: +${d.novos} novo(s), -${d.saiu} saída(s)</title>
-            ${d.novos ? `<rect x="${(cx - larg - 2).toFixed(1)}" y="${(meio - hN).toFixed(1)}" width="${larg}" height="${hN.toFixed(1)}" rx="3" fill="var(--green)"></rect>
-            <text x="${(cx - larg / 2 - 2).toFixed(1)}" y="${(meio - hN - 5).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="600" fill="var(--green)">${d.novos}</text>` : ''}
-            ${d.saiu ? `<rect x="${(cx + 2).toFixed(1)}" y="${meio.toFixed(1)}" width="${larg}" height="${hS.toFixed(1)}" rx="3" fill="var(--red)"></rect>
-            <text x="${(cx + larg / 2 + 2).toFixed(1)}" y="${(meio + hS + 12).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="600" fill="var(--red)">${d.saiu}</text>` : ''}
-            <text x="${cx.toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="10" fill="var(--text-muted)">${esc(mesLabel(d.mes))}</text>
-        </g>`;
-    }).join('');
-
-    box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Entradas e saídas de clientes">
-        <line x1="${padL}" y1="${meio}" x2="${W - padR}" y2="${meio}" stroke="var(--border-strong)"></line>
-        ${barras}
-    </svg>`;
-}
-
 function renderKPIsSaude(meses) {
     const mesAtual = meses[meses.length - 1];
     const doMes = saudeState.pagamentos.filter(p => p.mes === mesAtual);
@@ -3156,10 +3151,10 @@ function renderSaude() {
     const analise = janelaAnalise();
     renderKPIsSaude(analise);
     renderFaturamentoDetalhado(analise);
+    renderCustoPorCliente();
     renderCustosCategoria(analise[analise.length - 1]);
     renderPrevisao();
     renderLucroPorMes(meses);
-    renderEntradaSaida(meses);
 }
 
 async function loadSaude(forcar) {
@@ -3269,6 +3264,7 @@ async function loadPagamentosView() {
             payState.loaded = true;
             payState.rows = buildPagamentosRows();
             renderPagamentos();
+            renderCustoPorCliente();
         } catch (err) {
             console.warn('Pagamentos: contagem de provas falhou:', err);
         }
