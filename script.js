@@ -2461,12 +2461,6 @@ function renderPagamentos() {
     });
     setText('pay-kpi-mrr', 'R$ ' + mrr.toLocaleString('pt-BR'));
     setText('pay-kpi-mrr-sub', `${pagantes} cliente(s) na régua de cobrança`);
-    setText('pay-kpi-areceber', 'R$ ' + aReceber.toLocaleString('pt-BR'));
-    setText('pay-kpi-areceber-sub', aReceberN ? `${aReceberN} cobrança(s) até 7 dias` : 'nenhuma cobrança na semana');
-    setText('pay-kpi-atraso', 'R$ ' + atraso.toLocaleString('pt-BR'));
-    setText('pay-kpi-atraso-sub', `${atrasoN} inadimplente(s)`);
-    setText('pay-kpi-testes', testes);
-    setText('pay-kpi-testes-sub', `${testesFim} vencendo em até 2 dias`);
 
     // Paginação
     const filtered = payFilteredRows();
