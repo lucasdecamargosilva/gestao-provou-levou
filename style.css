@@ -1870,3 +1870,23 @@ select.form-control {
     .mp-kpis { grid-template-columns: repeat(2, 1fr); }
     .mp-row { grid-template-columns: 90px 100px 1fr; row-gap: 10px; }
 }
+
+/* ─── Saúde do Negócio ───────────────────────────────────── */
+
+.chart-legenda {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.chart-legenda .dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 3px;
+    display: inline-block;
+}
+
+#sa-chart-concentracao { padding-top: 4px; }
