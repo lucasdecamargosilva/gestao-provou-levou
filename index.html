@@ -450,6 +450,35 @@
                     </div>
                 </div>
 
+                <div class="chart-grid" style="grid-template-columns: 1.35fr 1fr;">
+                    <div class="section-container glass chart-card">
+                        <div class="table-header">
+                            <div>
+                                <h2 class="table-title">De onde entrou o dinheiro</h2>
+                                <span class="chart-sub">Faturamento de cada mês por tipo de cobrança</span>
+                            </div>
+                            <div class="chart-head-right">
+                                <span class="chart-legenda"><i class="dot" style="background:var(--purple)"></i> Mensalidade</span>
+                                <span class="chart-legenda"><i class="dot" style="background:var(--purple-light)"></i> Excedente</span>
+                                <span class="chart-legenda"><i class="dot" style="background:var(--green)"></i> Provas avulsas</span>
+                                <span id="sa-delta" class="chart-badge">—</span>
+                            </div>
+                        </div>
+                        <div id="sa-chart-receita" class="chart-box"></div>
+                    </div>
+
+                    <div class="section-container glass chart-card">
+                        <div class="table-header">
+                            <div>
+                                <h2 class="table-title">Quanto cada cliente pagou</h2>
+                                <span id="det-sub" class="chart-sub">—</span>
+                            </div>
+                            <span id="det-total" class="chart-badge">—</span>
+                        </div>
+                        <div id="sa-detalhado" class="chart-box det-box"></div>
+                    </div>
+                </div>
+
                 <div class="section-container glass chart-card">
                     <div class="table-header">
                         <div>
@@ -509,34 +538,6 @@
                     </div>
                 </div>
 
-                <div class="section-container glass" style="margin-top:20px;">
-                    <div class="table-header">
-                        <div>
-                            <h2 class="table-title">A receber</h2>
-                            <span class="chart-sub">Próximas cobranças, na ordem em que vencem</span>
-                        </div>
-                        <div class="chart-head-right">
-                            <select id="rec-janela" class="chart-select">
-                                <option value="7">Próximos 7 dias</option>
-                                <option value="30" selected>Próximos 30 dias</option>
-                                <option value="60">Próximos 60 dias</option>
-                            </select>
-                            <span id="rec-total" class="chart-badge">—</span>
-                        </div>
-                    </div>
-
-                    <div class="mp-kpis">
-                        <div class="mp-kpi"><span class="mp-kpi-label">Vencido</span><strong id="rec-kpi-vencido" style="color:var(--red)">—</strong></div>
-                        <div class="mp-kpi"><span class="mp-kpi-label">Vence esta semana</span><strong id="rec-kpi-semana">—</strong></div>
-                        <div class="mp-kpi"><span class="mp-kpi-label">Provas excedentes</span><strong id="rec-kpi-excedente" style="color:var(--purple)">—</strong></div>
-                        <div class="mp-kpi"><span class="mp-kpi-label">Total previsto</span><strong id="rec-kpi-total" style="color:var(--green)">—</strong></div>
-                    </div>
-
-                    <div id="rec-lista" class="rec-lista">
-                        <div class="pay-empty">Carregando...</div>
-                    </div>
-                </div>
-
                 <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr);">
                     <div class="stat-card glass">
                         <div class="stat-label">MRR Ativo</div>
@@ -574,21 +575,6 @@
                         </div>
                     </div>
                     <div id="sa-chart-lucro" class="chart-box"></div>
-                </div>
-
-                <div class="section-container glass chart-card">
-                    <div class="table-header">
-                        <div>
-                            <h2 class="table-title">Receita confirmada por mês</h2>
-                            <span class="chart-sub">Separando mensalidade de cobranças extras</span>
-                        </div>
-                        <div class="chart-head-right">
-                            <span class="chart-legenda"><i class="dot" style="background:var(--purple)"></i> Mensalidade</span>
-                            <span class="chart-legenda"><i class="dot" style="background:var(--purple-light)"></i> Extras</span>
-                            <span id="sa-delta" class="chart-badge">—</span>
-                        </div>
-                    </div>
-                    <div id="sa-chart-receita" class="chart-box"></div>
                 </div>
 
                 <div class="chart-grid">
@@ -649,6 +635,14 @@
                         <button class="pay-tab" data-tab="inadimplentes">Inadimplentes <span class="pay-tab-count" id="pay-count-inadimplentes">0</span></button>
                         <button class="pay-tab" data-tab="testes">Testes <span class="pay-tab-count" id="pay-count-testes">0</span></button>
                         <button class="pay-tab" data-tab="cancelados">Cancelados <span class="pay-tab-count" id="pay-count-cancelados">0</span></button>
+                        <button class="pay-tab is-destaque" data-tab="areceber">A receber <span class="pay-tab-count" id="pay-count-areceber">0</span></button>
+                    </div>
+
+                    <div id="rec-resumo" class="rec-resumo" style="display:none;">
+                        <div class="mp-kpi"><span class="mp-kpi-label">Vencido</span><strong id="rec-kpi-vencido" style="color:var(--red)">—</strong></div>
+                        <div class="mp-kpi"><span class="mp-kpi-label">Vence esta semana</span><strong id="rec-kpi-semana">—</strong></div>
+                        <div class="mp-kpi"><span class="mp-kpi-label">Provas excedentes</span><strong id="rec-kpi-excedente" style="color:var(--purple)">—</strong></div>
+                        <div class="mp-kpi"><span class="mp-kpi-label">Total previsto (30 dias)</span><strong id="rec-kpi-total" style="color:var(--green)">—</strong></div>
                     </div>
 
                     <div class="pay-head">
@@ -657,6 +651,7 @@
                         <div>Fotos <i class="fas fa-circle-info" title="Provas geradas desde o último pagamento"></i></div>
                         <div>Pagamento</div>
                         <div>Próxima cobrança</div>
+                        <div>Vai pagar</div>
                         <div>Status</div>
                         <div></div>
                     </div>

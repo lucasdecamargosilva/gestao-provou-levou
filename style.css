@@ -1417,7 +1417,7 @@ select.form-control {
 .pay-head,
 .pay-row {
     display: grid;
-    grid-template-columns: 2fr 1.1fr 1.15fr 1fr 1.1fr .8fr 44px;
+    grid-template-columns: 1.8fr 1fr 1.05fr .85fr 1fr 1.05fr .75fr 44px;
     align-items: center;
     gap: 28px;
 }
@@ -1996,3 +1996,43 @@ select.form-control {
 @media (max-width: 1100px) {
     .prev-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+
+.rec-resumo {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    padding: 18px 24px 4px;
+}
+
+.pay-tab.is-destaque { color: var(--purple); }
+.pay-tab.is-destaque::before {
+    content: '';
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--purple);
+    margin-right: 7px;
+    vertical-align: middle;
+}
+
+.pay-previsto-valor {
+    font-size: 14px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--green);
+}
+
+.pay-previsto-valor.is-late { color: var(--red); }
+
+.pay-previsto-sub {
+    font-size: 10px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pay-previsto-sub.is-extra { color: var(--purple); font-weight: 600; }
+
+@media (max-width: 1100px) { .rec-resumo { grid-template-columns: repeat(2, 1fr); } }

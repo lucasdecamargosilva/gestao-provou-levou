@@ -2351,19 +2351,36 @@ function buildPagamentosRows() {
             tab = 'ativos'; statusLabel = 'Ativo'; statusCls = 'status-active';
         }
 
-        return { c, limite, usadas, pct, valor, next, nextLabel, nextSub, atrasado, tab, statusLabel, statusCls };
+        const prev = valorPrevisto(c);
+        const naReguaDeCobranca = tab === 'ativos' || tab === 'inadimplentes';
+
+        return {
+            c, limite, usadas, pct, valor, next, nextLabel, nextSub, atrasado, tab, statusLabel, statusCls,
+            previsto: prev.valor, excedente: prev.excedente, provasExtras: prev.provasExtras,
+            diasParaVencer: next ? daysBetween(next, hoje) : null,
+            aReceber: naReguaDeCobranca && next != null
+        };
     });
 }
 
 function payFilteredRows() {
     const q = payState.search.trim().toLowerCase();
     const filtradas = payState.rows.filter(r => {
-        if (payState.tab !== 'todos' && r.tab !== payState.tab) return false;
+        if (payState.tab === 'areceber') {
+            if (!r.aReceber || r.diasParaVencer > 30) return false;
+        } else if (payState.tab !== 'todos' && r.tab !== payState.tab) {
+            return false;
+        }
         if (!q) return true;
         return [r.c.name, r.c.company, r.c.email, r.c.website, r.c.plan]
             .some(v => String(v || '').toLowerCase().includes(q));
     });
-    // Quem está mais perto de estourar o limite aparece primeiro; sem uso vai pro fim
+
+    // Na régua de cobrança a ordem é por vencimento; nas outras, por quem está
+    // mais perto de estourar o limite
+    if (payState.tab === 'areceber') {
+        return filtradas.sort((a, b) => a.diasParaVencer - b.diasParaVencer);
+    }
     return filtradas.sort((a, b) => {
         const pa = a.pct == null ? -1 : a.pct;
         const pb = b.pct == null ? -1 : b.pct;
@@ -2395,9 +2412,29 @@ function renderPagamentos() {
     if (!list) return;
 
     // Contadores das abas
-    const byTab = { todos: payState.rows.length, ativos: 0, inadimplentes: 0, testes: 0, cancelados: 0 };
-    payState.rows.forEach(r => { byTab[r.tab] = (byTab[r.tab] || 0) + 1; });
+    const byTab = { todos: payState.rows.length, ativos: 0, inadimplentes: 0, testes: 0, cancelados: 0, areceber: 0 };
+    payState.rows.forEach(r => {
+        byTab[r.tab] = (byTab[r.tab] || 0) + 1;
+        if (r.aReceber && r.diasParaVencer <= 30) byTab.areceber++;
+    });
     Object.keys(byTab).forEach(k => setText('pay-count-' + k, `(${byTab[k]})`));
+
+    // Resumo do a receber aparece só quando a aba está aberta
+    const resumo = document.getElementById('rec-resumo');
+    if (resumo) {
+        const naRegua = payState.rows.filter(r => r.aReceber && r.diasParaVencer <= 30);
+        resumo.style.display = payState.tab === 'areceber' ? '' : 'none';
+        if (payState.tab === 'areceber') {
+            const soma = arr => arr.reduce((s, r) => s + r.previsto, 0);
+            const vencidos = naRegua.filter(r => r.diasParaVencer < 0);
+            const semana = naRegua.filter(r => r.diasParaVencer >= 0 && r.diasParaVencer <= 7);
+            const comExc = naRegua.filter(r => r.excedente > 0);
+            setText('rec-kpi-vencido', `${formatBRL(soma(vencidos))} · ${vencidos.length}`);
+            setText('rec-kpi-semana', `${formatBRL(soma(semana))} · ${semana.length}`);
+            setText('rec-kpi-excedente', `${formatBRL(comExc.reduce((s, r) => s + r.excedente, 0))} · ${comExc.length}`);
+            setText('rec-kpi-total', formatBRL(soma(naRegua)));
+        }
+    }
 
     // KPIs
     const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
@@ -2467,6 +2504,12 @@ function renderPagamentos() {
                 <div>
                     <div class="pay-next ${r.atrasado ? 'is-late' : ''}">${esc(r.nextLabel)}</div>
                     ${r.nextSub ? `<div class="pay-next-sub">${esc(r.nextSub)}</div>` : ''}
+                </div>
+                <div class="pay-previsto">
+                    ${r.aReceber ? `<div class="pay-previsto-valor ${r.atrasado ? 'is-late' : ''}">${formatBRL(r.previsto)}</div>
+                    ${r.excedente > 0
+                        ? `<div class="pay-previsto-sub is-extra">+${formatBRL(r.excedente)} de ${r.provasExtras.toLocaleString('pt-BR')} extras</div>`
+                        : '<div class="pay-previsto-sub">mensalidade</div>'}` : '<span style="color:var(--text-muted)">—</span>'}
                 </div>
                 <div><span class="status-badge ${r.statusCls}">${esc(r.statusLabel)}</span></div>
                 <div class="pay-actions">
@@ -2810,79 +2853,6 @@ function agendaRecebimentos() {
     return itens.sort((a, b) => a.venc - b.venc);
 }
 
-function renderAReceber() {
-    const lista = document.getElementById('rec-lista');
-    if (!lista) return;
-    const janela = parseInt((document.getElementById('rec-janela') || {}).value, 10) || 30;
-    const itens = agendaRecebimentos();
-
-    const vencidos = itens.filter(i => i.dias < 0);
-    const naJanela = itens.filter(i => i.dias >= 0 && i.dias <= janela);
-    const semana = naJanela.filter(i => i.dias <= 7);
-    const depois = naJanela.filter(i => i.dias > 7);
-
-    const soma = arr => arr.reduce((s, i) => s + i.valor, 0);
-    const todos = vencidos.concat(naJanela);
-    const excedenteTotal = todos.reduce((s, i) => s + (i.excedente || 0), 0);
-    const comExcedente = todos.filter(i => i.excedente > 0).length;
-
-    setText('rec-kpi-vencido', `${formatBRL(soma(vencidos))} · ${vencidos.length}`);
-    setText('rec-kpi-semana', `${formatBRL(soma(semana))} · ${semana.length}`);
-    setText('rec-kpi-excedente', `${formatBRL(excedenteTotal)} · ${comExcedente}`);
-    setText('rec-kpi-total', formatBRL(soma(todos)));
-    setText('rec-total', `${formatBRL(soma(naJanela))} em ${janela} dias`);
-
-    const linha = i => {
-        const atrasado = i.dias < 0;
-        const quando = atrasado
-            ? `${Math.abs(i.dias)} dia(s) em atraso`
-            : i.dias === 0 ? 'vence hoje' : `em ${i.dias} dia(s)`;
-        const pct = (i.limite && i.usadas != null && i.limite !== Infinity)
-            ? (i.usadas / i.limite) * 100 : null;
-        const corUso = pct == null ? 'var(--text-muted)'
-            : pct >= 100 ? 'var(--red)' : pct >= 80 ? 'var(--yellow)' : 'var(--purple)';
-        const uso = pct == null
-            ? '<div class="pay-usage-nums" style="color:var(--text-muted);font-size:13px">uso não medido</div>'
-            : `<div class="pay-usage-nums">${i.usadas.toLocaleString('pt-BR')} / ${i.limite.toLocaleString('pt-BR')}</div>
-               <div class="pay-usage-bottom">
-                   <div class="pay-usage-track" style="width:78px"><div class="pay-usage-fill" style="width:${Math.min(100, pct)}%;background:${corUso}"></div></div>
-                   <span class="pay-usage-pct" style="color:${corUso}">${pct.toFixed(0)}%</span>
-               </div>`;
-        return `<div class="rec-row ${atrasado ? 'is-late' : ''}">
-            ${payAvatar(i.c.company || i.c.name)}
-            <div style="min-width:0">
-                <div class="pay-client-name">${esc(i.c.company || i.c.name)}</div>
-                <div class="pay-client-email">${esc(getClientPlanLabel(i.c))}</div>
-            </div>
-            <div>${uso}</div>
-            <div>${payMethodHTML(i.c.formaPagamento)}</div>
-            <div>
-                <div class="pay-next ${atrasado ? 'is-late' : ''}">${i.venc.toLocaleDateString('pt-BR')}</div>
-                <div class="pay-next-sub">${esc(quando)}</div>
-            </div>
-            <div class="rec-valor ${atrasado ? 'is-late' : ''}">${formatBRL(i.valor)}
-                ${i.excedente > 0
-                    ? `<span class="rec-base is-extra">${formatBRL(i.plano)} + ${formatBRL(i.excedente)} de ${i.provasExtras.toLocaleString('pt-BR')} provas extras</span>`
-                    : '<span class="rec-base">mensalidade do plano</span>'}
-            </div>
-        </div>`;
-    };
-
-    const grupo = (titulo, arr, cor) => arr.length ? `
-        <div class="rec-grupo">
-            <div class="rec-grupo-head" style="color:${cor}">
-                <span>${titulo}</span>
-                <strong>${formatBRL(soma(arr))}</strong>
-            </div>
-            ${arr.map(linha).join('')}
-        </div>` : '';
-
-    const html = grupo(`Em atraso (${vencidos.length})`, vencidos, 'var(--red)')
-        + grupo(`Vence esta semana (${semana.length})`, semana, 'var(--yellow)')
-        + grupo(`Depois, dentro de ${janela} dias (${depois.length})`, depois, 'var(--text-muted)');
-    lista.innerHTML = html || '<div class="pay-empty">Nenhuma cobrança prevista no período.</div>';
-}
-
 // ─── Previsão de fechamento do mês ─────────────────────────────────────────────
 
 // Custo fixo da operação fora as provas (ferramentas, anúncios). Usa a média dos
@@ -3104,9 +3074,11 @@ function renderReceitaPorMes(meses) {
     const dados = meses.map(mes => {
         const doMes = saudeState.pagamentos.filter(p => p.mes === mes);
         const mens = doMes.filter(p => p.tipo === 'mensalidade').reduce((s, p) => s + p.valor, 0);
-        const extra = doMes.filter(p => p.tipo !== 'mensalidade').reduce((s, p) => s + p.valor, 0);
+        const avulsas = doMes.filter(p => /provas extras/i.test(p.descricao)).reduce((s, p) => s + p.valor, 0);
+        const extra = doMes.filter(p => p.tipo !== 'mensalidade' && !/provas extras/i.test(p.descricao))
+            .reduce((s, p) => s + p.valor, 0);
         return {
-            mes, mens, extra, total: mens + extra,
+            mes, mens, extra, avulsas, total: mens + extra + avulsas,
             clientes: new Set(doMes.map(p => p.store)).size,
             parcial: mes === mesCorrente
         };
@@ -3123,22 +3095,26 @@ function renderReceitaPorMes(meses) {
         const x = padL + faixa * i + (faixa - larg) / 2;
         const hMens = (d.mens / max) * alturaUtil;
         const hExtra = (d.extra / max) * alturaUtil;
+        const hAvul = (d.avulsas / max) * alturaUtil;
         const yMens = H - padB - hMens;
         const yExtra = yMens - hExtra;
+        const yAvul = yExtra - hAvul;
         const antes = i > 0 ? dados[i - 1].total : null;
         const dif = antes != null ? d.total - antes : null;
         const fmt = v => v >= 1000 ? (v / 1000).toFixed(1).replace('.', ',') + 'k' : v.toFixed(0);
         return `<g class="chart-bar">
             <title>${esc(mesLabel(d.mes))}
 Mensalidade: ${formatBRL(d.mens)}
-Extras: ${formatBRL(d.extra)}
+Excedente e extras: ${formatBRL(d.extra)}
+Provas avulsas: ${formatBRL(d.avulsas)}
 Total: ${formatBRL(d.total)} · ${d.clientes} cliente(s)</title>
             <rect x="${x.toFixed(1)}" y="${yMens.toFixed(1)}" width="${larg.toFixed(1)}" height="${Math.max(1, hMens).toFixed(1)}" rx="5" fill="var(--purple)" opacity="${d.parcial ? 0.45 : 1}"></rect>
             ${d.extra > 0 ? `<rect x="${x.toFixed(1)}" y="${yExtra.toFixed(1)}" width="${larg.toFixed(1)}" height="${Math.max(1, hExtra).toFixed(1)}" rx="5" fill="var(--purple-light)" opacity="${d.parcial ? 0.45 : 1}"></rect>` : ''}
-            <text x="${(x + larg / 2).toFixed(1)}" y="${(yExtra - 20).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">${fmt(d.total)}</text>
+            ${d.avulsas > 0 ? `<rect x="${x.toFixed(1)}" y="${yAvul.toFixed(1)}" width="${larg.toFixed(1)}" height="${Math.max(1, hAvul).toFixed(1)}" rx="5" fill="var(--green)" opacity="${d.parcial ? 0.45 : 1}"></rect>` : ''}
+            <text x="${(x + larg / 2).toFixed(1)}" y="${(yAvul - 20).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">${fmt(d.total)}</text>
             ${d.parcial
-                ? `<text x="${(x + larg / 2).toFixed(1)}" y="${(yExtra - 6).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="600" fill="var(--text-muted)">em curso</text>`
-                : (dif != null && Math.abs(dif) > 0.5 ? `<text x="${(x + larg / 2).toFixed(1)}" y="${(yExtra - 6).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="600" fill="${dif > 0 ? 'var(--green)' : 'var(--red)'}">${dif > 0 ? '▲' : '▼'} ${fmt(Math.abs(dif))}</text>` : '')}
+                ? `<text x="${(x + larg / 2).toFixed(1)}" y="${(yAvul - 6).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="600" fill="var(--text-muted)">em curso</text>`
+                : (dif != null && Math.abs(dif) > 0.5 ? `<text x="${(x + larg / 2).toFixed(1)}" y="${(yAvul - 6).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="600" fill="${dif > 0 ? 'var(--green)' : 'var(--red)'}">${dif > 0 ? '▲' : '▼'} ${fmt(Math.abs(dif))}</text>` : '')}
             <text x="${(x + larg / 2).toFixed(1)}" y="${H - padB + 18}" text-anchor="middle" font-size="11" fill="var(--text-muted)">${esc(mesLabel(d.mes))}</text>
             <text x="${(x + larg / 2).toFixed(1)}" y="${H - padB + 32}" text-anchor="middle" font-size="10" fill="var(--text-muted)">${d.clientes} cli</text>
         </g>`;
@@ -3341,7 +3317,6 @@ function renderSaude() {
     renderKPIsSaude(analise);
     renderCustosCategoria(analise[analise.length - 1]);
     renderCascata(analise[analise.length - 1]);
-    renderAReceber();
     renderPrevisao();
     renderLucroPorMes(meses);
     renderReceitaPorMes(meses);
@@ -3376,8 +3351,6 @@ function setupSaudeUI() {
     if (sel) sel.addEventListener('change', renderSaude);
     const btn = document.getElementById('btn-saude-refresh');
     if (btn) btn.addEventListener('click', () => loadSaude(true));
-    const rec = document.getElementById('rec-janela');
-    if (rec) rec.addEventListener('change', renderAReceber);
 }
 
 // ─── Mercado Pago: recebimentos dos últimos 3 meses ────────────────────────────
@@ -3690,8 +3663,6 @@ async function loadPagamentosView() {
             payState.loaded = true;
             payState.rows = buildPagamentosRows();
             renderPagamentos();
-            // o previsto a receber depende dessa contagem para calcular excedente
-            if (saudeState.carregado) renderAReceber();
         } catch (err) {
             console.warn('Pagamentos: contagem de provas falhou:', err);
         }
