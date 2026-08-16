@@ -2620,7 +2620,7 @@ function renderPayCharts() {
 }
 
 // ─── Saúde do Negócio ──────────────────────────────────────────────────────────
-const saudeState = { pagamentos: [], custos: {}, provas: {}, carregado: false, carregando: false };
+const saudeState = { pagamentos: [], custos: {}, provas: {}, categorias: {}, carregado: false, carregando: false };
 
 // Custo médio de geração por prova. Óculos domina o volume, então é a base da
 // estimativa; meses com custo real lançado em fluxo_caixa_mensal usam o valor real.
@@ -2667,13 +2667,14 @@ async function carregarPagamentosSaude(forcar) {
 async function carregarCustos(meses) {
     if (!db) return;
     try {
-        const { data } = await db.from('fluxo_caixa_mensal').select('mes, custo_provas, custo_ferramentas, tarifas, receita_liquida, fechado');
+        const { data } = await db.from('fluxo_caixa_mensal').select('mes, custo_provas, custo_ferramentas, tarifas, receita_liquida, categorias, fechado');
         (data || []).forEach(r => {
             saudeState.custos[r.mes] = {
                 provas: parseFloat(r.custo_provas) || 0,
                 ferramentas: (parseFloat(r.custo_ferramentas) || 0) + (parseFloat(r.tarifas) || 0),
                 real: true
             };
+            if (r.categorias && r.categorias.categorias) saudeState.categorias[r.mes] = r.categorias;
         });
     } catch (e) { console.warn('fluxo_caixa_mensal indisponível:', e); }
 
@@ -2706,6 +2707,119 @@ function custoDoMes(mes) {
     const c = saudeState.custos[mes];
     if (!c) return { total: 0, real: false, provas: 0 };
     return { total: c.provas + (c.ferramentas || 0), real: c.real, provas: c.provas };
+}
+
+const CORES_CATEGORIA = {
+    'Geração de provas (Google)': '#7c3aed',
+    'Ferramentas e software': '#a78bfa',
+    'Anúncios e marketing': '#3b82f6',
+    'Estornos e cancelamentos': '#f59e0b',
+    'Retiradas do sócio': '#ef4444',
+    'PIX a pessoas': '#fb7185',
+    'Alimentação': '#fbbf24',
+    'Moradia e contas': '#34d399',
+    'Transporte': '#60a5fa',
+    'Saúde e pets': '#c084fc',
+    'Compras diversas': '#94a3b8'
+};
+
+// Saídas do mês separadas em operação x pessoal, lidas do extrato do Mercado Pago
+function renderCustosCategoria(mes) {
+    const box = document.getElementById('sa-custos-cat');
+    const badge = document.getElementById('sa-custos-total');
+    const sub = document.getElementById('sa-custos-sub');
+    if (!box) return;
+
+    const cat = saudeState.categorias[mes];
+    if (!cat || !cat.categorias) {
+        box.innerHTML = `<div class="chart-empty">Sem extrato de ${esc(mesLabel(mes))} ainda.<br>
+            <span style="font-size:12px">Baixe o extrato do Mercado Pago do mês fechado para ver as saídas por categoria.</span></div>`;
+        if (badge) badge.textContent = '—';
+        return;
+    }
+
+    const linhas = Object.entries(cat.categorias)
+        .filter(([, v]) => v > 0)
+        .sort((a, b) => b[1] - a[1]);
+    const totalNegocio = linhas.filter(([k]) => cat.negocio[k]).reduce((s, l) => s + l[1], 0);
+    const totalPessoal = linhas.filter(([k]) => !cat.negocio[k]).reduce((s, l) => s + l[1], 0);
+    const max = linhas[0] ? linhas[0][1] : 1;
+
+    const bloco = (titulo, itens, total, cor) => {
+        if (!itens.length) return '';
+        return `<div style="margin-bottom:18px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
+                <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:${cor}">${titulo}</span>
+                <span style="font-size:14px;font-weight:600;font-variant-numeric:tabular-nums">${formatBRL(total)}</span>
+            </div>
+            ${itens.map(([nome, val]) => `
+                <div style="margin-bottom:9px">
+                    <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+                        <span>${esc(nome)}</span>
+                        <span style="font-variant-numeric:tabular-nums;color:var(--text-sub)">${formatBRL(val)}</span>
+                    </div>
+                    <div class="pay-usage-track" style="width:100%;max-width:none;height:7px">
+                        <div class="pay-usage-fill" style="width:${(val / max) * 100}%;background:${CORES_CATEGORIA[nome] || 'var(--text-muted)'}"></div>
+                    </div>
+                </div>`).join('')}
+        </div>`;
+    };
+
+    box.innerHTML =
+        bloco('Custo da operação', linhas.filter(([k]) => cat.negocio[k]), totalNegocio, 'var(--purple)') +
+        bloco('Gasto pessoal', linhas.filter(([k]) => !cat.negocio[k]), totalPessoal, 'var(--red)');
+
+    if (badge) badge.textContent = formatBRL(totalNegocio + totalPessoal);
+    if (sub) sub.textContent = `Saídas de ${mesLabel(mes)}, do extrato do Mercado Pago`;
+}
+
+// Cascata: faturou → tirou o custo da operação → sobrou
+function renderCascata(mes) {
+    const box = document.getElementById('sa-cascata');
+    if (!box) return;
+    const receita = saudeState.pagamentos.filter(p => p.mes === mes).reduce((s, p) => s + p.valor, 0);
+    const cat = saudeState.categorias[mes];
+    let itens;
+    if (cat && cat.categorias) {
+        itens = Object.entries(cat.categorias)
+            .filter(([k, v]) => cat.negocio[k] && v > 0)
+            .sort((a, b) => b[1] - a[1]);
+    } else {
+        const c = custoDoMes(mes);
+        itens = c.total > 0 ? [['Custo estimado de provas', c.total]] : [];
+    }
+    const custo = itens.reduce((s, l) => s + l[1], 0);
+    const lucro = receita - custo;
+
+    const W = 400, H = 250, padT = 20, padB = 34, padL = 8, padR = 8;
+    const max = Math.max(receita, 1);
+    const alt = H - padT - padB;
+    const larg = 74;
+    const x1 = padL + 20, x2 = W / 2 - larg / 2, x3 = W - padR - larg - 20;
+    const hRec = (receita / max) * alt;
+    const hLucro = (Math.max(0, lucro) / max) * alt;
+
+    let acumulado = 0;
+    const pilha = itens.map(([nome, val]) => {
+        const h = (val / max) * alt;
+        const y = H - padB - hRec + acumulado;
+        acumulado += h;
+        return `<rect x="${x2}" y="${y.toFixed(1)}" width="${larg}" height="${Math.max(1, h).toFixed(1)}" fill="${CORES_CATEGORIA[nome] || 'var(--red)'}" opacity=".85"><title>${esc(nome)}: ${formatBRL(val)}</title></rect>`;
+    }).join('');
+
+    box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Do faturamento ao lucro">
+        <line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="var(--border)"></line>
+        <rect x="${x1}" y="${(H - padB - hRec).toFixed(1)}" width="${larg}" height="${hRec.toFixed(1)}" rx="4" fill="var(--purple)"></rect>
+        <text x="${x1 + larg / 2}" y="${(H - padB - hRec - 8).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text)">${formatBRL(receita)}</text>
+        <text x="${x1 + larg / 2}" y="${H - padB + 16}" text-anchor="middle" font-size="11" fill="var(--text-muted)">Faturou</text>
+        ${pilha}
+        <text x="${x2 + larg / 2}" y="${(H - padB - hRec - 8).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--red)">−${formatBRL(custo)}</text>
+        <text x="${x2 + larg / 2}" y="${H - padB + 16}" text-anchor="middle" font-size="11" fill="var(--text-muted)">Custou</text>
+        <rect x="${x3}" y="${(H - padB - hLucro).toFixed(1)}" width="${larg}" height="${Math.max(1, hLucro).toFixed(1)}" rx="4" fill="var(--green)"></rect>
+        <text x="${x3 + larg / 2}" y="${(H - padB - hLucro - 8).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--green)">${formatBRL(lucro)}</text>
+        <text x="${x3 + larg / 2}" y="${H - padB + 16}" text-anchor="middle" font-size="11" fill="var(--text-muted)">Sobrou</text>
+        <text x="${x3 + larg / 2}" y="${H - padB + 30}" text-anchor="middle" font-size="10" font-weight="600" fill="var(--green)">${receita > 0 ? ((lucro / receita) * 100).toFixed(0) + '% de margem' : ''}</text>
+    </svg>`;
 }
 
 // Faturamento x custo x lucro, lado a lado, com a linha de lucro por cima
@@ -3015,7 +3129,14 @@ function renderKPIsSaude(meses) {
     const doMes = saudeState.pagamentos.filter(p => p.mes === mesAtual);
     const recebido = doMes.reduce((s, p) => s + p.valor, 0);
     const pagantes = new Set(doMes.map(p => p.store)).size;
-    const c = custoDoMes(mesAtual);
+    // Com extrato do mês, o custo da operação vem das categorias reais; sem ele, estima
+    const cat = saudeState.categorias[mesAtual];
+    const c = cat && cat.categorias
+        ? {
+            total: Object.entries(cat.categorias).filter(([k]) => cat.negocio[k]).reduce((s, l) => s + l[1], 0),
+            real: true
+        }
+        : custoDoMes(mesAtual);
     const lucro = recebido - c.total;
     const margem = recebido > 0 ? (lucro / recebido) * 100 : 0;
     const provas = saudeState.provas[mesAtual];
@@ -3039,6 +3160,8 @@ function renderSaude() {
     if (!meses.length) return;
     const analise = janelaAnalise();
     renderKPIsSaude(analise);
+    renderCustosCategoria(analise[analise.length - 1]);
+    renderCascata(analise[analise.length - 1]);
     renderLucroPorMes(meses);
     renderReceitaPorMes(meses);
     renderEntradaSaida(meses);
