@@ -63,15 +63,9 @@
                     </a>
                 </li>
                 <li>
-                    <a href="#" class="nav-item" data-view="saude">
-                        <i class="fas fa-heart-pulse"></i>
-                        <span>Saúde do Negócio</span>
-                    </a>
-                </li>
-                <li>
                     <a href="#" class="nav-item" data-view="pagamentos">
-                        <i class="fas fa-credit-card"></i>
-                        <span>Pagamentos</span>
+                        <i class="fas fa-heart-pulse"></i>
+                        <span>Financeiro</span>
                     </a>
                 </li>
                 <li>
@@ -406,19 +400,26 @@
                 </div>
             </section>
 
-            <!-- Saúde do Negócio View -->
-            <section id="saude" class="view">
+            <!-- Pagamentos View -->
+            <section id="pagamentos" class="view">
                 <div class="pay-topbar">
                     <div>
-                        <h1 class="page-title">Saúde do Negócio</h1>
-                        <p class="pay-subtitle">Receita confirmada, crescimento e concentração de clientes.</p>
+                        <h1 class="page-title">Financeiro</h1>
+                        <p class="pay-subtitle">Faturamento, custo, lucro e a régua de cobrança dos clientes.</p>
                     </div>
                     <div class="pay-topbar-actions">
                         <select id="saude-periodo" class="chart-select">
-                            <option value="6">Últimos 6 meses</option>
-                            <option value="12" selected>Últimos 12 meses</option>
+                            <option value="6">6 meses</option>
+                            <option value="12" selected>12 meses</option>
                             <option value="0">Tudo</option>
                         </select>
+                        <div class="pay-search">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="pay-search" placeholder="Buscar cliente...">
+                        </div>
+                        <button id="btn-pay-export" class="btn-ghost">
+                            <i class="fas fa-download"></i> Exportar
+                        </button>
                         <button id="btn-saude-refresh" class="btn-ghost">
                             <i class="fas fa-sync-alt"></i> Atualizar
                         </button>
@@ -427,104 +428,24 @@
 
                 <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr);">
                     <div class="stat-card glass">
-                        <div class="stat-label">MRR Contratado</div>
-                        <div id="sa-mrr" class="stat-value">—</div>
-                        <div id="sa-mrr-sub" class="stat-sub">soma dos planos ativos</div>
-                    </div>
-                    <div class="stat-card glass">
-                        <div class="stat-label">Recebido no mês</div>
+                        <div class="stat-label">Faturamento do mês</div>
                         <div id="sa-recebido" class="stat-value">—</div>
                         <div id="sa-recebido-sub" class="stat-sub">pagamentos confirmados</div>
                     </div>
                     <div class="stat-card glass">
-                        <div class="stat-label">Ticket médio</div>
-                        <div id="sa-arpu" class="stat-value">—</div>
-                        <div id="sa-arpu-sub" class="stat-sub">por cliente pagante</div>
+                        <div class="stat-label">Custo de provas</div>
+                        <div id="sa-custo" class="stat-value" style="color: var(--red);">—</div>
+                        <div id="sa-custo-sub" class="stat-sub">geração de imagens</div>
                     </div>
                     <div class="stat-card glass">
-                        <div class="stat-label">Clientes pagantes</div>
-                        <div id="sa-clientes" class="stat-value">—</div>
-                        <div id="sa-clientes-sub" class="stat-sub">no mês corrente</div>
+                        <div class="stat-label">Lucro do mês</div>
+                        <div id="sa-lucro" class="stat-value" style="color: var(--green);">—</div>
+                        <div id="sa-lucro-sub" class="stat-sub">faturamento menos custo</div>
                     </div>
-                </div>
-
-                <div class="chart-grid" style="grid-template-columns: 1fr;">
-                    <div class="section-container glass chart-card">
-                        <div class="table-header">
-                            <div>
-                                <h2 class="table-title">Receita confirmada por mês</h2>
-                                <span class="chart-sub">Mensalidade e extras, com a variação de cada mês</span>
-                            </div>
-                            <div class="chart-head-right">
-                                <span class="chart-legenda"><i class="dot" style="background:var(--purple)"></i> Mensalidade</span>
-                                <span class="chart-legenda"><i class="dot" style="background:var(--purple-light)"></i> Extras</span>
-                                <span id="sa-delta" class="chart-badge">—</span>
-                            </div>
-                        </div>
-                        <div id="sa-chart-receita" class="chart-box"></div>
-                    </div>
-                </div>
-
-                <div class="chart-grid">
-                    <div class="section-container glass chart-card">
-                        <div class="table-header">
-                            <div>
-                                <h2 class="table-title">Entradas e saídas de clientes</h2>
-                                <span class="chart-sub">Quem começou a pagar e quem parou, mês a mês</span>
-                            </div>
-                        </div>
-                        <div id="sa-chart-clientes" class="chart-box"></div>
-                    </div>
-                    <div class="section-container glass chart-card">
-                        <div class="table-header">
-                            <div>
-                                <h2 class="table-title">Concentração de receita</h2>
-                                <span class="chart-sub">Quanto do faturamento depende dos maiores clientes</span>
-                            </div>
-                        </div>
-                        <div id="sa-chart-concentracao" class="chart-box"></div>
-                    </div>
-                </div>
-
-                <div class="section-container glass">
-                    <div class="table-header">
-                        <h2 class="table-title">Ranking de clientes</h2>
-                        <span id="sa-rank-sub" class="chart-sub">—</span>
-                    </div>
-                    <table class="client-table">
-                        <thead>
-                            <tr>
-                                <th>Cliente</th>
-                                <th>Plano</th>
-                                <th>Receita no período</th>
-                                <th>Meses pagos</th>
-                                <th>Média/mês</th>
-                                <th>Último pagamento</th>
-                                <th>Situação</th>
-                            </tr>
-                        </thead>
-                        <tbody id="sa-rank-body">
-                            <tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:30px 0;">Carregando...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- Pagamentos View -->
-            <section id="pagamentos" class="view">
-                <div class="pay-topbar">
-                    <div>
-                        <h1 class="page-title">Pagamentos</h1>
-                        <p class="pay-subtitle">Gerencie os planos e pagamentos dos seus clientes.</p>
-                    </div>
-                    <div class="pay-topbar-actions">
-                        <div class="pay-search">
-                            <i class="fas fa-search"></i>
-                            <input type="text" id="pay-search" placeholder="Buscar cliente...">
-                        </div>
-                        <button id="btn-pay-export" class="btn-ghost">
-                            <i class="fas fa-download"></i> Exportar
-                        </button>
+                    <div class="stat-card glass">
+                        <div class="stat-label">Margem</div>
+                        <div id="sa-margem" class="stat-value">—</div>
+                        <div id="sa-margem-sub" class="stat-sub">do que entra, quanto sobra</div>
                     </div>
                 </div>
 
@@ -548,6 +469,58 @@
                         <div class="stat-label">Testes Ativos</div>
                         <div id="pay-kpi-testes" class="stat-value" style="color: var(--purple);">0</div>
                         <div id="pay-kpi-testes-sub" class="stat-sub">0 vencendo em 2 dias</div>
+                    </div>
+                </div>
+
+                <div class="section-container glass chart-card">
+                    <div class="table-header">
+                        <div>
+                            <h2 class="table-title">Faturamento, custo e lucro</h2>
+                            <span class="chart-sub">Quanto entrou, quanto a operação custou e o que sobrou em cada mês</span>
+                        </div>
+                        <div class="chart-head-right">
+                            <span class="chart-legenda"><i class="dot" style="background:var(--purple)"></i> Faturamento</span>
+                            <span class="chart-legenda"><i class="dot" style="background:var(--red)"></i> Custo</span>
+                            <span class="chart-legenda"><i class="dot" style="background:var(--green)"></i> Lucro</span>
+                            <span id="sa-delta-lucro" class="chart-badge">—</span>
+                        </div>
+                    </div>
+                    <div id="sa-chart-lucro" class="chart-box"></div>
+                </div>
+
+                <div class="section-container glass chart-card">
+                    <div class="table-header">
+                        <div>
+                            <h2 class="table-title">Receita confirmada por mês</h2>
+                            <span class="chart-sub">Separando mensalidade de cobranças extras</span>
+                        </div>
+                        <div class="chart-head-right">
+                            <span class="chart-legenda"><i class="dot" style="background:var(--purple)"></i> Mensalidade</span>
+                            <span class="chart-legenda"><i class="dot" style="background:var(--purple-light)"></i> Extras</span>
+                            <span id="sa-delta" class="chart-badge">—</span>
+                        </div>
+                    </div>
+                    <div id="sa-chart-receita" class="chart-box"></div>
+                </div>
+
+                <div class="chart-grid">
+                    <div class="section-container glass chart-card">
+                        <div class="table-header">
+                            <div>
+                                <h2 class="table-title">Entradas e saídas de clientes</h2>
+                                <span class="chart-sub">Quem começou a pagar e quem parou, mês a mês</span>
+                            </div>
+                        </div>
+                        <div id="sa-chart-clientes" class="chart-box"></div>
+                    </div>
+                    <div class="section-container glass chart-card">
+                        <div class="table-header">
+                            <div>
+                                <h2 class="table-title">Concentração de receita</h2>
+                                <span class="chart-sub">Quanto do faturamento depende dos maiores clientes</span>
+                            </div>
+                        </div>
+                        <div id="sa-chart-concentracao" class="chart-box"></div>
                     </div>
                 </div>
 
@@ -638,6 +611,29 @@
                     <div id="mp-list" class="mp-list">
                         <div class="pay-empty">Clique em Atualizar para buscar no Mercado Pago.</div>
                     </div>
+                </div>
+
+                <div class="section-container glass" style="margin-top:20px;">
+                    <div class="table-header">
+                        <h2 class="table-title">Ranking de clientes</h2>
+                        <span id="sa-rank-sub" class="chart-sub">—</span>
+                    </div>
+                    <table class="client-table">
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Plano</th>
+                                <th>Receita no período</th>
+                                <th>Meses pagos</th>
+                                <th>Média/mês</th>
+                                <th>Último pagamento</th>
+                                <th>Situação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sa-rank-body">
+                            <tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:30px 0;">Carregando...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </section>
 

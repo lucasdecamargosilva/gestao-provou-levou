@@ -2620,7 +2620,11 @@ function renderPayCharts() {
 }
 
 // ─── Saúde do Negócio ──────────────────────────────────────────────────────────
-const saudeState = { pagamentos: [], carregado: false, carregando: false };
+const saudeState = { pagamentos: [], custos: {}, provas: {}, carregado: false, carregando: false };
+
+// Custo médio de geração por prova. Óculos domina o volume, então é a base da
+// estimativa; meses com custo real lançado em fluxo_caixa_mensal usam o valor real.
+const CUSTO_MEDIO_PROVA = 0.28;
 
 function mesLabel(mes) {
     const [y, m] = mes.split('-');
@@ -2656,6 +2660,115 @@ async function carregarPagamentosSaude(forcar) {
     }));
     saudeState.carregado = true;
     return saudeState.pagamentos;
+}
+
+// Custo por mês: usa o valor real lançado no fluxo de caixa quando existe;
+// senão estima contando as provas do mês (count server-side, não baixa linhas).
+async function carregarCustos(meses) {
+    if (!db) return;
+    try {
+        const { data } = await db.from('fluxo_caixa_mensal').select('mes, custo_provas, custo_ferramentas, tarifas, receita_liquida, fechado');
+        (data || []).forEach(r => {
+            saudeState.custos[r.mes] = {
+                provas: parseFloat(r.custo_provas) || 0,
+                ferramentas: (parseFloat(r.custo_ferramentas) || 0) + (parseFloat(r.tarifas) || 0),
+                real: true
+            };
+        });
+    } catch (e) { console.warn('fluxo_caixa_mensal indisponível:', e); }
+
+    const faltando = meses.filter(m => !saudeState.custos[m] || !saudeState.custos[m].provas);
+    for (const mes of faltando) {
+        try {
+            const [y, m] = mes.split('-').map(Number);
+            const ini = `${mes}-01T00:00:00-03:00`;
+            const prox = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
+            const fim = `${prox}-01T00:00:00-03:00`;
+            const { count, error } = await db
+                .from('geracoes_provou_levou')
+                .select('id', { count: 'exact', head: true })
+                .gte('created_at', ini)
+                .lt('created_at', fim);
+            if (error) throw error;
+            saudeState.provas[mes] = count || 0;
+            saudeState.custos[mes] = {
+                provas: (count || 0) * CUSTO_MEDIO_PROVA,
+                ferramentas: (saudeState.custos[mes] || {}).ferramentas || 0,
+                real: false
+            };
+        } catch (e) {
+            console.warn('contagem de provas falhou em', mes, e);
+        }
+    }
+}
+
+function custoDoMes(mes) {
+    const c = saudeState.custos[mes];
+    if (!c) return { total: 0, real: false, provas: 0 };
+    return { total: c.provas + (c.ferramentas || 0), real: c.real, provas: c.provas };
+}
+
+// Faturamento x custo x lucro, lado a lado, com a linha de lucro por cima
+function renderLucroPorMes(meses) {
+    const box = document.getElementById('sa-chart-lucro');
+    const badge = document.getElementById('sa-delta-lucro');
+    if (!box) return;
+
+    const mesCorrente = new Date().toISOString().slice(0, 7);
+    const dados = meses.map(mes => {
+        const receita = saudeState.pagamentos.filter(p => p.mes === mes).reduce((s, p) => s + p.valor, 0);
+        const c = custoDoMes(mes);
+        return { mes, receita, custo: c.total, real: c.real, lucro: receita - c.total, parcial: mes === mesCorrente };
+    });
+    if (!dados.length) { box.innerHTML = '<div class="chart-empty">Sem dados no período.</div>'; return; }
+
+    const W = 900, H = 300, padL = 10, padR = 10, padT = 40, padB = 42;
+    const max = Math.max(...dados.map(d => Math.max(d.receita, d.custo, d.lucro))) * 1.2 || 1;
+    const faixa = (W - padL - padR) / dados.length;
+    const larg = Math.min(24, faixa * 0.26);
+    const alturaUtil = H - padT - padB;
+    const y = v => H - padB - (Math.max(0, v) / max) * alturaUtil;
+    const fmt = v => v >= 1000 ? (v / 1000).toFixed(1).replace('.', ',') + 'k' : v.toFixed(0);
+
+    const barras = dados.map((d, i) => {
+        const cx = padL + faixa * i + faixa / 2;
+        const op = d.parcial ? 0.45 : 1;
+        return `<g class="chart-bar">
+            <title>${esc(mesLabel(d.mes))}
+Faturamento: ${formatBRL(d.receita)}
+Custo: ${formatBRL(d.custo)}${d.real ? ' (real)' : ' (estimado)'}
+Lucro: ${formatBRL(d.lucro)}${d.receita > 0 ? ' · margem ' + ((d.lucro / d.receita) * 100).toFixed(0) + '%' : ''}</title>
+            <rect x="${(cx - larg - 2).toFixed(1)}" y="${y(d.receita).toFixed(1)}" width="${larg}" height="${(H - padB - y(d.receita)).toFixed(1)}" rx="4" fill="var(--purple)" opacity="${op}"></rect>
+            <rect x="${(cx + 2).toFixed(1)}" y="${y(d.custo).toFixed(1)}" width="${larg}" height="${(H - padB - y(d.custo)).toFixed(1)}" rx="4" fill="var(--red)" opacity="${op * 0.8}"></rect>
+            <text x="${cx.toFixed(1)}" y="${(Math.min(y(d.receita), y(d.lucro)) - 20).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="600" fill="var(--text)">${fmt(d.receita)}</text>
+            <text x="${cx.toFixed(1)}" y="${H - padB + 18}" text-anchor="middle" font-size="11" fill="var(--text-muted)">${esc(mesLabel(d.mes))}</text>
+            <text x="${cx.toFixed(1)}" y="${H - padB + 32}" text-anchor="middle" font-size="10" fill="${d.real ? 'var(--text-muted)' : 'var(--yellow)'}">${d.real ? 'custo real' : 'estimado'}</text>
+        </g>`;
+    }).join('');
+
+    const pontos = dados.map((d, i) => `${(padL + faixa * i + faixa / 2).toFixed(1)},${y(d.lucro).toFixed(1)}`).join(' ');
+    const bolinhas = dados.map((d, i) => {
+        const cx = padL + faixa * i + faixa / 2;
+        return `<circle cx="${cx.toFixed(1)}" cy="${y(d.lucro).toFixed(1)}" r="4" fill="var(--green)"></circle>
+        <text x="${cx.toFixed(1)}" y="${(y(d.lucro) - 10).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="600" fill="var(--green)">${fmt(d.lucro)}</text>`;
+    }).join('');
+
+    box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Faturamento, custo e lucro por mês">
+        <line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="var(--border)"></line>
+        ${barras}
+        <polyline points="${pontos}" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linejoin="round"></polyline>
+        ${bolinhas}
+    </svg>`;
+
+    if (badge) {
+        const fechados = dados.filter(d => !d.parcial);
+        if (fechados.length) {
+            const u = fechados[fechados.length - 1];
+            const margem = u.receita > 0 ? (u.lucro / u.receita) * 100 : 0;
+            badge.className = 'chart-badge ' + (margem >= 50 ? 'is-up' : margem < 20 ? 'is-down' : '');
+            badge.textContent = `${mesLabel(u.mes)}: margem ${margem.toFixed(0)}%`;
+        }
+    }
 }
 
 function janelaSaude() {
@@ -2883,25 +2996,30 @@ function renderKPIsSaude(meses) {
     const doMes = saudeState.pagamentos.filter(p => p.mes === mesAtual);
     const recebido = doMes.reduce((s, p) => s + p.valor, 0);
     const pagantes = new Set(doMes.map(p => p.store)).size;
-    const mrr = clients
-        .filter(c => c.status === 'Ativo')
-        .reduce((s, c) => s + getClientMonthlyValue(c), 0);
-    const ativos = clients.filter(c => c.status === 'Ativo' && getClientMonthlyValue(c) > 0).length;
+    const c = custoDoMes(mesAtual);
+    const lucro = recebido - c.total;
+    const margem = recebido > 0 ? (lucro / recebido) * 100 : 0;
+    const provas = saudeState.provas[mesAtual];
 
-    setText('sa-mrr', formatBRL(mrr));
-    setText('sa-mrr-sub', `${ativos} cliente(s) ativo(s)`);
     setText('sa-recebido', formatBRL(recebido));
-    setText('sa-recebido-sub', `em ${mesLabel(mesAtual)}`);
-    setText('sa-arpu', pagantes ? formatBRL(recebido / pagantes) : '—');
-    setText('sa-arpu-sub', 'por cliente que pagou');
-    setText('sa-clientes', pagantes);
-    setText('sa-clientes-sub', `de ${ativos} ativos no cadastro`);
+    setText('sa-recebido-sub', `${mesLabel(mesAtual)} · ${pagantes} cliente(s)`);
+    setText('sa-custo', formatBRL(c.total));
+    setText('sa-custo-sub', c.real
+        ? 'custo real do mês'
+        : (provas != null ? `${provas.toLocaleString('pt-BR')} provas × R$ ${CUSTO_MEDIO_PROVA.toFixed(2).replace('.', ',')}` : 'estimativa'));
+    setText('sa-lucro', formatBRL(lucro));
+    setText('sa-lucro-sub', 'faturamento menos custo de provas');
+    setText('sa-margem', `${margem.toFixed(0)}%`);
+    setText('sa-margem-sub', margem >= 50 ? 'operação saudável' : margem >= 20 ? 'margem apertada' : 'atenção: margem baixa');
+    const el = document.getElementById('sa-margem');
+    if (el) el.style.color = margem >= 50 ? 'var(--green)' : margem >= 20 ? 'var(--yellow)' : 'var(--red)';
 }
 
 function renderSaude() {
     const meses = janelaSaude();
     if (!meses.length) return;
     renderKPIsSaude(meses);
+    renderLucroPorMes(meses);
     renderReceitaPorMes(meses);
     renderEntradaSaida(meses);
     renderConcentracao(meses);
@@ -2916,6 +3034,8 @@ async function loadSaude(forcar) {
     try {
         if (!clients || clients.length === 0) await loadClients();
         await carregarPagamentosSaude(forcar);
+        renderSaude();
+        await carregarCustos(janelaSaude());
         renderSaude();
     } catch (err) {
         console.error('Erro ao montar Saúde do Negócio:', err);
@@ -3317,8 +3437,7 @@ function switchView(viewId) {
     if (viewId === 'provinha') { updateProvinha(); }
     if (viewId === 'tryons') { loadTryons(); }
     if (viewId === 'limites') { loadLimites(); }
-    if (viewId === 'pagamentos') { loadPagamentosView(); }
-    if (viewId === 'saude') { loadSaude(); }
+    if (viewId === 'pagamentos') { loadPagamentosView(); loadSaude(); }
     if (viewId === 'faturamento') { loadFaturamentoView(); }
     if (viewId === 'fluxo') { loadFluxoCaixa(); }
 }
