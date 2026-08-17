@@ -459,7 +459,7 @@ async function loadPagamentos(storeId) {
             btnDel.dataset.pid = p.id;
             const ic = document.createElement('i'); ic.className = 'fas fa-trash';
             btnDel.appendChild(ic);
-            btnDel.addEventListener('click', () => deletePagamento(p.id));
+            btnDel.addEventListener('click', () => deletePagamento(p));
             tdAct.appendChild(btnDel);
 
             tr2.appendChild(tdData);
@@ -537,18 +537,70 @@ async function salvarPagamento() {
     }
 }
 
-async function deletePagamento(id) {
-    if (!confirm('Excluir este pagamento?')) return;
+// Excluir uma mensalidade tem que devolver o ciclo do cliente para a
+// mensalidade anterior — senão o cliente fica com um último pagamento que
+// não existe mais e a próxima cobrança sai errada.
+async function deletePagamento(p) {
     if (!db) return;
+    const id = typeof p === 'object' ? p.id : p;
+    const tipo = typeof p === 'object' ? p.tipo : null;
+    const storeId = _currentPagamentosStoreId;
+
+    let aviso = 'Excluir este pagamento?';
+    if (typeof p === 'object') {
+        const [y, m, d] = String(p.data_pagamento).slice(0, 10).split('-');
+        aviso = `Excluir ${p.tipo === 'mensalidade' ? 'a mensalidade' : 'o extra'} de `
+            + `${formatBRL(parseFloat(p.valor) || 0)} de ${d}/${m}/${y}?`;
+        if (p.tipo === 'mensalidade') {
+            aviso += '\n\nO último pagamento do cliente volta a ser a mensalidade anterior, '
+                + 'e a próxima cobrança é recalculada.';
+        }
+    }
+    if (!confirm(aviso)) return;
+
     try {
         const { error } = await db.from('pagamentos_clientes').delete().eq('id', id);
         if (error) throw error;
-        await loadPagamentos(_currentPagamentosStoreId);
+
+        if (tipo === 'mensalidade') await recalcularUltimoPagamento(storeId);
+
+        await loadPagamentos(storeId);
         updateStats();
+        renderTable();
+        // os números da tela Financeiro saem do zero de novo
+        saudeState.carregado = false;
+        if (document.getElementById('pagamentos').classList.contains('active')) {
+            payState.rows = buildPagamentosRows();
+            renderPagamentos();
+            loadSaude(true);
+        }
     } catch (err) {
         console.error('Erro ao excluir:', err);
         alert('Erro ao excluir: ' + (err.message || err));
     }
+}
+
+// last_payment passa a ser a mensalidade mais recente que sobrou (ou nada,
+// se o cliente ficou sem nenhuma).
+async function recalcularUltimoPagamento(storeId) {
+    const { data, error } = await db
+        .from('pagamentos_clientes')
+        .select('data_pagamento')
+        .eq('store_id', storeId)
+        .eq('tipo', 'mensalidade')
+        .order('data_pagamento', { ascending: false })
+        .limit(1);
+    if (error) throw error;
+
+    const nova = data && data.length ? String(data[0].data_pagamento).slice(0, 10) : null;
+    const { error: e2 } = await db.from('provou_levou_stores')
+        .update({ last_payment: nova })
+        .eq('id', storeId);
+    if (e2) throw e2;
+
+    const idx = clients.findIndex(c => String(c.id) === String(storeId));
+    if (idx !== -1) clients[idx].lastPayment = nova || '-';
+    return nova;
 }
 
 function _waLink(phone, msg) {
