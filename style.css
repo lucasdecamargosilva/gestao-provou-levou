@@ -97,7 +97,10 @@ body {
     font-size: 15px;
     font-weight: 500;
     line-height: 1.6;
-    height: 100vh;
+    /* min-height, não height: travado em 100vh o body não cresce com a página,
+       o <main> fica preso na primeira tela e o padding de 80px do rodapé nunca
+       aparece embaixo do último card. */
+    min-height: 100vh;
     display: flex;
     position: relative;
 }

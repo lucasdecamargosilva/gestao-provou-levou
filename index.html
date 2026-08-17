@@ -41,7 +41,10 @@
     </div>
 
     <!-- App View - initially hidden -->
-    <div id="app-view" style="display: none; width: 100%; height: 100vh;">
+    <!-- min-height, não height: com altura travada em 100vh o <main> não cresce
+         junto com o conteúdo e o respiro de 80px do rodapé some no fim da página.
+         A sidebar é position:fixed, então não depende desta altura. -->
+    <div id="app-view" style="display: none; width: 100%; min-height: 100vh;">
 
         <!-- Sidebar -->
         <aside>
