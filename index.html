@@ -450,42 +450,43 @@
                     <div class="section-container glass chart-card">
                         <div class="table-header">
                             <div>
-                                <h2 class="table-title"><span class="ic" data-ic="calendario"></span>Previsão para fechar o mês</h2>
+                                <h2 class="table-title"><span class="ic" data-ic="calendario"></span><span id="prev-titulo">Previsão para fechar o mês</span></h2>
                                 <span id="prev-sub" class="chart-sub">O que ainda entra, o que ainda sai e quanto deve sobrar</span>
                             </div>
-                            <span id="prev-margem" class="chart-badge">—</span>
+                            <span id="prev-selo" class="chart-badge">estimativa</span>
                         </div>
                         <dl class="prev-lista">
                             <div>
-                                <dt><span class="ic" data-ic="check"></span>Já entrou</dt>
+                                <dt><span class="ic" data-ic="check"></span><span id="prev-entrou-rot">Já entrou</span></dt>
                                 <dd id="prev-entrou">—</dd>
                             </div>
                             <div>
-                                <dt><span class="ic" data-ic="relogio"></span>Ainda a receber <small id="prev-receber-sub"></small></dt>
+                                <dt><span class="ic" data-ic="relogio"></span><span id="prev-receber-rot">Ainda a receber</span> <small id="prev-receber-sub"></small></dt>
                                 <dd id="prev-receber">—</dd>
                             </div>
                             <div class="is-subtotal">
-                                <dt><span class="ic" data-ic="entrada"></span>Total previsto de entradas</dt>
+                                <dt><span class="ic" data-ic="entrada"></span><span id="prev-faturamento-rot">Total previsto de entradas</span></dt>
                                 <dd id="prev-faturamento">—</dd>
                             </div>
                             <div class="tem-espaco">
-                                <dt><span class="ic" data-ic="provas"></span>Custo das imagens <small id="prev-custo-sub"></small></dt>
+                                <dt><span class="ic" data-ic="provas"></span><span id="prev-custo-var-rot">Custo das imagens</span> <small id="prev-custo-sub"></small></dt>
                                 <dd id="prev-custo-var">—</dd>
                             </div>
                             <div>
-                                <dt><span class="ic" data-ic="camadas"></span>Custos fixos <small>(média/mês)</small></dt>
+                                <dt><span class="ic" data-ic="camadas"></span><span id="prev-custo-fixo-rot">Custos fixos</span> <small id="prev-custo-fixo-sub">(média/mês)</small></dt>
                                 <dd id="prev-custo-fixo">—</dd>
                             </div>
                             <div class="is-subtotal is-saida">
-                                <dt><span class="ic" data-ic="transferencia"></span>Total previsto de saídas</dt>
+                                <dt><span class="ic" data-ic="transferencia"></span><span id="prev-custo-rot">Total previsto de saídas</span></dt>
                                 <dd id="prev-custo">—</dd>
                             </div>
                             <div class="is-total">
-                                <dt><span class="ic" data-ic="lucro"></span>Lucro líquido previsto</dt>
+                                <dt><span class="ic" data-ic="lucro"></span><span id="prev-lucro-rot">Lucro líquido previsto</span></dt>
                                 <dd id="prev-lucro">—</dd>
                             </div>
                         </dl>
                         <p class="prev-rodape" id="prev-lucro-sub">—</p>
+                        <p class="prev-nota" id="prev-nota"></p>
                     </div>
 
                     <div class="section-container glass chart-card">

@@ -2754,3 +2754,13 @@ select.form-control {
     display: block;
     max-width: 100%;
 }
+
+.prev-nota {
+    font-family: var(--font-ui);
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.4;
+    margin-top: 4px;
+}
+
+.prev-nota:empty { display: none; }

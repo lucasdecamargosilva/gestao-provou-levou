@@ -3016,6 +3016,73 @@ function renderCustoPorCliente() {
 
 // ─── Previsão de fechamento do mês ─────────────────────────────────────────────
 
+// Troca o título e o selo entre "vai fechar assim" e "fechou assim"
+function trocarModoPrevisao(ehPrevisao, mes) {
+    const titulo = document.getElementById('prev-titulo');
+    const selo = document.getElementById('prev-selo');
+    const nota = document.getElementById('prev-nota');
+    if (titulo) titulo.textContent = ehPrevisao ? 'Previsão para fechar o mês' : `Como fechou ${mesLabel(mes)}`;
+    if (selo) {
+        selo.textContent = ehPrevisao ? 'estimativa' : 'realizado';
+        selo.className = 'chart-badge ' + (ehPrevisao ? '' : 'is-up');
+    }
+    if (nota) {
+        nota.textContent = ehPrevisao
+            ? ''
+            : 'Mês fechado: estes são os valores que aconteceram, não uma projeção.';
+    }
+}
+
+// Mês que já passou: mostra o resultado real, sem projetar nada
+function renderFechamento(mes) {
+    trocarModoPrevisao(false, mes);
+
+    const doMes = saudeState.pagamentos.filter(p => p.mes === mes);
+    const entrou = doMes.reduce((s, p) => s + p.valor, 0);
+    const mensalidades = doMes.filter(p => p.tipo === 'mensalidade').reduce((s, p) => s + p.valor, 0);
+    const extras = entrou - mensalidades;
+
+    const cat = saudeState.categorias[mes];
+    let custoProvas = 0, custoOutros = 0, temExtrato = false;
+    if (cat && cat.categorias) {
+        temExtrato = true;
+        Object.entries(cat.categorias).forEach(([k, v]) => {
+            if (!cat.negocio[k]) return;
+            if (/provas|imagens|google/i.test(k)) custoProvas += v; else custoOutros += v;
+        });
+    } else {
+        const c = custoDoMes(mes);
+        custoProvas = c.provas;
+        custoOutros = 0;
+    }
+    const custo = custoProvas + custoOutros;
+    const lucro = entrou - custo;
+    const margem = entrou > 0 ? (lucro / entrou) * 100 : 0;
+    const clientes = new Set(doMes.map(p => p.store)).size;
+
+    setText('prev-entrou-rot', 'Mensalidades');
+    setText('prev-entrou', formatBRL(mensalidades));
+    setText('prev-receber-rot', 'Excedentes e extras');
+    setText('prev-receber', formatBRL(extras));
+    setText('prev-receber-sub', `(${clientes} cliente${clientes === 1 ? '' : 's'} pagaram)`);
+    setText('prev-faturamento-rot', 'Faturamento do mês');
+    setText('prev-faturamento', formatBRL(entrou));
+
+    setText('prev-custo-var-rot', 'Custo das imagens');
+    setText('prev-custo-var', formatBRL(custoProvas));
+    setText('prev-custo-sub', temExtrato ? '(do extrato)' : '(estimado)');
+    setText('prev-custo-fixo-rot', 'Ferramentas e anúncios');
+    setText('prev-custo-fixo-sub', temExtrato ? '(do extrato)' : '');
+    setText('prev-custo-fixo', formatBRL(custoOutros));
+    setText('prev-custo-rot', 'Custo total da operação');
+    setText('prev-custo', formatBRL(custo));
+
+    setText('prev-lucro-rot', 'Lucro do mês');
+    setText('prev-lucro', formatBRL(lucro));
+    setText('prev-lucro-sub', `Margem de ${margem.toFixed(1).replace('.', ',')}%`);
+}
+
+
 // Custo fixo da operação fora as provas (ferramentas, anúncios). Usa a média dos
 // meses com extrato, ignorando estorno, que é evento pontual.
 function custoFixoMedio() {
@@ -3031,7 +3098,26 @@ function custoFixoMedio() {
 }
 
 function renderPrevisao() {
-    const mes = new Date().toISOString().slice(0, 7);
+    const mesCorrente = new Date().toISOString().slice(0, 7);
+    const escolhido = janelaAnalise().slice(-1)[0];
+
+    // Olhando para um mês que já passou, previsão não existe: o card mostra
+    // como aquele mês fechou de verdade.
+    if (escolhido && escolhido !== mesCorrente) {
+        renderFechamento(escolhido);
+        return;
+    }
+    trocarModoPrevisao(true, mesCorrente);
+    setText('prev-entrou-rot', 'Já entrou');
+    setText('prev-receber-rot', 'Ainda a receber');
+    setText('prev-faturamento-rot', 'Total previsto de entradas');
+    setText('prev-custo-var-rot', 'Custo das imagens');
+    setText('prev-custo-fixo-rot', 'Custos fixos');
+    setText('prev-custo-fixo-sub', '(média/mês)');
+    setText('prev-custo-rot', 'Total previsto de saídas');
+    setText('prev-lucro-rot', 'Lucro líquido previsto');
+
+    const mes = mesCorrente;
     const hoje = new Date();
     const diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
     const diaAtual = hoje.getDate();
