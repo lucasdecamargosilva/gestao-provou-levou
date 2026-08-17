@@ -1962,6 +1962,10 @@ select.form-control {
     gap: 12px;
 }
 
+/* Ao lado do gráfico a previsão fica estreita: empilha em duas colunas */
+.chart-grid .prev-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.chart-grid .prev-grid .is-total { grid-column: span 2; }
+
 .prev-item {
     padding: 16px 18px;
     border-radius: 14px;
