@@ -2487,3 +2487,41 @@ select.form-control {
     .pay-tabs-acoes .pay-search { flex: 1; }
     .pay-tabs-acoes .pay-search input { width: 100%; }
 }
+
+/* ─── Números ────────────────────────────────────────────────
+   A HelveticaNow do projeto tem só o arquivo peso 500. Pedir 600 fazia o
+   navegador engrossar a letra por conta própria, e número engrossado assim
+   fica empastado. Inter tem peso 600 desenhado e dígitos de largura fixa,
+   então ela carrega os valores; HelveticaNow segue nos títulos, que usam 500.
+   ──────────────────────────────────────────────────────────── */
+:root {
+    --font-num: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+#pagamentos .stat-value,
+#pagamentos .prev-item strong,
+#pagamentos .mp-kpi strong,
+#pagamentos .det-valor,
+#pagamentos .pay-previsto-valor,
+#pagamentos .pay-usage-nums,
+#pagamentos .pay-usage-pct,
+#pagamentos .pay-next,
+#pagamentos .chart-badge,
+#pagamentos .client-table td,
+#pagamentos .rec-valor {
+    font-family: var(--font-num);
+    font-feature-settings: 'tnum' 1, 'cv05' 1;
+    letter-spacing: -0.02em;
+}
+
+/* Peso 600 real: dá para firmar sem distorcer */
+#pagamentos .stat-value,
+#pagamentos .prev-item strong,
+#pagamentos .mp-kpi strong { font-weight: 600; }
+
+/* Títulos seguem na HelveticaNow, no peso que ela tem de verdade */
+#pagamentos .table-title,
+.page-title { font-weight: 500; }
+
+/* Números dentro dos gráficos (SVG) também */
+#pagamentos .chart-box text { font-family: var(--font-num); }
