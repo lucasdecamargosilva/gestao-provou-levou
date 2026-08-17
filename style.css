@@ -2741,3 +2741,16 @@ select.form-control {
     min-height: 0;
     overflow-y: auto;
 }
+
+/* Gráfico em SVG escala junto com o container: não precisa de rolagem, e a
+   barra aparecia por arredondamento de fração de pixel */
+#sa-chart-lucro,
+#mrr-chart {
+    overflow: hidden;
+}
+
+#sa-chart-lucro svg,
+#mrr-chart svg {
+    display: block;
+    max-width: 100%;
+}
