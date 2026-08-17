@@ -3241,7 +3241,8 @@ function renderLucroPorMes(meses) {
 
     // Proporção mais alta: o gráfico divide a linha com a previsão
     // Proporção em retrato: o card é estreito e alto, o desenho acompanha
-    const W = 460, H = 290, padL = 8, padR = 8, padT = 26, padB = 40;
+    // padB precisa caber rótulo do mês + linha de "custo real/estimado"
+    const W = 500, H = 260, padL = 8, padR = 8, padT = 26, padB = 44;
     const max = Math.max(...dados.map(d => Math.max(d.receita, d.custo, d.lucro))) * 1.1 || 1;
     const faixa = (W - padL - padR) / dados.length;
     const larg = Math.min(20, faixa * 0.28);

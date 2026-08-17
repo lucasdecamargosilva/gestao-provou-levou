@@ -2991,3 +2991,14 @@ main { gap: 16px; }
 .chart-grid.linha-paineis .prev-lista > div { padding: 3px 0; }
 .chart-grid.linha-paineis .prev-lista .is-total { margin-top: 5px; padding: 8px 11px; }
 .chart-grid.linha-paineis .prev-lista .tem-espaco { margin-top: 5px; }
+
+/* O SVG cabe inteiro na área: nada de cortar rótulo de mês no rodapé */
+#sa-chart-lucro {
+    overflow: visible;
+    align-items: flex-end;
+}
+
+#sa-chart-lucro svg {
+    max-height: 100%;
+    height: auto;
+}
