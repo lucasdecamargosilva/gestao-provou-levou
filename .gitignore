@@ -4,3 +4,4 @@ env-config.js
 diff.txt
 test_jsdom.js
 test_puppeteer.js
+_preview-*.html
