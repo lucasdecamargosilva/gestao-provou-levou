@@ -3100,10 +3100,10 @@ function renderLucroPorMes(meses) {
     if (!dados.length) { box.innerHTML = '<div class="chart-empty">Sem dados no período.</div>'; return; }
 
     // Proporção mais alta: o gráfico divide a linha com a previsão
-    const W = 620, H = 330, padL = 10, padR = 10, padT = 40, padB = 42;
+    const W = 520, H = 340, padL = 8, padR = 8, padT = 38, padB = 42;
     const max = Math.max(...dados.map(d => Math.max(d.receita, d.custo, d.lucro))) * 1.2 || 1;
     const faixa = (W - padL - padR) / dados.length;
-    const larg = Math.min(26, faixa * 0.3);
+    const larg = Math.min(22, faixa * 0.3);
     const alturaUtil = H - padT - padB;
     const y = v => H - padB - (Math.max(0, v) / max) * alturaUtil;
     const fmt = v => v >= 1000 ? (v / 1000).toFixed(1).replace('.', ',') + 'k' : v.toFixed(0);

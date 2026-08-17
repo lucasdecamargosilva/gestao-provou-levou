@@ -2652,3 +2652,27 @@ select.form-control {
 
 #pagamentos .stat-card.is-destaque .stat-value,
 #pagamentos #pay-kpi-mrr { color: #6d28d9; }
+
+/* Três painéis na mesma linha: a lista rola em vez de esticar a linha toda */
+.chart-grid .det-box { max-height: 300px; overflow-y: auto; }
+
+/* O gráfico divide a linha com outros dois: proporção mais fechada */
+#sa-chart-lucro { min-height: auto; }
+#sa-chart-lucro svg { max-height: 300px; }
+
+/* Em coluna estreita o cabeçalho quebra em várias linhas e infla o painel */
+.chart-grid .table-header {
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.chart-grid .chart-sub { line-height: 1.35; }
+
+.prev-lista > div { padding: 7px 0; }
+
+/* O detalhe entre parênteses vai para a linha de baixo em vez de esticar */
+.prev-lista dt { flex-wrap: wrap; row-gap: 0; }
+.prev-lista dt small { flex-basis: 100%; padding-left: 21px; }
