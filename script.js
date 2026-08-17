@@ -1147,6 +1147,10 @@ window.closeRegistrationModal = () => {
     if (wrapper) wrapper.style.display = 'none';
     const histBtn = document.getElementById('btn-historico-pagamentos');
     if (histBtn) histBtn.style.display = 'none';
+    const rapidoNovo = document.getElementById('btn-registrar-rapido');
+    if (rapidoNovo) rapidoNovo.style.display = 'none';
+    const dicaNovo = document.getElementById('ultimo-pgto-dica');
+    if (dicaNovo) dicaNovo.textContent = 'Salve o cliente para lançar pagamentos.';
     // Reset lock do plano personalizado
     const planSelect = document.getElementById('plan');
     if (planSelect) {
@@ -1470,6 +1474,27 @@ function editClientById(id) {
     if (histBtn) {
         histBtn.style.display = 'inline-flex';
         histBtn.onclick = () => openPagamentosModal(id);
+    }
+
+    // Atalho: lançar um pagamento sem sair da ficha
+    const rapido = document.getElementById('btn-registrar-rapido');
+    if (rapido) {
+        rapido.style.display = 'inline-flex';
+        rapido.onclick = () => openPagamentosModal(id);
+    }
+
+    // Dica com o que já está lançado no histórico deste cliente
+    const dica = document.getElementById('ultimo-pgto-dica');
+    if (dica) {
+        const meus = saudeState.pagamentos.filter(p => String(p.store) === String(id));
+        if (!saudeState.carregado) {
+            dica.textContent = 'Abra o histórico para ver os lançamentos.';
+        } else if (!meus.length) {
+            dica.textContent = 'Nenhum pagamento no histórico ainda.';
+        } else {
+            const ult = meus.slice().sort((a, b) => (a.data < b.data ? 1 : -1))[0];
+            dica.textContent = `${meus.length} lançamento(s) · último: ${formatBRL(ult.valor)} em ${formatDate(ult.data)}`;
+        }
     }
 
     openModal('registration-modal');
@@ -3242,8 +3267,8 @@ function openPayMenu(btn, id) {
     const menu = document.createElement('div');
     menu.className = 'pay-menu';
     menu.innerHTML = `
-        <button data-act="hist"><i class="fas fa-receipt"></i> Histórico de pagamentos</button>
         <button data-act="edit"><i class="fas fa-pen"></i> Editar cliente</button>
+        <button data-act="hist"><i class="fas fa-receipt"></i> Histórico de pagamentos</button>
         <button data-act="view"><i class="fas fa-eye"></i> Ver detalhes</button>
         <button data-act="site"><i class="fas fa-arrow-up-right-from-square"></i> Abrir loja</button>
         <button data-act="del" class="is-danger"><i class="fas fa-trash"></i> Excluir</button>`;
@@ -3356,7 +3381,7 @@ function setupPagamentosUI() {
             }
             if (e.target.closest('.pay-menu')) return;
             const row = e.target.closest('.pay-row');
-            if (row) showClientDetailsById(row.dataset.id);
+            if (row) editClientById(row.dataset.id);
         });
     }
 

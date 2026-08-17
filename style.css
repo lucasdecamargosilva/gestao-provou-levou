@@ -2450,3 +2450,40 @@ select.form-control {
 
 #pagamentos .mp-kpi strong { font-size: 16px; }
 #pagamentos .mp-kpi-label { font-size: 10px; }
+
+/* Busca e exportar na linha das abas */
+.pay-tabs-acoes {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 4px 8px 0;
+}
+
+.pay-tabs-acoes .pay-search input {
+    width: 190px;
+    padding: 8px 14px 8px 34px;
+    font-size: 12.5px;
+}
+
+.pay-tabs-acoes .pay-search i { left: 13px; font-size: 12px; }
+.btn-ghost.is-mini { padding: 8px 14px; font-size: 12px; }
+
+/* Campo com botão de ação ao lado */
+.campo-com-acao { display: flex; gap: 8px; align-items: center; }
+.campo-com-acao .form-control { flex: 1; }
+.campo-com-acao .btn-ghost { white-space: nowrap; }
+
+.dica {
+    display: block;
+    margin-top: 5px;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: var(--font-ui);
+}
+
+@media (max-width: 900px) {
+    .pay-tabs-acoes { width: 100%; margin-left: 0; }
+    .pay-tabs-acoes .pay-search { flex: 1; }
+    .pay-tabs-acoes .pay-search input { width: 100%; }
+}

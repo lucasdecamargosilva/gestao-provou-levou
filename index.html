@@ -414,13 +414,6 @@
                             <option value="6" selected>6 meses</option>
                             <option value="12">12 meses</option>
                         </select>
-                        <div class="pay-search">
-                            <i class="fas fa-search"></i>
-                            <input type="text" id="pay-search" placeholder="Buscar cliente...">
-                        </div>
-                        <button id="btn-pay-export" class="btn-ghost">
-                            <i class="fas fa-download"></i> Exportar
-                        </button>
                         <button id="btn-saude-refresh" class="btn-ghost">
                             <i class="fas fa-sync-alt"></i> Atualizar
                         </button>
@@ -504,6 +497,15 @@
                         <button class="pay-tab" data-tab="testes"><span class="ic" data-ic="teste"></span>Testes <span class="pay-tab-count" id="pay-count-testes">0</span></button>
                         <button class="pay-tab" data-tab="cancelados"><span class="ic" data-ic="cancelado"></span>Cancelados <span class="pay-tab-count" id="pay-count-cancelados">0</span></button>
                         <button class="pay-tab is-destaque" data-tab="areceber"><span class="ic" data-ic="moedas"></span>A receber <span class="pay-tab-count" id="pay-count-areceber">0</span></button>
+                        <div class="pay-tabs-acoes">
+                            <div class="pay-search">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="pay-search" placeholder="Buscar cliente...">
+                            </div>
+                            <button id="btn-pay-export" class="btn-ghost is-mini">
+                                <i class="fas fa-download"></i> Exportar
+                            </button>
+                        </div>
                     </div>
 
                     <div id="rec-resumo" class="rec-resumo" style="display:none;">
@@ -816,7 +818,13 @@
                             </div>
                             <div class="form-group">
                                 <label for="last_payment">Último Pagamento</label>
-                                <input type="date" id="last_payment" class="form-control">
+                                <div class="campo-com-acao">
+                                    <input type="date" id="last_payment" class="form-control">
+                                    <button type="button" id="btn-registrar-rapido" class="btn-ghost is-mini" title="Lançar um pagamento no histórico">
+                                        <i class="fas fa-plus"></i> Registrar
+                                    </button>
+                                </div>
+                                <small id="ultimo-pgto-dica" class="dica">—</small>
                             </div>
                             <div class="form-group">
                                 <label for="forma_pagamento">Forma de Pagamento</label>
