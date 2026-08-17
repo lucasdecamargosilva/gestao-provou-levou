@@ -2982,3 +2982,12 @@ main { gap: 16px; }
 /* Em tela estreita a tabela rola de lado em vez de encolher a fonte */
 #pagamentos .tabela-rolagem { overflow-x: auto; }
 #pagamentos .tabela-rolagem .client-table { min-width: 500px; }
+
+/* ─── Linha de painéis mais baixa ────────────────────────────
+   Os três cards estavam com folga grande sobrando embaixo. */
+.chart-grid.linha-paineis { grid-auto-rows: 400px; }
+.chart-grid.linha-paineis > .chart-card { padding: 16px 18px 18px; }
+.chart-grid.linha-paineis .table-header { margin-bottom: 10px; padding-bottom: 10px; }
+.chart-grid.linha-paineis .prev-lista > div { padding: 3px 0; }
+.chart-grid.linha-paineis .prev-lista .is-total { margin-top: 5px; padding: 8px 11px; }
+.chart-grid.linha-paineis .prev-lista .tem-espaco { margin-top: 5px; }
