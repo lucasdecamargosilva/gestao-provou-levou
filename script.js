@@ -2766,12 +2766,24 @@ async function carregarCustos(meses) {
     try {
         const { data } = await db.from('fluxo_caixa_mensal').select('mes, custo_provas, custo_ferramentas, tarifas, receita_liquida, categorias, fechado');
         (data || []).forEach(r => {
+            let outros = (parseFloat(r.custo_ferramentas) || 0) + (parseFloat(r.tarifas) || 0);
+            // Quando o mês está categorizado, o "resto" é a soma de TODA categoria de
+            // negócio fora a geração (que já vai em custo_provas). Sem isso os anúncios
+            // ficavam de fora e o lucro do painel aparecia maior do que é.
+            const cat = r.categorias && r.categorias.categorias;
+            if (cat) {
+                const eNegocio = (r.categorias.negocio) || {};
+                outros = Object.keys(cat).reduce((s, k) => (
+                    eNegocio[k] && k !== 'Geração de provas (Google)' && k !== 'Estornos e cancelamentos'
+                        ? s + (parseFloat(cat[k]) || 0) : s
+                ), 0) + (parseFloat(r.tarifas) || 0);
+            }
             saudeState.custos[r.mes] = {
                 provas: parseFloat(r.custo_provas) || 0,
-                ferramentas: (parseFloat(r.custo_ferramentas) || 0) + (parseFloat(r.tarifas) || 0),
+                ferramentas: outros,
                 real: true
             };
-            if (r.categorias && r.categorias.categorias) saudeState.categorias[r.mes] = r.categorias;
+            if (cat) saudeState.categorias[r.mes] = r.categorias;
         });
     } catch (e) { console.warn('fluxo_caixa_mensal indisponível:', e); }
 
