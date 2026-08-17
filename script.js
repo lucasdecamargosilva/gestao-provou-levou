@@ -1,9 +1,3 @@
-function janelaAnalise() {
-    const p = periodoSelecionado();
-    if (p === 'mes-atual' || p === 'mes-passado') return [finMesEscolhido()];
-    return janelaSaude();
-}
-
 // ─── Configuração Supabase ─────────────────────────────────────────────────────
 // Tenta buscar de variáveis globais (Easypanel/Local) ou placeholders
 const SUPABASE_URL = window.LOCAL_SUPABASE_URL || '';
@@ -2713,307 +2707,6 @@ function aplicarIcones(raiz) {
     });
 }
 
-// ═══ Dashboard Financeiro: barra de período, cards, alertas ═══════════════════
-
-function finPeriodo() {
-    const b = document.querySelector('#fin-periodo .pill.active');
-    return b ? b.dataset.p : 'mes-atual';
-}
-
-// O select de mês só faz sentido quando o filtro é mensal
-function finMesEscolhido() {
-    const sel = document.getElementById('fin-mes');
-    const p = finPeriodo();
-    if (p === 'mes-atual') return mesRelativo(0);
-    if (p === 'mes-passado') return mesRelativo(-1);
-    return sel && sel.value ? sel.value : mesRelativo(0);
-}
-
-function montarSelectMeses() {
-    const sel = document.getElementById('fin-mes');
-    if (!sel || !saudeState.pagamentos.length) return;
-    const todos = mesesEntre(saudeState.pagamentos[0].mes, mesRelativo(0)).reverse();
-    const atual = sel.value;
-    sel.innerHTML = todos.map(m => `<option value="${m}">${mesLabel(m)}</option>`).join('');
-    sel.value = todos.includes(atual) ? atual : finMesEscolhido();
-}
-
-function variacao(atual, anterior) {
-    if (anterior == null || anterior === 0) return null;
-    return ((atual - anterior) / anterior) * 100;
-}
-
-function pintarVariacao(id, pct, bomSubir) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    if (pct == null) { el.textContent = '—'; el.className = 'var is-neutro'; return; }
-    const subiu = pct >= 0;
-    const bom = bomSubir ? subiu : !subiu;
-    el.className = 'var ' + (Math.abs(pct) < 0.05 ? 'is-neutro' : bom ? 'is-alta' : 'is-baixa');
-    el.textContent = `${subiu ? '+' : ''}${pct.toFixed(1).replace('.', ',')}% ${subiu ? '▲' : '▼'}`;
-}
-
-function custoOperacaoDoMes(mes) {
-    const cat = saudeState.categorias[mes];
-    if (cat && cat.categorias) {
-        return {
-            total: Object.entries(cat.categorias).filter(([k]) => cat.negocio[k]).reduce((s, l) => s + l[1], 0),
-            real: true
-        };
-    }
-    return custoDoMes(mes);
-}
-
-function gastoPessoalDoMes(mes) {
-    const cat = saudeState.categorias[mes];
-    if (!cat || !cat.categorias) return null;
-    return Object.entries(cat.categorias).filter(([k]) => !cat.negocio[k]).reduce((s, l) => s + l[1], 0);
-}
-
-function receitaDoMes(mes, ateDia) {
-    return saudeState.pagamentos
-        .filter(p => p.mes === mes && (!ateDia || Number(p.data.slice(8, 10)) <= ateDia))
-        .reduce((s, p) => s + p.valor, 0);
-}
-
-function renderCardsFinanceiro() {
-    const mes = finMesEscolhido();
-    const ehCorrente = mes === mesRelativo(0);
-    const todos = mesesEntre(saudeState.pagamentos[0].mes, mesRelativo(0));
-    const ant = todos[todos.indexOf(mes) - 1];
-
-    // Mes em curso so pode ser comparado com o mesmo trecho do mes anterior
-    const corte = ehCorrente ? new Date().getDate() : null;
-    const receita = receitaDoMes(mes);
-    const receitaAnt = ant ? receitaDoMes(ant, corte) : null;
-    const custo = custoOperacaoDoMes(mes);
-    const custoAnt = ant ? custoOperacaoDoMes(ant) : { total: null };
-    const custoAntComparavel = (custoAnt.total != null && ehCorrente)
-        ? custoAnt.total * (corte / new Date(new Date().getFullYear(), new Date().getMonth(), 0).getDate())
-        : custoAnt.total;
-    const pessoal = gastoPessoalDoMes(mes);
-    const pessoalAnt = ant ? gastoPessoalDoMes(ant) : null;
-    const lucro = receita - custo.total;
-    const lucroAnt = (receitaAnt != null && custoAntComparavel != null) ? receitaAnt - custoAntComparavel : null;
-    const margem = receita > 0 ? (lucro / receita) * 100 : 0;
-
-    const cmp = ant ? `vs. ${mesLabel(ant)}${ehCorrente ? ' (mesmo trecho)' : ''}` : 'primeiro mês';
-
-    setText('sa-recebido', formatBRL(receita));
-    setText('sa-recebido-sub', receitaAnt != null ? `${cmp}: ${formatBRL(receitaAnt)}` : cmp);
-    pintarVariacao('sa-recebido-var', variacao(receita, receitaAnt), true);
-
-    setText('sa-custo', formatBRL(custo.total));
-    setText('sa-custo-sub', custo.real
-        ? (custoAntComparavel != null ? `${cmp}: ${formatBRL(custoAntComparavel)}` : cmp)
-        : `estimado · ${(saudeState.provas[mes] || 0).toLocaleString('pt-BR')} imagens`);
-    pintarVariacao('sa-custo-var', variacao(custo.total, custoAntComparavel), false);
-
-    setText('sa-lucro', formatBRL(lucro));
-    setText('sa-margem-linha', `Margem: ${margem.toFixed(1).replace('.', ',')}%`);
-    pintarVariacao('sa-lucro-var', variacao(lucro, lucroAnt), true);
-
-    // Sem extrato do mes nao ha gasto pessoal medido: nao inventar variacao
-    setText('sa-pessoal', pessoal == null ? 'sem extrato' : formatBRL(pessoal));
-    setText('sa-pessoal-sub', pessoal == null
-        ? 'baixe o extrato do mês para ver'
-        : (pessoalAnt != null ? `vs. ${mesLabel(ant)}: ${formatBRL(pessoalAnt)}` : cmp));
-    pintarVariacao('sa-pessoal-var', (pessoal == null || pessoalAnt == null) ? null : variacao(pessoal, pessoalAnt), false);
-
-    const badge = document.getElementById('fin-badge-curso');
-    if (badge) badge.style.display = ehCorrente ? '' : 'none';
-}
-
-// Curva acumulada do mês: o que já aconteceu em linha cheia, o resto tracejado
-function renderAcumuladoMes() {
-    const box = document.getElementById('sa-chart-acumulado');
-    if (!box) return;
-    const mes = finMesEscolhido();
-    const [y, m] = mes.split('-').map(Number);
-    const diasNoMes = new Date(y, m, 0).getDate();
-    const ehCorrente = mes === mesRelativo(0);
-    const diaHoje = ehCorrente ? new Date().getDate() : diasNoMes;
-
-    const pagosDoMes = saudeState.pagamentos.filter(p => p.mes === mes);
-    const custoMes = custoOperacaoDoMes(mes).total;
-
-    const receitaDia = [], custoDia = [], lucroDia = [];
-    let acc = 0;
-    for (let d = 1; d <= diasNoMes; d++) {
-        const doDia = pagosDoMes.filter(p => Number(p.data.slice(8, 10)) === d).reduce((s, p) => s + p.valor, 0);
-        acc += doDia;
-        const rec = d <= diaHoje ? acc : acc * (d / diaHoje);
-        const cus = custoMes * (d / diasNoMes);
-        receitaDia.push(rec); custoDia.push(cus); lucroDia.push(rec - cus);
-    }
-
-    const W = 460, H = 210, padL = 44, padR = 12, padT = 14, padB = 26;
-    const max = Math.max(...receitaDia, ...custoDia, 1) * 1.12;
-    const x = d => padL + ((d - 1) / (diasNoMes - 1)) * (W - padL - padR);
-    const yy = v => H - padB - (v / max) * (H - padT - padB);
-
-    const linha = (arr, cor, ate) => {
-        const pts = arr.slice(0, ate).map((v, i) => `${x(i + 1).toFixed(1)},${yy(v).toFixed(1)}`).join(' ');
-        return `<polyline points="${pts}" fill="none" stroke="${cor}" stroke-width="2" stroke-linejoin="round"/>`;
-    };
-    const tracejada = (arr, cor) => {
-        const pts = arr.slice(diaHoje - 1).map((v, i) => `${x(diaHoje + i).toFixed(1)},${yy(v).toFixed(1)}`).join(' ');
-        return `<polyline points="${pts}" fill="none" stroke="${cor}" stroke-width="2" stroke-dasharray="4 4" opacity=".55"/>`;
-    };
-
-    const grade = [0, 0.5, 1].map(f => {
-        const v = max * f;
-        return `<line x1="${padL}" y1="${yy(v)}" x2="${W - padR}" y2="${yy(v)}" stroke="var(--border)"/>
-        <text x="${padL - 8}" y="${yy(v) + 3.5}" text-anchor="end" font-size="9" fill="var(--text-muted)">${v >= 1000 ? 'R$ ' + Math.round(v / 1000) + 'k' : 'R$ 0'}</text>`;
-    }).join('');
-
-    const marcas = [1, Math.round(diasNoMes / 4), Math.round(diasNoMes / 2), Math.round(diasNoMes * 3 / 4), diasNoMes];
-    const eixoX = marcas.map(d => `<text x="${x(d)}" y="${H - 8}" text-anchor="middle" font-size="9" fill="var(--text-muted)">${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}</text>`).join('');
-
-    const hoje = ehCorrente ? `
-        <line x1="${x(diaHoje)}" y1="${padT}" x2="${x(diaHoje)}" y2="${H - padB}" stroke="var(--purple)" stroke-dasharray="3 3" opacity=".45"/>
-        <text x="${x(diaHoje)}" y="${padT - 2}" text-anchor="middle" font-size="9" font-weight="600" fill="var(--purple)">Hoje</text>` : '';
-
-    box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Acumulado do mês">
-        ${grade}${eixoX}${hoje}
-        ${linha(custoDia, 'var(--red)', diaHoje)}${ehCorrente ? tracejada(custoDia, 'var(--red)') : ''}
-        ${linha(lucroDia, 'var(--green)', diaHoje)}${ehCorrente ? tracejada(lucroDia, 'var(--green)') : ''}
-        ${linha(receitaDia, 'var(--purple)', diaHoje)}${ehCorrente ? tracejada(receitaDia, 'var(--purple)') : ''}
-    </svg>`;
-}
-
-function renderAlertas() {
-    const box = document.getElementById('fin-alertas');
-    if (!box) return;
-    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-    const linhas = payState.rows.filter(r => r.aReceber);
-    const atrasados = linhas.filter(r => r.diasParaVencer < 0);
-    const excedentes = linhas.filter(r => r.excedente > 0);
-    const aVencer = linhas.filter(r => r.diasParaVencer >= 0 && r.diasParaVencer <= 30);
-    const testes = payState.rows.filter(r => r.tab === 'testes');
-    const custoTestes = testes.reduce((s, r) => {
-        const usadas = payState.counts[normalizeDomain(r.c.website)] || 0;
-        return s + usadas * (r.c.categoria === 'roupa' ? 0.37 : 0.28);
-    }, 0);
-    const soma = arr => arr.reduce((s, r) => s + r.previsto, 0);
-
-    const itens = [
-        atrasados.length && { tipo: 'is-erro', ic: 'alerta', tab: 'inadimplentes',
-            titulo: `${atrasados.length} cliente(s) inadimplente(s)`, sub: `${formatBRL(soma(atrasados))} vencidos` },
-        excedentes.length && { tipo: 'is-aviso', ic: 'provas', tab: 'areceber',
-            titulo: `${excedentes.length} cliente(s) com excedente`, sub: `${formatBRL(excedentes.reduce((s, r) => s + r.excedente, 0))} de excedente a receber` },
-        aVencer.length && { tipo: 'is-info', ic: 'calendario', tab: 'areceber',
-            titulo: `${aVencer.length} cobrança(s) a vencer`, sub: `${formatBRL(soma(aVencer))} nos próximos 30 dias` },
-        testes.length && { tipo: 'is-neutro', ic: 'teste', tab: 'testes',
-            titulo: `${testes.length} cliente(s) em teste`, sub: `Custo no ciclo: ${formatBRL(custoTestes)}` }
-    ].filter(Boolean);
-
-    box.innerHTML = itens.length ? itens.map(i => `
-        <button class="alerta-item ${i.tipo}" data-aba="${i.tab}">
-            <span class="alerta-ic"><span class="ic" data-ic="${i.ic}"></span></span>
-            <span class="alerta-txt"><strong>${esc(i.titulo)}</strong><span>${esc(i.sub)}</span></span>
-            <span class="alerta-seta">›</span>
-        </button>`).join('')
-        : '<p class="painel-nota">Nada exigindo atenção agora.</p>';
-    aplicarIcones(box);
-}
-
-const MARCA_CORES = [
-    ['rgba(124,58,237,.12)', '#6d28d9'], ['rgba(16,185,129,.14)', '#047857'],
-    ['rgba(59,130,246,.12)', '#1d4ed8'], ['rgba(245,158,11,.16)', '#b45309'],
-    ['rgba(236,72,153,.12)', '#be185d']
-];
-
-function marcaCliente(nome) {
-    const t = String(nome || '?').trim();
-    const iniciais = t.split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase();
-    let h = 0;
-    for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) % 997;
-    const [bg, fg] = MARCA_CORES[h % MARCA_CORES.length];
-    return `<span class="cli-marca" style="background:${bg};color:${fg}">${esc(iniciais)}</span>`;
-}
-
-function renderDevedores() {
-    const box = document.getElementById('fin-devedores');
-    if (!box) return;
-    const atrasados = payState.rows
-        .filter(r => r.aReceber && r.diasParaVencer < 0)
-        .sort((a, b) => a.diasParaVencer - b.diasParaVencer);
-    setText('fin-devedores-n', `(${atrasados.length})`);
-
-    if (!atrasados.length) {
-        box.innerHTML = '<p class="painel-nota">Ninguém em atraso. Bom sinal.</p>';
-        return;
-    }
-    const formaTag = f => {
-        const k = payMethodKind(f);
-        const nome = { pix: 'PIX', cartao: 'Cartão', boleto: 'Boleto' }[k] || '—';
-        return `<span class="tag is-${k || 'outro'}">${nome}</span>`;
-    };
-    box.innerHTML = `<table>
-        <thead><tr><th>Cliente</th><th>Vencimento</th><th class="num">Atraso</th><th class="num">Valor</th><th>Forma</th></tr></thead>
-        <tbody>${atrasados.slice(0, 6).map(r => `
-            <tr>
-                <td><span class="cli-nome">${marcaCliente(r.c.company || r.c.name)}<span>${esc(r.c.company || r.c.name)}</span></span></td>
-                <td>${esc(r.nextLabel)}</td>
-                <td class="num" style="color:var(--red);font-weight:600">${Math.abs(r.diasParaVencer)}d</td>
-                <td class="num forte">${formatBRL(r.previsto)}</td>
-                <td>${formaTag(r.c.formaPagamento)}</td>
-            </tr>`).join('')}</tbody></table>`;
-}
-
-function renderResumoPeriodo() {
-    const meses = janelaSaude();
-    setText('resumo-rot', `(${meses.length} ${meses.length === 1 ? 'mês' : 'meses'})`);
-    let receita = 0, custo = 0;
-    meses.forEach(m => { receita += receitaDoMes(m); custo += custoOperacaoDoMes(m).total; });
-    const lucro = receita - custo;
-    const margem = receita > 0 ? (lucro / receita) * 100 : 0;
-
-    setText('res-receita', formatBRL(receita));
-    setText('res-custo', formatBRL(custo));
-    setText('res-lucro', formatBRL(lucro));
-    setText('res-margem', `${margem.toFixed(1).replace('.', ',')}%`);
-
-    const donut = document.getElementById('res-donut');
-    if (!donut) return;
-    const r = 58, circ = 2 * Math.PI * r;
-    const fatia = Math.max(0, Math.min(100, margem)) / 100 * circ;
-    donut.innerHTML = `
-        <svg viewBox="0 0 150 150">
-            <circle cx="75" cy="75" r="${r}" fill="none" stroke="var(--bg-light-alt)" stroke-width="17"/>
-            <circle cx="75" cy="75" r="${r}" fill="none" stroke="var(--purple)" stroke-width="17"
-                stroke-linecap="round" stroke-dasharray="${fatia.toFixed(1)} ${circ.toFixed(1)}"/>
-        </svg>
-        <div class="donut-centro"><strong>${margem.toFixed(1).replace('.', ',')}%</strong><span>Margem média</span></div>`;
-}
-
-function setupFinanceiroUI() {
-    const pills = document.getElementById('fin-periodo');
-    if (pills) {
-        pills.addEventListener('click', e => {
-            const b = e.target.closest('.pill');
-            if (!b) return;
-            pills.querySelectorAll('.pill').forEach(p => p.classList.toggle('active', p === b));
-            const sel = document.getElementById('fin-mes');
-            if (sel) sel.value = finMesEscolhido();
-            renderSaude();
-        });
-    }
-    const sel = document.getElementById('fin-mes');
-    if (sel) sel.addEventListener('change', renderSaude);
-
-    // Alerta e "ver todos" levam para a aba correspondente
-    document.addEventListener('click', e => {
-        const b = e.target.closest('[data-aba]');
-        if (!b) return;
-        const aba = document.querySelector(`.pay-tab[data-tab="${b.dataset.aba}"]`);
-        if (!aba) return;
-        aba.click();
-        document.getElementById('pay-tabs').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-}
-
 // ─── Saúde do Negócio ──────────────────────────────────────────────────────────
 const saudeState = { pagamentos: [], custos: {}, provas: {}, categorias: {}, carregado: false, carregando: false };
 
@@ -3351,14 +3044,11 @@ function renderPrevisao() {
     setText('prev-entrou-sub', `até ${diaAtual}/${String(hoje.getMonth() + 1).padStart(2, '0')}`);
     setText('prev-receber', formatBRL(somaReceber));
     setText('prev-receber-sub', `${aReceber.length} cobrança(s)${atrasados ? ` · ${atrasados} em atraso` : ''}`);
-    setText('prev-vencer-rot', `A vencer até ${new Date(hoje.getFullYear(), hoje.getMonth(), diasNoMes).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`);
     setText('prev-faturamento', formatBRL(faturamento));
     setText('prev-custo', formatBRL(custo));
-    setText('prev-custo-var', formatBRL(custoProvas));
-    setText('prev-custo-fixo', formatBRL(fixo));
-    setText('prev-custo-sub', `${formatBRL(custoProvas)} em imagens (${baseProvas}) + ${formatBRL(fixo)} fixos`);
+    setText('prev-custo-sub', `${formatBRL(custoProvas)} em provas (${baseProvas}) + ${formatBRL(fixo)} fixos`);
     setText('prev-lucro', formatBRL(lucro));
-    setText('prev-margem', `Margem prevista: ${margem.toFixed(1).replace('.', ',')}%`);
+    setText('prev-lucro-sub', `faturamento previsto menos custo previsto`);
 
     const badge = document.getElementById('prev-margem');
     if (badge) {
@@ -3432,7 +3122,7 @@ Lucro: ${formatBRL(d.lucro)}${d.receita > 0 ? ' · margem ' + ((d.lucro / d.rece
 }
 
 function periodoSelecionado() {
-    return finPeriodo();
+    return (document.getElementById('saude-periodo') || {}).value || '6';
 }
 
 function mesRelativo(delta) {
@@ -3505,26 +3195,19 @@ function renderSaude() {
     const meses = janelaSaude();
     if (!meses.length) return;
     const analise = janelaAnalise();
-    montarSelectMeses();
-    renderCardsFinanceiro();
-    renderPrevisao();
-    renderAcumuladoMes();
-    renderAlertas();
-    renderDevedores();
+    renderKPIsSaude(analise);
     renderFaturamentoDetalhado(analise);
     renderCustoPorCliente();
     renderCustosCategoria(analise[analise.length - 1]);
+    renderPrevisao();
     renderLucroPorMes(meses);
-    renderResumoPeriodo();
-    aplicarIcones();
 }
 
 async function loadSaude(forcar) {
     if (saudeState.carregando) return;
     saudeState.carregando = true;
     const btn = document.getElementById('btn-saude-refresh');
-    const giro = btn && btn.querySelector('.ic, i');
-    if (giro) giro.classList.add('girando');
+    if (btn) btn.querySelector('i').classList.add('fa-spin');
     try {
         if (!clients || clients.length === 0) await loadClients();
         await carregarPagamentosSaude(forcar);
@@ -3537,7 +3220,7 @@ async function loadSaude(forcar) {
         if (box) box.innerHTML = `<div class="chart-empty" style="color:var(--red)">Não deu pra carregar: ${esc(err.message || err)}</div>`;
     } finally {
         saudeState.carregando = false;
-        if (giro) giro.classList.remove('girando');
+        if (btn) btn.querySelector('i').classList.remove('fa-spin');
     }
 }
 
@@ -4126,7 +3809,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 9b. Tela de Pagamentos (abas, busca, exportar, menus de ação)
     setupPagamentosUI();
     setupSaudeUI();
-    setupFinanceiroUI();
     aplicarIcones();
 
     // 10. Lógica do Modal da API Key Gerada
