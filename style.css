@@ -2764,3 +2764,66 @@ select.form-control {
 }
 
 .prev-nota:empty { display: none; }
+
+/* ─── Rolagem lateral da lista de clientes ───────────────────
+   São 8 colunas: abaixo de ~1000px elas não cabem e o painel cortava o
+   conteúdo (o .section-container tem overflow hidden). Agora rola de lado,
+   com o cabeçalho acompanhando as linhas. */
+.pay-panel { overflow-x: auto; overflow-y: hidden; }
+
+.pay-panel > .pay-head,
+.pay-panel > .pay-list { min-width: 940px; }
+
+.pay-panel > .pay-tabs,
+.pay-panel > .pay-footer,
+.pay-panel > .rec-resumo { position: sticky; left: 0; }
+
+/* Barra de rolagem visível o suficiente para o usuário perceber que há mais */
+.pay-panel::-webkit-scrollbar { height: 8px; }
+.pay-panel::-webkit-scrollbar-thumb { background: rgba(124, 58, 237, 0.35); border-radius: 9999px; }
+.pay-panel::-webkit-scrollbar-thumb:hover { background: var(--purple); }
+
+/* ─── Cabeçalho da lista: visível sempre e grudado no topo ───
+   Antes ele sumia abaixo de 1200px, então em tela menor as colunas ficavam
+   sem legenda. Agora ele acompanha a rolagem lateral e gruda ao rolar a página. */
+@media (max-width: 1200px) {
+    #pagamentos .pay-head { display: grid; }
+}
+
+#pagamentos .pay-head {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border);
+}
+
+/* Cabeçalho e linhas com a mesma largura mínima, senão desalinham ao rolar */
+#pagamentos .pay-head,
+#pagamentos .pay-row {
+    min-width: 980px;
+}
+
+#pagamentos .pay-list { min-width: 980px; }
+
+/* O painel não pode passar da largura da tela, senão quem rola é a página */
+#pagamentos .pay-panel { max-width: 100%; min-width: 0; }
+#pagamentos .view, #pagamentos { min-width: 0; }
+
+/* main é filho flex: sem min-width:0 ele cresce junto com o conteúdo largo,
+   e quem passa a rolar é a página inteira em vez do painel */
+main { min-width: 0; }
+#pagamentos > * { min-width: 0; }
+
+/* ─── Lista de clientes: rolagem no lugar de paginação ─────── */
+#pagamentos .pay-list {
+    max-height: 560px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+#pagamentos .pay-list::-webkit-scrollbar { width: 8px; }
+#pagamentos .pay-list::-webkit-scrollbar-thumb { background: rgba(124, 58, 237, 0.3); border-radius: 9999px; }
+#pagamentos .pay-list::-webkit-scrollbar-thumb:hover { background: var(--purple); }
+
+.pay-footer { justify-content: flex-start; }

@@ -2487,12 +2487,9 @@ function renderPagamentos() {
     setText('pay-kpi-mrr', 'R$ ' + mrr.toLocaleString('pt-BR'));
     setText('pay-kpi-mrr-sub', `${pagantes} cliente(s) na régua de cobrança`);
 
-    // Paginação
+    // Sem paginação: a lista inteira rola dentro do painel
     const filtered = payFilteredRows();
-    const totalPages = Math.max(1, Math.ceil(filtered.length / PAY_PER_PAGE));
-    if (payState.page > totalPages) payState.page = totalPages;
-    const start = (payState.page - 1) * PAY_PER_PAGE;
-    const pageRows = filtered.slice(start, start + PAY_PER_PAGE);
+    const pageRows = filtered;
 
     if (!filtered.length) {
         list.innerHTML = '<div class="pay-empty">Nenhum cliente encontrado com esse filtro.</div>';
@@ -2547,23 +2544,9 @@ function renderPagamentos() {
     }
 
     setText('pay-range', filtered.length
-        ? `Mostrando ${start + 1} a ${start + pageRows.length} de ${filtered.length} clientes`
+        ? `${filtered.length} cliente${filtered.length === 1 ? '' : 's'} nesta lista`
         : 'Nenhum cliente');
 
-    // Pager
-    const pager = document.getElementById('pay-pager');
-    if (pager) {
-        let html = `<button data-page="${payState.page - 1}" ${payState.page === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i></button>`;
-        for (let p = 1; p <= totalPages; p++) {
-            if (totalPages > 7 && p > 2 && p < totalPages - 1 && Math.abs(p - payState.page) > 1) {
-                if (p === 3) html += '<span>…</span>';
-                continue;
-            }
-            html += `<button data-page="${p}" class="${p === payState.page ? 'active' : ''}">${p}</button>`;
-        }
-        html += `<button data-page="${payState.page + 1}" ${payState.page === totalPages ? 'disabled' : ''}><i class="fas fa-chevron-right"></i></button>`;
-        pager.innerHTML = html;
-    }
 }
 
 // ─── Gráficos: evolução do MRR e composição por plano ──────────────────────────
@@ -3476,15 +3459,6 @@ function setupPagamentosUI() {
         });
     }
 
-    const pager = document.getElementById('pay-pager');
-    if (pager) {
-        pager.addEventListener('click', e => {
-            const b = e.target.closest('button[data-page]');
-            if (!b || b.disabled) return;
-            const p = parseInt(b.dataset.page, 10);
-            if (!isNaN(p) && p >= 1) { payState.page = p; renderPagamentos(); }
-        });
-    }
 
     document.addEventListener('click', () => closePayMenus());
 }
