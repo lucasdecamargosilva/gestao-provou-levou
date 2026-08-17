@@ -2720,3 +2720,24 @@ select.form-control {
    de largura mantém a mesma presença visual na barra lateral */
 .logo-img { max-width: 168px; }
 .login-logo { max-width: 210px; height: auto; }
+
+/* ─── Linha dos gráficos de MRR ──────────────────────────────
+   Altura menor que a linha de cima (470px) para o olho descer com calma.
+   O gráfico cresce até o rodapé; a lista de planos rola por dentro. */
+.chart-grid.linha-graficos { grid-auto-rows: 400px; }
+.chart-grid.linha-graficos > .chart-card { overflow: hidden; }
+
+#mrr-chart {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+}
+
+#mrr-chart svg { width: 100%; max-height: 100%; }
+
+#mrr-plan-chart {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}

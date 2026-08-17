@@ -2609,7 +2609,7 @@ function renderMrrChart(meses) {
         return;
     }
 
-    const W = 760, H = 260, padL = 8, padR = 8, padT = 34, padB = 40;
+    const W = 620, H = 300, padL = 8, padR = 8, padT = 34, padB = 40;
     const max = Math.max(...pts.map(p => p.mrr)) * 1.18 || 1;
     const faixa = (W - padL - padR) / pts.length;
     const larg = Math.min(46, faixa * 0.56);
