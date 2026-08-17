@@ -2676,3 +2676,26 @@ select.form-control {
 /* O detalhe entre parênteses vai para a linha de baixo em vez de esticar */
 .prev-lista dt { flex-wrap: wrap; row-gap: 0; }
 .prev-lista dt small { flex-basis: 100%; padding-left: 21px; }
+
+/* O gráfico cresce até o rodapé do card em vez de deixar espaço vazio */
+.chart-grid .chart-card { display: flex; flex-direction: column; }
+.chart-grid .chart-card > .chart-box { flex: 1; display: flex; align-items: center; }
+#sa-chart-lucro svg { max-height: none; width: 100%; }
+
+/* ─── Altura da linha de painéis ─────────────────────────────
+   A previsão tem 7 linhas fixas e define o piso; o gráfico e a lista se
+   ajustam a ela. A lista rola dentro do próprio card, sem sobrar branco. */
+.chart-grid .prev-lista > div { padding: 5px 0; }
+.chart-grid .prev-lista { font-size: 12.5px; }
+.chart-grid .prev-lista .is-total { margin-top: 8px; padding: 10px 12px; }
+.chart-grid .prev-lista .tem-espaco { margin-top: 7px; }
+
+.chart-grid .det-box {
+    flex: 1;
+    max-height: none;
+    overflow-y: auto;
+    align-items: stretch;
+    display: block;
+}
+
+.chart-grid .det-row { padding: 6px 0; }
