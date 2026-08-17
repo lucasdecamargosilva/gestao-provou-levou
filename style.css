@@ -2529,3 +2529,87 @@ select.form-control {
 
 /* Números dentro dos gráficos (SVG) também */
 #pagamentos .chart-box text { font-family: var(--font-num); }
+
+/* ─── Previsão como demonstrativo ────────────────────────── */
+
+.prev-lista { font-family: var(--font-ui); font-size: 13px; }
+
+.prev-lista > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 9px 0;
+}
+
+.prev-lista dt {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-sub);
+    min-width: 0;
+}
+
+.prev-lista dt .ic { width: 13px; height: 13px; color: var(--text-muted); flex: 0 0 auto; }
+
+.prev-lista dt small {
+    color: var(--text-muted);
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.prev-lista dd {
+    font-family: var(--font-num);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+}
+
+.prev-lista .tem-espaco { margin-top: 10px; }
+
+.prev-lista .is-subtotal {
+    border-top: 1px solid var(--border);
+    margin-top: 2px;
+    padding-top: 11px;
+}
+
+.prev-lista .is-subtotal dt { color: var(--purple); font-weight: 600; }
+.prev-lista .is-subtotal dd { color: var(--purple); }
+.prev-lista .is-subtotal.is-saida dt,
+.prev-lista .is-subtotal.is-saida dd { color: var(--red); }
+
+.prev-lista .is-total {
+    background: var(--purple-soft);
+    border: 1px solid rgba(124, 58, 237, 0.16);
+    border-radius: 12px;
+    margin-top: 12px;
+    padding: 13px 14px;
+}
+
+.prev-lista .is-total dt { color: var(--purple); font-weight: 600; font-size: 13.5px; }
+.prev-lista .is-total dd { color: var(--purple); font-size: 17px; }
+
+.prev-rodape {
+    text-align: right;
+    font-family: var(--font-ui);
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 8px;
+}
+
+/* O gráfico ao lado ganha altura para não ficar espremido */
+#sa-chart-lucro { min-height: 300px; display: flex; align-items: center; }
+#sa-chart-lucro svg { width: 100%; }
+
+/* O lucro do mês volta ao tamanho dos outros indicadores */
+#pagamentos .stats-grid.is-compacto .stat-card.is-destaque .stat-value { font-size: 17px; }
+
+/* Cabeçalho da lista de clientes: rótulo é referência, não protagonista */
+#pagamentos .pay-head {
+    font-size: 9.5px;
+    letter-spacing: 0.07em;
+    padding: 16px 28px 10px;
+}

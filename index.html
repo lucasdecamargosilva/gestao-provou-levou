@@ -461,33 +461,37 @@
                             </div>
                             <span id="prev-margem" class="chart-badge">—</span>
                         </div>
-                        <div class="prev-grid">
-                            <div class="prev-item">
-                                <span class="prev-label"><span class="ic" data-ic="check"></span>Já entrou</span>
-                                <strong id="prev-entrou">—</strong>
-                                <span id="prev-entrou-sub" class="prev-sub">—</span>
+                        <dl class="prev-lista">
+                            <div>
+                                <dt><span class="ic" data-ic="check"></span>Já entrou</dt>
+                                <dd id="prev-entrou">—</dd>
                             </div>
-                            <div class="prev-item">
-                                <span class="prev-label"><span class="ic" data-ic="relogio"></span>Ainda a receber</span>
-                                <strong id="prev-receber" style="color:var(--blue)">—</strong>
-                                <span id="prev-receber-sub" class="prev-sub">—</span>
+                            <div>
+                                <dt><span class="ic" data-ic="relogio"></span>Ainda a receber <small id="prev-receber-sub"></small></dt>
+                                <dd id="prev-receber">—</dd>
                             </div>
-                            <div class="prev-item is-total">
-                                <span class="prev-label"><span class="ic" data-ic="alvo"></span>Faturamento previsto</span>
-                                <strong id="prev-faturamento" style="color:var(--purple)">—</strong>
-                                <span class="prev-sub">no fechamento do mês</span>
+                            <div class="is-subtotal">
+                                <dt>Total previsto de entradas</dt>
+                                <dd id="prev-faturamento">—</dd>
                             </div>
-                            <div class="prev-item">
-                                <span class="prev-label"><span class="ic" data-ic="chama"></span>Custo previsto</span>
-                                <strong id="prev-custo" style="color:var(--red)">—</strong>
-                                <span id="prev-custo-sub" class="prev-sub">—</span>
+                            <div class="tem-espaco">
+                                <dt><span class="ic" data-ic="provas"></span>Custo das imagens <small id="prev-custo-sub"></small></dt>
+                                <dd id="prev-custo-var">—</dd>
                             </div>
-                            <div class="prev-item is-total">
-                                <span class="prev-label"><span class="ic" data-ic="lucro"></span>Lucro líquido previsto</span>
-                                <strong id="prev-lucro" style="color:var(--green)">—</strong>
-                                <span id="prev-lucro-sub" class="prev-sub">—</span>
+                            <div>
+                                <dt><span class="ic" data-ic="camadas"></span>Custos fixos <small>(média/mês)</small></dt>
+                                <dd id="prev-custo-fixo">—</dd>
                             </div>
-                        </div>
+                            <div class="is-subtotal is-saida">
+                                <dt>Total previsto de saídas</dt>
+                                <dd id="prev-custo">—</dd>
+                            </div>
+                            <div class="is-total">
+                                <dt>Lucro líquido previsto</dt>
+                                <dd id="prev-lucro">—</dd>
+                            </div>
+                        </dl>
+                        <p class="prev-rodape" id="prev-lucro-sub">—</p>
                     </div>
 
                     <div class="section-container glass chart-card">

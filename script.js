@@ -3068,12 +3068,14 @@ function renderPrevisao() {
     setText('prev-entrou', formatBRL(entrou));
     setText('prev-entrou-sub', `até ${diaAtual}/${String(hoje.getMonth() + 1).padStart(2, '0')}`);
     setText('prev-receber', formatBRL(somaReceber));
-    setText('prev-receber-sub', `${aReceber.length} cobrança(s)${atrasados ? ` · ${atrasados} em atraso` : ''}`);
+    setText('prev-receber-sub', `(${aReceber.length} cobrança${aReceber.length === 1 ? '' : 's'}${atrasados ? `, ${atrasados} em atraso` : ''})`);
     setText('prev-faturamento', formatBRL(faturamento));
     setText('prev-custo', formatBRL(custo));
-    setText('prev-custo-sub', `${formatBRL(custoProvas)} em provas (${baseProvas}) + ${formatBRL(fixo)} fixos`);
+    setText('prev-custo-var', formatBRL(custoProvas));
+    setText('prev-custo-fixo', formatBRL(fixo));
+    setText('prev-custo-sub', `(${baseProvas})`);
     setText('prev-lucro', formatBRL(lucro));
-    setText('prev-lucro-sub', `faturamento previsto menos custo previsto`);
+    setText('prev-lucro-sub', `Margem prevista de ${margem.toFixed(1).replace('.', ',')}%`);
 
     const badge = document.getElementById('prev-margem');
     if (badge) {
@@ -3097,10 +3099,11 @@ function renderLucroPorMes(meses) {
     });
     if (!dados.length) { box.innerHTML = '<div class="chart-empty">Sem dados no período.</div>'; return; }
 
-    const W = 900, H = 300, padL = 10, padR = 10, padT = 40, padB = 42;
+    // Proporção mais alta: o gráfico divide a linha com a previsão
+    const W = 620, H = 330, padL = 10, padR = 10, padT = 40, padB = 42;
     const max = Math.max(...dados.map(d => Math.max(d.receita, d.custo, d.lucro))) * 1.2 || 1;
     const faixa = (W - padL - padR) / dados.length;
-    const larg = Math.min(24, faixa * 0.26);
+    const larg = Math.min(26, faixa * 0.3);
     const alturaUtil = H - padT - padB;
     const y = v => H - padB - (Math.max(0, v) / max) * alturaUtil;
     const fmt = v => v >= 1000 ? (v / 1000).toFixed(1).replace('.', ',') + 'k' : v.toFixed(0);
