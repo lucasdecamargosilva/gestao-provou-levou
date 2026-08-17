@@ -2677,9 +2677,11 @@ select.form-control {
 .prev-lista dt { flex-wrap: wrap; row-gap: 0; }
 .prev-lista dt small { flex-basis: 100%; padding-left: 21px; }
 
-/* O gráfico cresce até o rodapé do card em vez de deixar espaço vazio */
+/* O gráfico cresce até o rodapé do card em vez de deixar espaço vazio.
+   Vale só para o gráfico: aplicada a todo .chart-box, virava as linhas da
+   lista de clientes de lado. */
 .chart-grid .chart-card { display: flex; flex-direction: column; }
-.chart-grid .chart-card > .chart-box { flex: 1; display: flex; align-items: center; }
+#sa-chart-lucro { flex: 1; display: flex; align-items: center; }
 #sa-chart-lucro svg { max-height: none; width: 100%; }
 
 /* ─── Altura da linha de painéis ─────────────────────────────
@@ -2690,12 +2692,26 @@ select.form-control {
 .chart-grid .prev-lista .is-total { margin-top: 8px; padding: 10px 12px; }
 .chart-grid .prev-lista .tem-espaco { margin-top: 7px; }
 
-.chart-grid .det-box {
+#sa-detalhado {
     flex: 1;
     max-height: none;
     overflow-y: auto;
-    align-items: stretch;
     display: block;
 }
 
 .chart-grid .det-row { padding: 6px 0; }
+
+/* Linha de painéis mais baixa: a previsão define o piso, então ela encolhe */
+.chart-grid .prev-lista { font-size: 12px; }
+.chart-grid .prev-lista > div { padding: 4px 0; }
+.chart-grid .prev-lista .is-total { margin-top: 6px; padding: 9px 11px; }
+.chart-grid .prev-lista .is-total dd { font-size: 15px; }
+.chart-grid .prev-rodape { display: none; }
+.chart-grid .chart-sub { font-size: 11px; }
+
+/* ─── Altura travada na linha de painéis ─────────────────────
+   Sem um teto, a lista de 42 clientes cresce e estica a linha inteira.
+   Com o teto, ela preenche o card e rola por dentro. */
+.chart-grid.linha-paineis { grid-auto-rows: 470px; }
+.chart-grid.linha-paineis > .chart-card { overflow: hidden; }
+#sa-detalhado { flex: 1; min-height: 0; overflow-y: auto; }
