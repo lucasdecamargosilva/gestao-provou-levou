@@ -3340,9 +3340,13 @@ function renderKPIsSaude(meses) {
     const pagantes = new Set(doMes.map(p => p.store)).size;
     // Com extrato do mês, o custo da operação vem das categorias reais; sem ele, estima
     const cat = saudeState.categorias[mesAtual];
+    // "Estornos e cancelamentos" é dinheiro que VOLTOU pra conta — somar isso
+    // como custo comia o lucro à toa (em jul/26 eram R$ 2.205).
     const c = cat && cat.categorias
         ? {
-            total: Object.entries(cat.categorias).filter(([k]) => cat.negocio[k]).reduce((s, l) => s + l[1], 0),
+            total: Object.entries(cat.categorias)
+                .filter(([k]) => cat.negocio[k] && k !== 'Estornos e cancelamentos')
+                .reduce((s, l) => s + l[1], 0),
             real: true
         }
         : custoDoMes(mesAtual);
@@ -3357,7 +3361,7 @@ function renderKPIsSaude(meses) {
         ? 'custo real do mês'
         : (provas != null ? `${provas.toLocaleString('pt-BR')} provas × R$ ${CUSTO_MEDIO_PROVA.toFixed(2).replace('.', ',')}` : 'estimativa'));
     setText('sa-lucro', formatBRL(lucro));
-    setText('sa-lucro-sub', 'faturamento menos custo de provas');
+    setText('sa-lucro-sub', 'faturamento menos custo da operação');
     setText('sa-margem', `${margem.toFixed(0)}%`);
     setText('sa-margem-sub', margem >= 50 ? 'operação saudável' : margem >= 20 ? 'margem apertada' : 'atenção: margem baixa');
     const el = document.getElementById('sa-margem');
