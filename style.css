@@ -2618,3 +2618,37 @@ select.form-control {
 .prev-lista .is-subtotal dt .ic { color: var(--purple); }
 .prev-lista .is-subtotal.is-saida dt .ic { color: var(--red); }
 .prev-lista .is-total dt .ic { width: 15px; height: 15px; color: var(--purple); }
+
+/* ─── Fundo tonal nos três indicadores de dinheiro ────────────
+   Verde no que entra, vermelho no que sai, roxo no que sobra.
+   Margem e MRR ficam neutros: são leitura, não movimento de caixa. */
+#pagamentos .stats-grid.is-compacto .stat-card.is-entrada {
+    background: rgba(16, 185, 129, 0.06);
+    border-color: rgba(16, 185, 129, 0.22);
+}
+
+#pagamentos .stats-grid.is-compacto .stat-card.is-entrada:hover {
+    background: rgba(16, 185, 129, 0.09);
+    border-color: rgba(16, 185, 129, 0.34);
+}
+
+#pagamentos .stats-grid.is-compacto .stat-card.is-custo {
+    background: rgba(239, 68, 68, 0.05);
+    border-color: rgba(239, 68, 68, 0.2);
+}
+
+#pagamentos .stats-grid.is-compacto .stat-card.is-custo:hover {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.32);
+}
+
+/* O valor acompanha o papel do card */
+#pagamentos .stat-card.is-entrada .stat-value { color: #047857; }
+#pagamentos .stat-card.is-custo .stat-value { color: #b91c1c; }
+#pagamentos .stat-card.is-destaque .stat-value { color: #6d28d9; }
+
+/* Vermelho mais fechado: sobre o fundo rosado o #b91c1c ficava em 3,5:1 */
+#pagamentos .stat-card.is-custo .stat-value { color: #991b1b; }
+
+#pagamentos .stat-card.is-destaque .stat-value,
+#pagamentos #pay-kpi-mrr { color: #6d28d9; }

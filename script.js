@@ -3207,7 +3207,8 @@ function renderKPIsSaude(meses) {
     setText('sa-margem', `${margem.toFixed(0)}%`);
     setText('sa-margem-sub', margem >= 50 ? 'operação saudável' : margem >= 20 ? 'margem apertada' : 'atenção: margem baixa');
     const el = document.getElementById('sa-margem');
-    if (el) el.style.color = margem >= 50 ? 'var(--green)' : margem >= 20 ? 'var(--yellow)' : 'var(--red)';
+    // tons escuros: o verde e o amarelo claros nao alcancam 4,5:1 sobre branco
+    if (el) el.style.color = margem >= 50 ? '#047857' : margem >= 20 ? '#b45309' : '#b91c1c';
 
     // Régua: a fatia do faturamento que virou custo e a que sobrou
     const regua = document.getElementById('sa-regua');
