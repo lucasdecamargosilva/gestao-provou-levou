@@ -638,7 +638,36 @@
                     </div>
                 </div>
 
-                <div class="chart-grid" style="grid-template-columns: 1fr;">
+                <div class="chart-grid" style="grid-template-columns: 1fr 1.6fr;">
+                    <div class="section-container glass chart-card">
+                        <div class="table-header">
+                            <div>
+                                <h2 class="table-title"><span class="ic" data-ic="moedas"></span>Dinheiro em caixa</h2>
+                                <span id="cx-sub" class="chart-sub">Do saldo do mês passado até o saldo de hoje</span>
+                            </div>
+                            <span id="cx-selo" class="chart-badge">—</span>
+                        </div>
+                        <dl class="prev-lista" id="cx-lista">
+                            <div>
+                                <dt><span class="ic" data-ic="calendario"></span><span id="cx-inicial-rot">Saldo no começo do mês</span></dt>
+                                <dd id="cx-inicial">—</dd>
+                            </div>
+                            <div class="is-subtotal">
+                                <dt><span class="ic" data-ic="entrada"></span>Entrou na conta</dt>
+                                <dd id="cx-entrou">—</dd>
+                            </div>
+                            <div class="is-subtotal is-saida">
+                                <dt><span class="ic" data-ic="transferencia"></span>Saiu da conta</dt>
+                                <dd id="cx-saiu">—</dd>
+                            </div>
+                            <div class="is-total">
+                                <dt><span class="ic" data-ic="moedas"></span>Tem na conta hoje</dt>
+                                <dd id="cx-saldo">—</dd>
+                            </div>
+                        </dl>
+                        <p class="prev-rodape" id="cx-nota"></p>
+                    </div>
+
                     <div class="section-container glass chart-card">
                         <div class="table-header">
                             <div>

@@ -3378,6 +3378,59 @@ function renderKPIsSaude(meses) {
     }
 }
 
+// Ponte entre o lucro do painel e o dinheiro que realmente está na conta.
+// Os números vêm de fluxo_caixa_mensal.categorias.caixa, lidos do extrato do
+// Mercado Pago (Entradas e saídas) — inclui o que não é da empresa.
+function renderCaixa(mes) {
+    const cx = (saudeState.categorias[mes] || {}).caixa;
+    const lista = document.getElementById('cx-lista');
+    const nota = document.getElementById('cx-nota');
+    const selo = document.getElementById('cx-selo');
+    if (!cx) {
+        if (lista) lista.style.display = 'none';
+        if (selo) selo.textContent = 'sem extrato';
+        if (nota) nota.textContent = `Ainda não li o extrato de ${mesLabel(mes)}. Sem ele não dá para fechar com o saldo da conta.`;
+        return;
+    }
+    if (lista) lista.style.display = '';
+
+    const entrou = cx.entradas != null ? cx.entradas : null;
+    const saiu = cx.saidas != null ? cx.saidas : null;
+    const parcial = !!cx.ate;
+
+    setText('cx-inicial-rot', `Saldo em ${mesLabel(mesRelativoDe(mes, -1))}`);
+    setText('cx-inicial', formatBRL(cx.saldo_inicial || 0));
+    setText('cx-entrou', entrou != null ? '+ ' + formatBRL(entrou) : '—');
+    setText('cx-saiu', saiu != null ? '− ' + formatBRL(saiu) : '—');
+    setText('cx-saldo', formatBRL(cx.saldo_final || 0));
+    if (selo) selo.textContent = parcial ? 'parcial' : 'fechado';
+    setText('cx-sub', parcial
+        ? `Do saldo de ${mesLabel(mesRelativoDe(mes, -1))} até ${dataCurta(cx.ate)}`
+        : `Movimento fechado de ${mesLabel(mes)}`);
+
+    // Por que o saldo não é o lucro: o extrato carrega o que não é da empresa.
+    const c = saudeState.categorias[mes] || {};
+    const pessoal = c.categorias
+        ? Object.keys(c.categorias).reduce((s, k) => (c.negocio && c.negocio[k] ? s : s + (parseFloat(c.categorias[k]) || 0)), 0)
+        : 0;
+    if (nota) {
+        nota.textContent = pessoal > 0
+            ? `O saldo não é o lucro: passaram por aqui ${formatBRL(pessoal)} de gasto pessoal, que não entra na conta do negócio.`
+            : 'Saldo lido do extrato da conta do Mercado Pago.';
+    }
+}
+
+function mesRelativoDe(mes, delta) {
+    const [y, m] = mes.split('-').map(Number);
+    const d = new Date(Date.UTC(y, m - 1 + delta, 1));
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+function dataCurta(iso) {
+    const [y, m, d] = String(iso).slice(0, 10).split('-');
+    return `${d}/${m}`;
+}
+
 function renderSaude() {
     const meses = janelaSaude();
     if (!meses.length) return;
@@ -3387,6 +3440,7 @@ function renderSaude() {
     renderCustoPorCliente();
     renderAtividades();
     renderCustosCategoria(analise[analise.length - 1]);
+    renderCaixa(analise[analise.length - 1]);
     renderPrevisao();
     renderLucroPorMes(meses);
 }

@@ -3002,3 +3002,29 @@ main { gap: 16px; }
     max-height: 100%;
     height: auto;
 }
+
+/* ─── Dinheiro em caixa ───────────────────────────────────────
+   A nota explica por que o saldo da conta não é o lucro; texto
+   corrido pede alinhamento à esquerda, ao contrário do rodapé
+   da previsão, que é um número curto. */
+#cx-nota {
+    text-align: left;
+    line-height: 1.5;
+    margin-top: 10px;
+}
+
+/* O card de caixa tem só 4 linhas e divide a linha com o gráfico de
+   categorias, que é bem mais alto. Sem isso sobra um bloco branco: as
+   linhas se distribuem na altura disponível. */
+#cx-lista {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+    flex: 1;
+}
+
+/* o card precisa ser coluna para a lista poder esticar */
+#pagamentos .chart-card:has(> #cx-lista) { display: flex; flex-direction: column; }
+/* .chart-grid esconde o rodapé da previsão (é só um número redundante lá);
+   aqui a nota explica por que saldo ≠ lucro, então volta a aparecer. */
+.chart-grid #cx-nota { display: block; }
