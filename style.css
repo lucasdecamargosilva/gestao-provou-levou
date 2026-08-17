@@ -3023,7 +3023,7 @@ main { gap: 16px; }
 .linha-caixa .chart-card:has(#cx-lista) { display: flex; flex-direction: column; }
 .chart-grid #cx-nota { margin-top: auto; padding-top: 16px; }
 
-.chart-grid #cx-lista > div { padding: 13px 0; }
+.chart-grid #cx-lista > div { padding: 10px 0; }
 .chart-grid #cx-lista .is-subtotal { margin-top: 0; padding-top: 11px; }
 .chart-grid #cx-lista .is-total { margin-top: 10px; }
 
@@ -3038,7 +3038,7 @@ main { gap: 16px; }
    é dinheiro da empresa x dinheiro que só passou pela conta. */
 /* Dois margin-top:auto (aqui e na nota) dividem o espaço que sobra em
    duas folgas iguais, em vez de um bloco branco só no fim. */
-.cx-quebra { margin-top: auto; padding-top: 22px; }
+.cx-quebra { margin-top: auto; padding-top: 18px; }
 
 .cx-quebra-rot {
     display: block;
@@ -3086,3 +3086,14 @@ main { gap: 16px; }
     font-weight: 600;
     letter-spacing: -0.02em;
 }
+
+/* Prazos de recebimento: o valor manda, a contagem de cobranças é apoio */
+.cx-legenda.is-prazos li { gap: 10px; }
+.cx-legenda.is-prazos small {
+    color: var(--text-muted);
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cx-legenda.is-prazos strong { color: #047857; }

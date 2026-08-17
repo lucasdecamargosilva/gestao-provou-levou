@@ -3419,6 +3419,8 @@ function renderCaixa(mes) {
         });
     }
 
+    renderAReceberPrazos();
+
     const quebra = document.getElementById('cx-quebra');
     const total = operacao + pessoal;
     if (quebra) quebra.style.display = total > 0 ? '' : 'none';
@@ -3439,6 +3441,26 @@ function renderCaixa(mes) {
             ? `O saldo não é o lucro: passaram por aqui ${formatBRL(pessoal)} de gasto pessoal, que não entra na conta do negócio.`
             : 'Saldo lido do extrato da conta do Mercado Pago.';
     }
+}
+
+// Quanto ainda entra nos próximos 7, 15 e 30 dias. Usa o valor previsto
+// (mensalidade + excedente de provas), o mesmo da régua de cobrança.
+// Vencido conta em todas as faixas: é dinheiro que ainda não entrou.
+function renderAReceberPrazos() {
+    const bloco = document.getElementById('cx-areceber');
+    const linhas = (payState.rows || []).filter(r => r.aReceber && r.diasParaVencer != null);
+    if (bloco) bloco.style.display = linhas.length ? '' : 'none';
+    if (!linhas.length) return;
+
+    [7, 15, 30].forEach(dias => {
+        const nas = linhas.filter(r => r.diasParaVencer <= dias);
+        const soma = nas.reduce((s, r) => s + (r.previsto || 0), 0);
+        const vencidas = nas.filter(r => r.diasParaVencer < 0).length;
+        setText('cx-r' + dias, formatBRL(soma));
+        setText('cx-r' + dias + '-sub', nas.length
+            ? `${nas.length} cobrança${nas.length === 1 ? '' : 's'}${vencidas ? ` · ${vencidas} vencida${vencidas === 1 ? '' : 's'}` : ''}`
+            : 'nada previsto');
+    });
 }
 
 function mesRelativoDe(mes, delta) {
