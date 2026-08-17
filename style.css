@@ -2765,8 +2765,10 @@ select.form-control {
 .pay-panel > .pay-head,
 .pay-panel > .pay-list { min-width: 940px; }
 
+/* Abas, busca e rodapé não acompanham a rolagem lateral: ficam fixos à
+   esquerda enquanto as colunas da lista passam por baixo. */
 .pay-panel > .pay-tabs,
-.pay-panel > .pay-footer,
+.pay-panel > .pay-footer { position: sticky; left: 0; }
 
 /* Barra de rolagem visível o suficiente para o usuário perceber que há mais */
 .pay-panel::-webkit-scrollbar { height: 8px; }
