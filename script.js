@@ -2978,7 +2978,7 @@ function renderCustoPorCliente() {
     setText('cli-sub', `${linhas.length} loja(s) com provas medidas · sobra ${formatBRL(totalSobra)} no total`);
 
     if (!linhas.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:30px 0;">Sem contagem de provas ainda.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:30px 0;">Sem contagem de provas ainda.</td></tr>';
         return;
     }
 
@@ -2987,8 +2987,7 @@ function renderCustoPorCliente() {
             : l.margem >= 60 ? 'var(--green)' : l.margem >= 30 ? 'var(--yellow)' : 'var(--red)';
         const teste = l.c.status === 'Teste Gratuito';
         return `<tr>
-            <td style="font-weight:600">${esc(l.c.company || l.c.name)}${teste ? ' <span class="status-badge status-pending" style="margin-left:6px">teste</span>' : ''}</td>
-            <td style="color:var(--text-muted)">${l.c.categoria === 'roupa' ? 'Roupa' : 'Óculos'} · R$ ${l.custoUnit.toFixed(2).replace('.', ',')}/prova</td>
+            <td style="font-weight:600" title="${l.c.categoria === 'roupa' ? 'Roupa' : 'Óculos'} · R$ ${l.custoUnit.toFixed(2).replace('.', ',')} por prova">${esc(l.c.company || l.c.name)}${teste ? ' <span class="status-badge status-pending" style="margin-left:6px">teste</span>' : ''}</td>
             <td style="font-variant-numeric:tabular-nums">${l.usadas.toLocaleString('pt-BR')}</td>
             <td style="color:var(--red);font-weight:600;font-variant-numeric:tabular-nums">${formatBRL(l.custo)}</td>
             <td style="font-variant-numeric:tabular-nums">${teste ? '—' : formatBRL(l.receita)}</td>

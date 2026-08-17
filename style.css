@@ -2893,3 +2893,92 @@ main { min-width: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) { .atv-item { transition: none; } }
+
+/* ─── Quanto cada cliente custa: 7 colunas em espaço estreito ─
+   Fonte menor e sem quebra de linha nas células, senão cada linha vira duas. */
+#cli-custo-body,
+#cli-custo-body + thead,
+.tabela-rolagem .client-table { font-size: 11.5px; }
+
+.tabela-rolagem .client-table th {
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    padding: 9px 8px;
+    white-space: nowrap;
+}
+
+.tabela-rolagem .client-table td {
+    font-size: 11.5px;
+    padding: 8px;
+    white-space: nowrap;
+}
+
+/* O nome do cliente é o único que pode encolher; o resto é número */
+.tabela-rolagem .client-table td:first-child {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tabela-rolagem .client-table td:nth-child(2) {
+    font-size: 10.5px;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Precisa de #pagamentos para vencer a regra geral da tabela */
+#pagamentos .tabela-rolagem .client-table th {
+    font-size: 9px;
+    padding: 8px 7px;
+    white-space: nowrap;
+}
+
+#pagamentos .tabela-rolagem .client-table td {
+    font-size: 11px;
+    padding: 7px;
+    white-space: nowrap;
+}
+
+#pagamentos .tabela-rolagem .client-table td:first-child {
+    max-width: 130px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Aproxima "Quanto cada cliente custa" da linha de cima */
+main { gap: 16px; }
+#pagamentos { gap: 16px; display: flex; flex-direction: column; }
+#pagamentos .chart-grid { margin: 0; }
+#pagamentos .section-container + .chart-grid,
+#pagamentos .chart-grid + .chart-grid { margin-top: 0; }
+
+/* A tabela ainda estoura a coluna: nome menor e números mais justos */
+#pagamentos .tabela-rolagem .client-table td:first-child { max-width: 110px; }
+#pagamentos .tabela-rolagem .client-table td,
+#pagamentos .tabela-rolagem .client-table th { padding: 7px 5px; }
+#pagamentos .tabela-rolagem .client-table td { font-size: 10.5px; }
+
+/* Margem inline antiga somava ao gap do flex e dobrava o respiro */
+#pagamentos .section-container[style*="margin-top"] { margin-top: 0 !important; }
+
+/* Ajuste final para a tabela caber sem rolagem lateral */
+#pagamentos .tabela-rolagem .client-table td:first-child { max-width: 92px; }
+
+/* Zera margens dos blocos: quem controla o respiro é o gap da coluna */
+#pagamentos > * { margin-top: 0; margin-bottom: 0; }
+
+/* Últimos pixels para a tabela caber sem rolagem lateral */
+#pagamentos .tabela-rolagem .client-table td,
+#pagamentos .tabela-rolagem .client-table th { padding: 7px 4px; }
+
+/* Com a coluna mais larga, o texto pode voltar a um tamanho confortável */
+#pagamentos .tabela-rolagem .client-table td { font-size: 12px; }
+#pagamentos .tabela-rolagem .client-table th { font-size: 9.5px; }
+#pagamentos .tabela-rolagem .client-table td,
+#pagamentos .tabela-rolagem .client-table th { padding: 8px 7px; }
+#pagamentos .tabela-rolagem .client-table td:first-child { max-width: 160px; }
+
+/* Em tela estreita a tabela rola de lado em vez de encolher a fonte */
+#pagamentos .tabela-rolagem { overflow-x: auto; }
+#pagamentos .tabela-rolagem .client-table { min-width: 500px; }
