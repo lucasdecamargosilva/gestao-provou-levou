@@ -2002,13 +2002,6 @@ select.form-control {
 }
 
 
-.rec-resumo {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
-    padding: 18px 24px 4px;
-}
-
 .pay-tab.is-destaque { color: var(--purple); }
 .pay-tab.is-destaque::before {
     content: '';
@@ -2038,8 +2031,6 @@ select.form-control {
 }
 
 .pay-previsto-sub.is-extra { color: var(--purple); font-weight: 600; }
-
-@media (max-width: 1100px) { .rec-resumo { grid-template-columns: repeat(2, 1fr); } }
 
 /* ─── Faturamento detalhado por cliente ──────────────────── */
 
@@ -2776,7 +2767,6 @@ select.form-control {
 
 .pay-panel > .pay-tabs,
 .pay-panel > .pay-footer,
-.pay-panel > .rec-resumo { position: sticky; left: 0; }
 
 /* Barra de rolagem visível o suficiente para o usuário perceber que há mais */
 .pay-panel::-webkit-scrollbar { height: 8px; }
@@ -3025,7 +3015,9 @@ main { gap: 16px; }
 
 .chart-grid #cx-lista > div { padding: 10px 0; }
 .chart-grid #cx-lista .is-subtotal { margin-top: 0; padding-top: 11px; }
-.chart-grid #cx-lista .is-total { margin-top: 10px; }
+/* a linha de total tem fundo proprio: precisa do respiro lateral de volta,
+   senao o valor encosta na borda do bloco roxo */
+.chart-grid #cx-lista .is-total { margin-top: 10px; padding: 11px 14px; }
 
 /* .chart-grid esconde o rodapé da previsão (é só um número redundante lá);
    aqui a nota explica por que saldo ≠ lucro, então volta a aparecer. */

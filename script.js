@@ -2452,23 +2452,6 @@ function renderPagamentos() {
     });
     Object.keys(byTab).forEach(k => setText('pay-count-' + k, `(${byTab[k]})`));
 
-    // Resumo do a receber aparece só quando a aba está aberta
-    const resumo = document.getElementById('rec-resumo');
-    if (resumo) {
-        const naRegua = payState.rows.filter(r => r.aReceber && r.diasParaVencer <= 30);
-        resumo.style.display = payState.tab === 'areceber' ? '' : 'none';
-        if (payState.tab === 'areceber') {
-            const soma = arr => arr.reduce((s, r) => s + r.previsto, 0);
-            const vencidos = naRegua.filter(r => r.diasParaVencer < 0);
-            const semana = naRegua.filter(r => r.diasParaVencer >= 0 && r.diasParaVencer <= 7);
-            const comExc = naRegua.filter(r => r.excedente > 0);
-            setText('rec-kpi-vencido', `${formatBRL(soma(vencidos))} · ${vencidos.length}`);
-            setText('rec-kpi-semana', `${formatBRL(soma(semana))} · ${semana.length}`);
-            setText('rec-kpi-excedente', `${formatBRL(comExc.reduce((s, r) => s + r.excedente, 0))} · ${comExc.length}`);
-            setText('rec-kpi-total', formatBRL(soma(naRegua)));
-        }
-    }
-
     // KPIs
     const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
     let mrr = 0, pagantes = 0, aReceber = 0, aReceberN = 0, atraso = 0, atrasoN = 0, testes = 0, testesFim = 0;
