@@ -3016,15 +3016,73 @@ main { gap: 16px; }
 /* O card de caixa tem só 4 linhas e divide a linha com o gráfico de
    categorias, que é bem mais alto. Sem isso sobra um bloco branco: as
    linhas se distribuem na altura disponível. */
-#cx-lista {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-evenly;
-    flex: 1;
-}
+/* O card de caixa tem 4 linhas e divide a linha com o gráfico de
+   categorias, que é bem mais alto. Esticar as linhas para preencher
+   deixava buracos entre elas: o card fica com a altura do conteúdo e
+   se alinha pelo topo. */
+.linha-caixa .chart-card:has(#cx-lista) { display: flex; flex-direction: column; }
+.chart-grid #cx-nota { margin-top: auto; padding-top: 16px; }
 
-/* o card precisa ser coluna para a lista poder esticar */
-#pagamentos .chart-card:has(> #cx-lista) { display: flex; flex-direction: column; }
+.chart-grid #cx-lista > div { padding: 13px 0; }
+.chart-grid #cx-lista .is-subtotal { margin-top: 0; padding-top: 11px; }
+.chart-grid #cx-lista .is-total { margin-top: 10px; }
+
 /* .chart-grid esconde o rodapé da previsão (é só um número redundante lá);
    aqui a nota explica por que saldo ≠ lucro, então volta a aparecer. */
 .chart-grid #cx-nota { display: block; }
+
+/* ─── Quebra do que saiu: operação x pessoal ──────────────────
+   Ocupa o espaço que sobrava no card de caixa com a informação
+   que ele mesmo levanta — por que o saldo não é o lucro.
+   Cores próprias: aqui não é custo x lucro (vermelho x verde),
+   é dinheiro da empresa x dinheiro que só passou pela conta. */
+/* Dois margin-top:auto (aqui e na nota) dividem o espaço que sobra em
+   duas folgas iguais, em vez de um bloco branco só no fim. */
+.cx-quebra { margin-top: auto; padding-top: 22px; }
+
+.cx-quebra-rot {
+    display: block;
+    font-family: var(--font-ui);
+    font-size: 9.5px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+#cx-regua { height: 6px; margin-top: 9px; }
+#cx-regua .r-custo { background: var(--purple); opacity: 1; }
+#cx-regua .r-lucro { background: var(--border); }
+
+.cx-legenda {
+    list-style: none;
+    margin: 12px 0 0;
+    padding: 0;
+    font-family: var(--font-ui);
+    font-size: 12.5px;
+}
+
+.cx-legenda li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+}
+
+.cx-legenda i {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    flex: none;
+}
+
+.cx-legenda .is-op { background: var(--purple); }
+.cx-legenda .is-pes { background: var(--border); }
+.cx-legenda span { color: var(--text-muted); }
+
+.cx-legenda strong {
+    margin-left: auto;
+    font-family: var(--font-num);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}

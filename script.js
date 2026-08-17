@@ -3410,9 +3410,30 @@ function renderCaixa(mes) {
 
     // Por que o saldo não é o lucro: o extrato carrega o que não é da empresa.
     const c = saudeState.categorias[mes] || {};
-    const pessoal = c.categorias
-        ? Object.keys(c.categorias).reduce((s, k) => (c.negocio && c.negocio[k] ? s : s + (parseFloat(c.categorias[k]) || 0)), 0)
-        : 0;
+    let operacao = 0, pessoal = 0;
+    if (c.categorias) {
+        Object.keys(c.categorias).forEach(k => {
+            if (k === 'Estornos e cancelamentos') return;   // voltou pra conta, não saiu
+            const v = parseFloat(c.categorias[k]) || 0;
+            if (c.negocio && c.negocio[k]) operacao += v; else pessoal += v;
+        });
+    }
+
+    const quebra = document.getElementById('cx-quebra');
+    const total = operacao + pessoal;
+    if (quebra) quebra.style.display = total > 0 ? '' : 'none';
+    if (total > 0) {
+        const pOp = (operacao / total) * 100;
+        const regua = document.getElementById('cx-regua');
+        if (regua) {
+            regua.querySelector('.r-custo').style.width = pOp + '%';
+            regua.querySelector('.r-lucro').style.width = (100 - pOp) + '%';
+            regua.title = `De cada R$ 100 que saíram, R$ ${pOp.toFixed(0)} foram da operação`;
+        }
+        setText('cx-op', formatBRL(operacao));
+        setText('cx-pes', formatBRL(pessoal));
+    }
+
     if (nota) {
         nota.textContent = pessoal > 0
             ? `O saldo não é o lucro: passaram por aqui ${formatBRL(pessoal)} de gasto pessoal, que não entra na conta do negócio.`
