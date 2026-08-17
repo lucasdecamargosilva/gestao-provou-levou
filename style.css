@@ -3094,3 +3094,47 @@ main { gap: 16px; }
     text-overflow: ellipsis;
 }
 .cx-legenda.is-prazos strong { color: #047857; }
+
+/* ─── Ordenação por coluna na lista de clientes ───────────────
+   O rótulo vira botão: mesma tipografia de antes, o que muda é a
+   seta que aparece no hover e fica fixa na coluna ordenada. */
+.pay-head .pay-sort {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    color: inherit;
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+
+.pay-head .pay-sort:hover { color: var(--purple); }
+.pay-head .pay-sort.is-ativo { color: var(--purple); font-weight: 700; }
+
+.pay-sort-seta {
+    width: 8px;
+    height: 8px;
+    flex: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    background: currentColor;
+    /* triângulo apontando pra baixo (maior → menor) */
+    clip-path: polygon(50% 100%, 0 25%, 100% 25%);
+}
+
+.pay-head .pay-sort:hover .pay-sort-seta { opacity: 0.45; }
+.pay-head .pay-sort.is-ativo .pay-sort-seta { opacity: 1; }
+.pay-head .pay-sort[data-dir="asc"] .pay-sort-seta {
+    clip-path: polygon(50% 0, 0 75%, 100% 75%);
+}
+
+.pay-head .pay-sort:focus-visible {
+    outline: 2px solid var(--purple);
+    outline-offset: 3px;
+    border-radius: 3px;
+}

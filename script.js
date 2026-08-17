@@ -2299,7 +2299,7 @@ function updateStats() {
 
 // ─── View: Pagamentos ──────────────────────────────────────────────────────────
 const PAY_PER_PAGE = 8;
-const payState = { tab: 'todos', search: '', page: 1, rows: [], counts: {}, loaded: false };
+const payState = { tab: 'todos', search: '', page: 1, rows: [], counts: {}, loaded: false, sort: null };
 
 function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, ch => (
@@ -2461,6 +2461,23 @@ function payFilteredRows() {
             .some(v => String(v || '').toLowerCase().includes(q));
     });
 
+    // Coluna escolhida pelo usuário manda; sem escolha, cai no padrão de cada aba
+    if (payState.sort && PAY_SORTERS[payState.sort.col]) {
+        const valor = PAY_SORTERS[payState.sort.col];
+        const dir = payState.sort.dir === 'asc' ? 1 : -1;
+        return filtradas.sort((a, b) => {
+            const va = valor(a), vb = valor(b);
+            // sem informação vai sempre pro fim, independente da direção
+            if (va == null && vb == null) return 0;
+            if (va == null) return 1;
+            if (vb == null) return -1;
+            if (typeof va === 'string' || typeof vb === 'string') {
+                return String(va).localeCompare(String(vb), 'pt-BR') * dir;
+            }
+            return (va - vb) * dir;
+        });
+    }
+
     // Na régua de cobrança a ordem é por vencimento; nas outras, por quem está
     // mais perto de estourar o limite
     if (payState.tab === 'areceber') {
@@ -2472,6 +2489,42 @@ function payFilteredRows() {
         if (pb !== pa) return pb - pa;
         return (b.usadas || 0) - (a.usadas || 0);
     });
+}
+
+// Cada coluna vira um valor comparável. Número onde faz sentido comparar
+// grandeza (uso, valor, prazo), texto onde o que importa é agrupar.
+const PAY_SORTERS = {
+    cliente: r => (r.c.company || r.c.name || '').trim(),
+    plano: r => r.valor,
+    fotos: r => (r.pct != null ? r.pct : (r.usadas != null ? -1 : null)),
+    // null e não '': sem forma cadastrada vai pro fim da lista, não pro topo
+    pagamento: r => r.c.formaPagamento || null,
+    cobranca: r => (r.next ? r.next.getTime() : null),
+    pagar: r => r.previsto,
+    status: r => r.statusLabel || ''
+};
+
+// Ordem inicial de cada coluna: texto começa de A a Z, número do maior pro menor
+// (quem usou mais, quem paga mais, o que vence primeiro).
+const PAY_SORT_PADRAO = {
+    cliente: 'asc', plano: 'desc', fotos: 'desc', pagamento: 'asc',
+    cobranca: 'asc', pagar: 'desc', status: 'asc'
+};
+
+function payOrdenarPor(col) {
+    if (!PAY_SORTERS[col]) return;
+    const atual = payState.sort;
+    if (atual && atual.col === col) {
+        // terceiro clique volta pra ordem natural da aba
+        if (atual.dir === PAY_SORT_PADRAO[col]) {
+            payState.sort = { col, dir: atual.dir === 'asc' ? 'desc' : 'asc' };
+        } else {
+            payState.sort = null;
+        }
+    } else {
+        payState.sort = { col, dir: PAY_SORT_PADRAO[col] };
+    }
+    renderPagamentos();
 }
 
 const PAY_AVATAR_COLORS = [
@@ -2503,6 +2556,16 @@ function renderPagamentos() {
         if (r.aReceber && r.diasParaVencer <= 30) byTab.areceber++;
     });
     Object.keys(byTab).forEach(k => setText('pay-count-' + k, `(${byTab[k]})`));
+
+    // Marca a coluna ordenada no cabeçalho
+    document.querySelectorAll('.pay-head .pay-sort').forEach(btn => {
+        const ativo = payState.sort && payState.sort.col === btn.dataset.sort;
+        btn.classList.toggle('is-ativo', !!ativo);
+        btn.dataset.dir = ativo ? payState.sort.dir : '';
+        btn.setAttribute('aria-sort', ativo
+            ? (payState.sort.dir === 'asc' ? 'ascending' : 'descending')
+            : 'none');
+    });
 
     // KPIs
     const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
@@ -3658,6 +3721,10 @@ function setupPagamentosUI() {
             renderPagamentos();
         });
     }
+
+    document.querySelectorAll('.pay-head .pay-sort').forEach(btn => {
+        btn.addEventListener('click', () => payOrdenarPor(btn.dataset.sort));
+    });
 
     const exportBtn = document.getElementById('btn-pay-export');
     if (exportBtn) exportBtn.addEventListener('click', exportPagamentosCSV);
