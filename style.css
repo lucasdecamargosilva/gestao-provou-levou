@@ -2827,3 +2827,69 @@ main { min-width: 0; }
 #pagamentos .pay-list::-webkit-scrollbar-thumb:hover { background: var(--purple); }
 
 .pay-footer { justify-content: flex-start; }
+
+/* ─── Últimas atividades ─────────────────────────────────── */
+
+.atividades {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 420px;
+    overflow-y: auto;
+    font-family: var(--font-ui);
+}
+
+.atv-item {
+    display: grid;
+    grid-template-columns: 28px 1fr auto;
+    align-items: center;
+    gap: 11px;
+    padding: 9px 8px;
+    border-radius: 10px;
+    transition: background 160ms ease;
+}
+
+.atv-item:hover { background: var(--bg-light); }
+
+.atv-ic {
+    width: 28px;
+    height: 28px;
+    border-radius: 9px;
+    display: grid;
+    place-items: center;
+}
+
+.atv-ic .ic { width: 14px; height: 14px; }
+
+.atv-item.is-pagamento .atv-ic { background: rgba(16, 185, 129, 0.13); color: #047857; }
+.atv-item.is-extra .atv-ic { background: var(--purple-soft); color: #6d28d9; }
+.atv-item.is-cliente .atv-ic { background: rgba(59, 130, 246, 0.12); color: #1d4ed8; }
+.atv-item.is-teste .atv-ic { background: rgba(245, 158, 11, 0.15); color: #b45309; }
+
+.atv-txt { min-width: 0; }
+
+.atv-txt strong {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.atv-txt span {
+    display: block;
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.atv-quando {
+    font-size: 10.5px;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) { .atv-item { transition: none; } }

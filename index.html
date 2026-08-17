@@ -599,31 +599,43 @@
                     
                 </div>
 
-                <div class="section-container glass chart-card">
-                    <div class="table-header">
-                        <div>
-                            <h2 class="table-title"><span class="ic" data-ic="balanca"></span>Quanto cada cliente custa</h2>
-                            <span id="cli-sub" class="chart-sub">Provas geradas no ciclo atual e o que sobra depois do custo</span>
+                <div class="chart-grid" style="grid-template-columns: 1.5fr 1fr;">
+                    <div class="section-container glass chart-card">
+                        <div class="table-header">
+                            <div>
+                                <h2 class="table-title"><span class="ic" data-ic="balanca"></span>Quanto cada cliente custa</h2>
+                                <span id="cli-sub" class="chart-sub">Provas geradas no ciclo atual e o que sobra depois do custo</span>
+                            </div>
+                            <span id="cli-total" class="chart-badge">—</span>
                         </div>
-                        <span id="cli-total" class="chart-badge">—</span>
+                        <div class="tabela-rolagem">
+                        <table class="client-table">
+                            <thead>
+                                <tr>
+                                    <th>Cliente</th>
+                                    <th>Categoria</th>
+                                    <th>Provas no ciclo</th>
+                                    <th>Custo</th>
+                                    <th>Vai pagar</th>
+                                    <th>Sobra</th>
+                                    <th>Margem</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cli-custo-body">
+                                <tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:30px 0;">Carregando...</td></tr>
+                            </tbody>
+                        </table>
+                        </div>
                     </div>
-                    <div class="tabela-rolagem">
-                    <table class="client-table">
-                        <thead>
-                            <tr>
-                                <th>Cliente</th>
-                                <th>Categoria</th>
-                                <th>Provas no ciclo</th>
-                                <th>Custo</th>
-                                <th>Vai pagar</th>
-                                <th>Sobra</th>
-                                <th>Margem</th>
-                            </tr>
-                        </thead>
-                        <tbody id="cli-custo-body">
-                            <tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:30px 0;">Carregando...</td></tr>
-                        </tbody>
-                    </table>
+
+                    <div class="section-container glass chart-card">
+                        <div class="table-header">
+                            <div>
+                                <h2 class="table-title"><span class="ic" data-ic="relogio"></span>Últimas atividades</h2>
+                                <span class="chart-sub">O que entrou no painel por último</span>
+                            </div>
+                        </div>
+                        <div id="fin-atividades" class="atividades"></div>
                     </div>
                 </div>
 

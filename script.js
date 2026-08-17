@@ -2743,7 +2743,7 @@ async function carregarPagamentosSaude(forcar) {
     if (saudeState.carregado && !forcar) return saudeState.pagamentos;
     const { data, error } = await db
         .from('pagamentos_clientes')
-        .select('store_id, tipo, valor, data_pagamento, descricao')
+        .select('store_id, tipo, valor, data_pagamento, descricao, created_at')
         .order('data_pagamento', { ascending: true });
     if (error) throw error;
     saudeState.pagamentos = (data || []).map(p => ({
@@ -2752,7 +2752,8 @@ async function carregarPagamentosSaude(forcar) {
         valor: parseFloat(p.valor) || 0,
         data: String(p.data_pagamento).slice(0, 10),
         mes: String(p.data_pagamento).slice(0, 7),
-        descricao: p.descricao || ''
+        descricao: p.descricao || '',
+        registradoEm: p.created_at || null
     }));
     saudeState.carregado = true;
     return saudeState.pagamentos;
@@ -2995,6 +2996,77 @@ function renderCustoPorCliente() {
             <td style="font-weight:600;color:${corMargem}">${l.margem == null ? '—' : l.margem.toFixed(0) + '%'}</td>
         </tr>`;
     }).join('');
+}
+
+// ─── Últimas atividades ────────────────────────────────────────────────────────
+
+function tempoRelativo(iso) {
+    if (!iso) return '';
+    const diff = Date.now() - new Date(iso).getTime();
+    const min = Math.floor(diff / 60000);
+    if (min < 1) return 'agora';
+    if (min < 60) return `há ${min} min`;
+    const h = Math.floor(min / 60);
+    if (h < 24) return `há ${h}h`;
+    const d = Math.floor(h / 24);
+    if (d === 1) return 'ontem';
+    if (d < 30) return `há ${d} dias`;
+    const m = Math.floor(d / 30);
+    return `há ${m} ${m === 1 ? 'mês' : 'meses'}`;
+}
+
+// Junta o que aconteceu no painel: pagamentos lançados e clientes que entraram
+function renderAtividades() {
+    const box = document.getElementById('fin-atividades');
+    if (!box) return;
+
+    const nomeDe = id => {
+        const c = clients.find(x => String(x.id) === String(id));
+        return c ? (c.company || c.name) : 'Cliente removido';
+    };
+
+    const eventos = [];
+
+    saudeState.pagamentos.forEach(p => {
+        if (/provas extras/i.test(p.descricao)) return;   // lançamento agrupado, não é evento
+        eventos.push({
+            quando: p.registradoEm || `${p.data}T12:00:00`,
+            tipo: p.tipo === 'mensalidade' ? 'pagamento' : 'extra',
+            ic: p.tipo === 'mensalidade' ? 'entrada' : 'moedas',
+            titulo: `${p.tipo === 'mensalidade' ? 'Mensalidade' : 'Cobrança extra'} de ${formatBRL(p.valor)}`,
+            sub: `${nomeDe(p.store)} · pagamento em ${formatDate(p.data)}`
+        });
+    });
+
+    clients.forEach(c => {
+        if (!c.date) return;
+        eventos.push({
+            quando: `${c.date}T09:00:00`,
+            tipo: c.status === 'Teste Gratuito' ? 'teste' : 'cliente',
+            ic: c.status === 'Teste Gratuito' ? 'teste' : 'ok',
+            titulo: c.status === 'Teste Gratuito' ? 'Novo teste grátis' : 'Novo cliente',
+            sub: `${c.company || c.name} · ${getClientPlanLabel(c)}`
+        });
+    });
+
+    eventos.sort((a, b) => (a.quando < b.quando ? 1 : -1));
+    const lista = eventos.slice(0, 30);
+
+    if (!lista.length) {
+        box.innerHTML = '<p class="painel-nota">Nada registrado ainda. Lance um pagamento na ficha do cliente para começar.</p>';
+        return;
+    }
+
+    box.innerHTML = lista.map(e => `
+        <div class="atv-item is-${e.tipo}">
+            <span class="atv-ic"><span class="ic" data-ic="${e.ic}"></span></span>
+            <span class="atv-txt">
+                <strong>${esc(e.titulo)}</strong>
+                <span>${esc(e.sub)}</span>
+            </span>
+            <span class="atv-quando">${esc(tempoRelativo(e.quando))}</span>
+        </div>`).join('');
+    aplicarIcones(box);
 }
 
 // ─── Previsão de fechamento do mês ─────────────────────────────────────────────
@@ -3297,6 +3369,7 @@ function renderSaude() {
     renderKPIsSaude(analise);
     renderFaturamentoDetalhado(analise);
     renderCustoPorCliente();
+    renderAtividades();
     renderCustosCategoria(analise[analise.length - 1]);
     renderPrevisao();
     renderLucroPorMes(meses);
