@@ -85,6 +85,13 @@ function normalizeDomain(o) {
     return s;
 }
 
+function normalizeProofOrigin(o) {
+    let s = String(o || '').toLowerCase().trim();
+    s = s.replace(/^https?:\/\//, '').replace(/^www\./, '');
+    s = s.split('?')[0].replace(/\/+$/, '');
+    return s;
+}
+
 function isOrderAfterProva(orderTs, ph, minDateMap, minTsMap) {
     if (!orderTs || !ph) return false;
     const provaDate = minDateMap[ph];
@@ -520,8 +527,9 @@ async function salvarPagamento() {
         // o novo lançamento entra nos números da tela Financeiro
         saudeState.carregado = false;
         if (document.getElementById('pagamentos').classList.contains('active')) {
-            payState.rows = buildPagamentosRows();
-            renderPagamentos();
+            payState.loaded = false;
+            payState.counts = {};
+            await loadPagamentosView();
             loadSaude(true);
         }
     } catch (err) {
@@ -812,7 +820,7 @@ function renderExcessoProvas(cache) {
         // Precisa ter data de início (último pagamento / implementação) pra contar "desde então".
         const hasStart = (c.lastPayment && c.lastPayment !== '-') || (c.status === 'Teste Gratuito' && c.implementationDate);
         if (!hasStart) continue;
-        const dom = normalizeDomain(c.website);
+        const dom = normalizeProofOrigin(c.website);
         if (!dom) continue;
         const used = counts[dom] || 0;  // já contado desde o cutoff da loja pela RPC
         if (used > limit) {
@@ -857,7 +865,7 @@ async function loadExcessoProvasDetailed() {
     const lojas = [];
     (clients || []).forEach(c => {
         if (c.status === 'Inativo') return;
-        const dom = normalizeDomain(c.website);
+        const dom = normalizeProofOrigin(c.website);
         let cutoff = null;
         // Fronteira em BRT (-03:00), igual à dashboard do lojista. Sem o offset o cutoff virava
         // meia-noite UTC e contava ~3h de provas da noite anterior (BRT) a mais (ex.: Cacife +57).
@@ -1622,7 +1630,7 @@ async function computeProvasCustoTotal() {
         if (dom) categoriaMap[dom] = l.categoria || 'oculos';
     }
     for (const s of (storesRes.data || [])) {
-        const dom = normalizeDomain(s.domain);
+        const dom = normalizeProofOrigin(s.domain);
         if (dom) categoriaMap[dom] = s.categoria || 'oculos';
     }
 
@@ -1634,7 +1642,7 @@ async function computeProvasCustoTotal() {
 
     const tryonCounts = {};
     for (const t of tryons) {
-        const dom = normalizeDomain(t.origin);
+        const dom = normalizeProofOrigin(t.origin);
         if (!dom) continue;
         tryonCounts[dom] = (tryonCounts[dom] || 0) + 1;
     }
@@ -1848,9 +1856,9 @@ async function loadLimites() {
         const lojasLim = [];
         for (const c of clients) {
             if (c.status === 'Inativo') continue;
-            const dom = normalizeDomain(c.website);
+            const dom = normalizeProofOrigin(c.website);
             const sd = getStartDate(c);
-            if (dom && sd) lojasLim.push({ dom, cutoff: String(sd).split('T')[0] + 'T00:00:00' });
+            if (dom && sd) lojasLim.push({ dom, cutoff: String(sd).split('T')[0] + 'T00:00:00-03:00' });
         }
         const countsByDom = await fetchProvasCounts(lojasLim);
 
@@ -1860,7 +1868,7 @@ async function loadLimites() {
 
         for (const c of clients) {
             if (c.status === 'Inativo') continue; // loja inativa não é monitorada em limites
-            const dom = normalizeDomain(c.website);
+            const dom = normalizeProofOrigin(c.website);
             // Para plano Personalizado, usa limitePersonalizado; senão, usa PLAN_LIMITS
             let basePlanLimit;
             if (c.plan === 'Personalizado') {
@@ -2393,7 +2401,7 @@ function buildPagamentosRows() {
     hoje.setHours(0, 0, 0, 0);
 
     return clients.map(c => {
-        const dom = normalizeDomain(c.website);
+        const dom = normalizeProofOrigin(c.website);
         const limite = payPlanLimit(c);
         const usadas = payState.counts[dom];
         const pct = (limite && usadas != null) ? (usadas / limite) * 100 : null;
@@ -2988,7 +2996,7 @@ function renderCustosCategoria(mes) {
 function valorPrevisto(c) {
     const plano = getClientMonthlyValue(c);
     const limite = payPlanLimit(c);
-    const usadas = payState.counts[normalizeDomain(c.website)];
+    const usadas = payState.counts[normalizeProofOrigin(c.website)];
 
     if (!limite || limite === Infinity || usadas == null) {
         return { valor: plano, plano, excedente: 0, provasExtras: 0, usadas, limite };
@@ -3068,7 +3076,7 @@ function renderCustoPorCliente() {
     const linhas = [];
     clients.forEach(c => {
         if (c.status === 'Inativo') return;
-        const usadas = payState.counts[normalizeDomain(c.website)];
+        const usadas = payState.counts[normalizeProofOrigin(c.website)];
         if (usadas == null) return;
         const custoUnit = getCategoryCost(c.categoria) != null
             ? (c.categoria === 'roupa' ? 0.37 : 0.28)
@@ -3685,9 +3693,9 @@ async function loadPagamentosView() {
             const lojas = [];
             for (const c of clients) {
                 if (c.status === 'Inativo') continue;
-                const dom = normalizeDomain(c.website);
+                const dom = normalizeProofOrigin(c.website);
                 const sd = payStartDate(c);
-                if (dom && sd) lojas.push({ dom, cutoff: String(sd).split('T')[0] + 'T00:00:00' });
+                if (dom && sd) lojas.push({ dom, cutoff: String(sd).split('T')[0] + 'T00:00:00-03:00' });
             }
             payState.counts = await fetchProvasCounts(lojas);
             payState.loaded = true;
@@ -3861,7 +3869,7 @@ async function renderFluxoLojas() {
     const now = new Date();
     const monthStart = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-01T00:00:00';
     const cmap = {};
-    (clients || []).forEach(c => { const d = normalizeDomain(c.website || c.domain || c.origem || ''); if (d) cmap[d] = c; });
+    (clients || []).forEach(c => { const d = normalizeProofOrigin(c.website || c.domain || c.origem || ''); if (d) cmap[d] = c; });
     // Conta provas do mês corrente por loja SERVER-SIDE (1 RPC) em vez de baixar dezenas de milhares de linhas.
     const counts = await fetchProvasCounts(Object.keys(cmap).map(dom => ({ dom, cutoff: monthStart })));
     const rows = [];
