@@ -186,7 +186,7 @@ async function computeFaturamentoPosProva() {
     // 2. Carregar todas as provas paginadas
     const provas = await fetchAllPaginated(
         'geracoes_provou_levou',
-        'telefone_cliente, created_at, origin',
+        'telefone_cliente, email_cliente, created_at, origin',
         [{ method: 'order', args: ['created_at', { ascending: false }] }]
     );
 
@@ -214,6 +214,11 @@ async function computeFaturamentoPosProva() {
                 }
             }
             const categoria = storeCategoriaMap[(loj.email || '').toLowerCase()] || loj.categoria || 'oculos';
+            // A Velaro coleta e-mail no provador; as demais lojas continuam casando por telefone.
+            const usaEmail = lojOrigem === 'usevelaro.shop' || loj.tabela_pedidos === 'velaro_orders';
+            const normalizeIdentity = value => usaEmail
+                ? String(value || '').trim().toLowerCase()
+                : normalizePhone(value);
             if (lojProvas.length === 0) {
                 const entry0 = { faturamento: 0, provas: 0, custo: 0, categoria };
                 porEmail[loj.email] = entry0;
@@ -227,7 +232,7 @@ async function computeFaturamentoPosProva() {
             let earliestProvaDate = '';
 
             for (const p of lojProvas) {
-                const ph = normalizePhone(p.telefone_cliente);
+                const ph = normalizeIdentity(usaEmail ? p.email_cliente : p.telefone_cliente);
                 if (!ph) continue;
                 const ts = p.created_at || '';
                 const date = ts.slice(0, 10);
@@ -259,7 +264,7 @@ async function computeFaturamentoPosProva() {
             const seen = new Set();
             let lojaTotal = 0;
             for (const o of orders) {
-                const ph = normalizePhone(o[fPhone]);
+                const ph = normalizeIdentity(o[fPhone]);
                 if (!ph || !provaPhones.has(ph)) continue;
                 if (!isOrderAfterProva(o[fDate], ph, minDateMap, minTsMap)) continue;
                 const val = parseFloat(o[fTotal]) || 0;
