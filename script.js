@@ -2870,6 +2870,266 @@ async function carregarPagamentosSaude(forcar) {
     return saudeState.pagamentos;
 }
 
+// ─── Metas comerciais ─────────────────────────────────────────────────────────
+const METAS_DEFAULT = { clientes: 60, mrr: 5000, recebimentos: 5000 };
+const METAS_STORAGE_KEY = 'gestaoMetasComerciaisV1';
+let metasState = { periodo: '', config: { ...METAS_DEFAULT }, carregando: false };
+let metasBackendDisponivel = true;
+
+function periodoAtualLocal() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function numeroMeta(valor, padrao) {
+    const n = Number(valor);
+    return Number.isFinite(n) && n >= 0 ? n : padrao;
+}
+
+function lerMetasSalvas() {
+    try {
+        const salvo = JSON.parse(localStorage.getItem(METAS_STORAGE_KEY) || '{}');
+        return salvo && typeof salvo === 'object' ? salvo : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+function metaDoPeriodo(periodo) {
+    const salva = lerMetasSalvas()[periodo] || {};
+    return {
+        clientes: numeroMeta(salva.clientes, METAS_DEFAULT.clientes),
+        mrr: numeroMeta(salva.mrr, METAS_DEFAULT.mrr),
+        recebimentos: numeroMeta(salva.recebimentos, METAS_DEFAULT.recebimentos)
+    };
+}
+
+function salvarMetaDoPeriodo(periodo, config) {
+    const todas = lerMetasSalvas();
+    todas[periodo] = {
+        clientes: numeroMeta(config.clientes, METAS_DEFAULT.clientes),
+        mrr: numeroMeta(config.mrr, METAS_DEFAULT.mrr),
+        recebimentos: numeroMeta(config.recebimentos, METAS_DEFAULT.recebimentos)
+    };
+    localStorage.setItem(METAS_STORAGE_KEY, JSON.stringify(todas));
+    return todas[periodo];
+}
+
+async function carregarMetaDoPeriodo(periodo) {
+    const local = metaDoPeriodo(periodo);
+    if (!db || !metasBackendDisponivel) return local;
+    const { data, error } = await db
+        .from('crm_metas')
+        .select('meta_clientes, meta_mrr, meta_recebimentos')
+        .eq('periodo', periodo)
+        .maybeSingle();
+    if (error) {
+        metasBackendDisponivel = false;
+        console.warn('Metas compartilhadas indisponíveis; usando dados locais.', error.message || error);
+        return local;
+    }
+    if (!data) return local;
+    const config = {
+        clientes: numeroMeta(data.meta_clientes, local.clientes),
+        mrr: numeroMeta(data.meta_mrr, local.mrr),
+        recebimentos: numeroMeta(data.meta_recebimentos, local.recebimentos)
+    };
+    salvarMetaDoPeriodo(periodo, config);
+    return config;
+}
+
+async function persistirMetaDoPeriodo(periodo, config) {
+    const salva = salvarMetaDoPeriodo(periodo, config);
+    if (!db || !metasBackendDisponivel) return { config: salva, compartilhada: false };
+    const { error } = await db.from('crm_metas').upsert({
+        periodo,
+        meta_clientes: salva.clientes,
+        meta_mrr: salva.mrr,
+        meta_recebimentos: salva.recebimentos,
+        updated_at: new Date().toISOString()
+    }, { onConflict: 'periodo' });
+    if (error) {
+        metasBackendDisponivel = false;
+        console.warn('Não foi possível compartilhar as metas; cópia local preservada.', error.message || error);
+        return { config: salva, compartilhada: false };
+    }
+    return { config: salva, compartilhada: true };
+}
+
+// Um fechamento nasce na primeira mensalidade. Isso impede que renovações de
+// clientes antigos inflem a quantidade de novos clientes do período.
+function calcularMetasDoPeriodo(listaClientes, pagamentos, periodo) {
+    const porCliente = new Map();
+    (listaClientes || []).forEach(c => porCliente.set(String(c.id), c));
+
+    const historico = new Map();
+    (pagamentos || []).forEach(p => {
+        const id = String(p.store);
+        if (!historico.has(id)) historico.set(id, []);
+        historico.get(id).push(p);
+    });
+
+    const fechados = [];
+    const pagamentosPeriodo = [];
+    historico.forEach((lista, id) => {
+        lista.sort((a, b) => String(a.data).localeCompare(String(b.data)));
+        const cliente = porCliente.get(id);
+        const mensalidades = lista.filter(p => String(p.tipo).toLowerCase() === 'mensalidade');
+        const primeira = mensalidades[0] || null;
+        const noPeriodo = lista.filter(p => p.mes === periodo);
+        const totalPeriodo = noPeriodo.reduce((s, p) => s + p.valor, 0);
+        const totalHistorico = lista.reduce((s, p) => s + p.valor, 0);
+        const ultima = lista[lista.length - 1] || null;
+
+        if (primeira && primeira.mes === periodo) {
+            fechados.push({
+                id,
+                cliente,
+                primeira,
+                mrr: cliente ? getClientMonthlyValue(cliente) : primeira.valor,
+                recebidoPeriodo: totalPeriodo,
+                totalHistorico,
+                ultima
+            });
+        }
+
+        if (noPeriodo.length) {
+            const mensal = noPeriodo.filter(p => String(p.tipo).toLowerCase() === 'mensalidade').reduce((s, p) => s + p.valor, 0);
+            pagamentosPeriodo.push({
+                id,
+                cliente,
+                novo: !!(primeira && primeira.mes === periodo),
+                mensalidades: mensal,
+                extras: totalPeriodo - mensal,
+                totalPeriodo,
+                totalHistorico,
+                quantidade: noPeriodo.length
+            });
+        }
+    });
+
+    fechados.sort((a, b) => String(b.primeira.data).localeCompare(String(a.primeira.data)));
+    pagamentosPeriodo.sort((a, b) => b.totalPeriodo - a.totalPeriodo);
+    return {
+        fechados,
+        pagamentosPeriodo,
+        clientesFechados: fechados.length,
+        novoMrr: fechados.reduce((s, r) => s + r.mrr, 0),
+        recebidoPeriodo: pagamentosPeriodo.reduce((s, r) => s + r.totalPeriodo, 0)
+    };
+}
+
+function nomeClienteMeta(row) {
+    return row.cliente ? (row.cliente.company || row.cliente.name || row.cliente.email) : 'Cliente removido';
+}
+
+function percentualMeta(realizado, meta) {
+    if (meta <= 0) return realizado > 0 ? 100 : 0;
+    return Math.max(0, (realizado / meta) * 100);
+}
+
+function renderProgressoMeta(chave, realizado, meta, unidade) {
+    const pct = percentualMeta(realizado, meta);
+    const barra = document.getElementById(`metas-progress-${chave}`);
+    const label = document.getElementById(`metas-progress-${chave}-label`);
+    const copy = document.getElementById(`metas-progress-${chave}-copy`);
+    if (barra) barra.style.width = `${Math.min(100, pct)}%`;
+    if (label) label.textContent = `${pct.toFixed(0)}%`;
+    if (!copy) return;
+    if (meta <= 0) {
+        copy.textContent = 'Defina uma meta para acompanhar o progresso.';
+    } else if (realizado >= meta) {
+        const excesso = realizado - meta;
+        copy.textContent = excesso > 0
+            ? `Meta superada em ${unidade === 'dinheiro' ? formatBRL(excesso) : excesso + ' cliente(s)'}.`
+            : 'Meta alcançada.';
+    } else {
+        const falta = meta - realizado;
+        copy.textContent = `Faltam ${unidade === 'dinheiro' ? formatBRL(falta) : falta + ' cliente(s)'} para a meta.`;
+    }
+}
+
+function renderMetas(config, dados) {
+    setText('metas-kpi-clientes', `${dados.clientesFechados} de ${config.clientes}`);
+    setText('metas-kpi-clientes-sub', `${percentualMeta(dados.clientesFechados, config.clientes).toFixed(0)}% da meta`);
+    setText('metas-kpi-mrr', formatBRL(dados.novoMrr));
+    setText('metas-kpi-mrr-sub', `de ${formatBRL(config.mrr)}`);
+    setText('metas-kpi-recebido', formatBRL(dados.recebidoPeriodo));
+    setText('metas-kpi-recebido-sub', `de ${formatBRL(config.recebimentos)}`);
+    setText('metas-kpi-ticket', formatBRL(dados.clientesFechados ? dados.novoMrr / dados.clientesFechados : 0));
+    setText('metas-kpi-ticket-sub', dados.clientesFechados ? 'MRR médio por novo cliente' : 'Nenhum fechamento no período');
+
+    renderProgressoMeta('clientes', dados.clientesFechados, config.clientes, 'clientes');
+    renderProgressoMeta('mrr', dados.novoMrr, config.mrr, 'dinheiro');
+    renderProgressoMeta('recebido', dados.recebidoPeriodo, config.recebimentos, 'dinheiro');
+
+    setText('metas-fechados-total', `${dados.clientesFechados} cliente${dados.clientesFechados === 1 ? '' : 's'}`);
+    setText('metas-pagamentos-total', formatBRL(dados.recebidoPeriodo));
+
+    const fechadosBody = document.getElementById('metas-fechados-body');
+    if (fechadosBody) {
+        fechadosBody.innerHTML = dados.fechados.length ? dados.fechados.map(r => `
+            <tr>
+                <td>${esc(nomeClienteMeta(r))}</td>
+                <td>${esc(formatDate(r.primeira.data))}</td>
+                <td>${esc(r.cliente ? getClientPlanLabel(r.cliente) : '—')}</td>
+                <td><strong>${formatBRL(r.mrr)}</strong></td>
+                <td>${formatBRL(r.recebidoPeriodo)}</td>
+                <td><strong>${formatBRL(r.totalHistorico)}</strong></td>
+                <td>${r.ultima ? esc(formatDate(r.ultima.data)) : '—'}</td>
+            </tr>`).join('') : '<tr><td colspan="7" class="metas-empty">Nenhum cliente teve a primeira mensalidade registrada neste período.</td></tr>';
+    }
+
+    const pagamentosBody = document.getElementById('metas-pagamentos-body');
+    if (pagamentosBody) {
+        pagamentosBody.innerHTML = dados.pagamentosPeriodo.length ? dados.pagamentosPeriodo.map(r => `
+            <tr>
+                <td><span class="metas-client-main">${esc(nomeClienteMeta(r))}${r.novo ? '<small>Novo</small>' : ''}</span></td>
+                <td>${esc(r.cliente ? r.cliente.status : 'Removido')}</td>
+                <td>${formatBRL(r.mensalidades)}</td>
+                <td>${formatBRL(r.extras)}</td>
+                <td><strong>${formatBRL(r.totalPeriodo)}</strong></td>
+                <td>${formatBRL(r.totalHistorico)}</td>
+                <td>${r.quantidade}</td>
+            </tr>`).join('') : '<tr><td colspan="7" class="metas-empty">Nenhum pagamento registrado neste período.</td></tr>';
+    }
+}
+
+function preencherFormularioMetas(config) {
+    const campos = {
+        'meta-clientes': config.clientes,
+        'meta-mrr': config.mrr,
+        'meta-recebimentos': config.recebimentos
+    };
+    Object.entries(campos).forEach(([id, valor]) => {
+        const el = document.getElementById(id);
+        if (el) el.value = valor;
+    });
+}
+
+async function loadMetas(forcar) {
+    if (metasState.carregando) return;
+    metasState.carregando = true;
+    try {
+        const periodoEl = document.getElementById('metas-periodo');
+        const periodo = (periodoEl && periodoEl.value) || metasState.periodo || periodoAtualLocal();
+        if (periodoEl) periodoEl.value = periodo;
+        metasState.periodo = periodo;
+        metasState.config = await carregarMetaDoPeriodo(periodo);
+        preencherFormularioMetas(metasState.config);
+
+        if (!clients.length && db) await loadClients();
+        await carregarPagamentosSaude(!!forcar);
+        renderMetas(metasState.config, calcularMetasDoPeriodo(clients, saudeState.pagamentos, periodo));
+    } catch (err) {
+        console.error('Erro ao carregar metas:', err);
+        const body = document.getElementById('metas-fechados-body');
+        if (body) body.innerHTML = '<tr><td colspan="7" class="metas-empty">Não foi possível carregar os dados de metas.</td></tr>';
+    } finally {
+        metasState.carregando = false;
+    }
+}
+
 // Custo por mês: usa o valor real lançado no fluxo de caixa quando existe;
 // senão estima contando as provas do mês (count server-side, não baixa linhas).
 async function carregarCustos(meses) {
@@ -3795,6 +4055,7 @@ function switchView(viewId) {
     if (viewId === 'provinha') { updateProvinha(); }
     if (viewId === 'tryons') { loadTryons(); }
     if (viewId === 'limites') { loadLimites(); }
+    if (viewId === 'metas') { loadMetas(); }
     if (viewId === 'pagamentos') { loadPagamentosView(); loadSaude(); }
     if (viewId === 'faturamento') { loadFaturamentoView(); }
     if (viewId === 'fluxo') { loadFluxoCaixa(); }
@@ -4154,6 +4415,37 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (viewId) switchView(viewId);
         });
     });
+
+    // Metas comerciais: cada mês guarda seu próprio objetivo.
+    const metasPeriodo = document.getElementById('metas-periodo');
+    if (metasPeriodo) {
+        metasPeriodo.value = periodoAtualLocal();
+        metasPeriodo.addEventListener('change', () => loadMetas());
+    }
+
+    const metasForm = document.getElementById('metas-form');
+    if (metasForm) {
+        metasForm.addEventListener('submit', async e => {
+            e.preventDefault();
+            const periodo = (metasPeriodo && metasPeriodo.value) || periodoAtualLocal();
+            const status = document.getElementById('metas-save-status');
+            try {
+                const resultado = await persistirMetaDoPeriodo(periodo, {
+                    clientes: document.getElementById('meta-clientes').value,
+                    mrr: document.getElementById('meta-mrr').value,
+                    recebimentos: document.getElementById('meta-recebimentos').value
+                });
+                metasState.config = resultado.config;
+                await loadMetas();
+                if (status) status.textContent = resultado.compartilhada
+                    ? `Metas de ${mesLabel(periodo)} salvas no CRM.`
+                    : `Metas de ${mesLabel(periodo)} salvas neste navegador.`;
+            } catch (err) {
+                console.error('Erro ao salvar metas:', err);
+                if (status) status.textContent = 'Não foi possível salvar as metas neste navegador.';
+            }
+        });
+    }
 
     // 6. Formulário de cadastro
     const form = document.getElementById('client-form');

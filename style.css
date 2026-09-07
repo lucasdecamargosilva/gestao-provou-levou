@@ -117,6 +117,184 @@ body::before {
         radial-gradient(ellipse 900px 500px at -10% 90%, rgba(167, 139, 250, 0.05), transparent 55%);
 }
 
+/* ─── Metas comerciais ───────────────────────────────────── */
+.metas-topbar {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 36px;
+    border-bottom: 1px solid var(--border);
+}
+
+.metas-subtitle {
+    color: var(--text-sub);
+    margin-top: 12px;
+}
+
+.metas-periodo-label {
+    display: grid;
+    gap: 7px;
+    min-width: 190px;
+    color: var(--text-muted);
+    font-size: 11px;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+}
+
+.metas-periodo-label input { color-scheme: light; }
+
+.metas-config {
+    display: grid;
+    grid-template-columns: minmax(210px, .8fr) minmax(520px, 1.8fr);
+    gap: 36px;
+    align-items: end;
+}
+
+.metas-eyebrow {
+    color: var(--purple);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.metas-config-copy h2 {
+    margin-top: 5px;
+    font-size: 23px;
+    letter-spacing: -.03em;
+}
+
+.metas-config-copy p {
+    margin-top: 8px;
+    max-width: 440px;
+    color: var(--text-sub);
+    font-size: 13px;
+}
+
+.metas-form {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(130px, 1fr)) auto;
+    gap: 12px;
+    align-items: end;
+}
+
+.metas-form > label {
+    display: grid;
+    gap: 7px;
+    color: var(--text-sub);
+    font-size: 12px;
+}
+
+.metas-form .form-control { min-width: 0; }
+.metas-form .btn-primary { min-height: 44px; white-space: nowrap; }
+
+.metas-money-input { position: relative; }
+.metas-money-input span {
+    position: absolute;
+    left: 13px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 12px;
+    pointer-events: none;
+}
+.metas-money-input input { padding-left: 37px; width: 100%; }
+
+.metas-save-status {
+    grid-column: 2;
+    min-height: 18px;
+    margin-top: -24px;
+    color: #047857;
+    font-size: 12px;
+}
+
+.metas-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+.metas-progress-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.metas-progress-card {
+    padding: 20px 22px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-elevated);
+}
+
+.metas-progress-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    font-size: 13px;
+}
+
+.metas-progress-head strong { color: var(--purple); }
+.metas-progress-track {
+    height: 9px;
+    margin: 13px 0 10px;
+    overflow: hidden;
+    border-radius: var(--pill);
+    background: var(--bg-light-alt);
+}
+
+.metas-progress-track span {
+    display: block;
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--purple), var(--purple-light));
+    transition: width .45s cubic-bezier(.22, 1, .36, 1);
+}
+
+.metas-progress-card p { color: var(--text-muted); font-size: 12px; }
+.metas-table-card { padding-bottom: 22px; }
+.metas-table-scroll { overflow-x: auto; }
+.metas-table-card .client-table { min-width: 850px; }
+.metas-table-card .client-table td { font-variant-numeric: tabular-nums; }
+.metas-table-card .client-table td:first-child { font-weight: 600; }
+.metas-empty { padding: 34px !important; text-align: center; color: var(--text-muted) !important; }
+
+.metas-client-main { display: flex; align-items: center; gap: 9px; }
+.metas-client-main small {
+    padding: 2px 7px;
+    border-radius: var(--pill);
+    background: rgba(16, 185, 129, .1);
+    color: #047857;
+    font-size: 9px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.metas-rule {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+.metas-rule i { color: var(--purple); }
+
+@media (max-width: 1180px) {
+    .metas-config { grid-template-columns: 1fr; align-items: start; }
+    .metas-save-status { grid-column: 1; margin-top: 0; }
+    .metas-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 900px) {
+    .metas-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .metas-progress-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+    .metas-topbar { align-items: stretch; flex-direction: column; }
+    .metas-periodo-label { width: 100%; }
+    .metas-form, .metas-kpis { grid-template-columns: 1fr; }
+    .metas-config { padding: 22px; }
+}
+
 /* Subtle grain layer */
 body::after {
     content: '';

@@ -60,6 +60,12 @@
                     </a>
                 </li>
                 <li>
+                    <a href="#" class="nav-item" data-view="metas">
+                        <i class="fas fa-bullseye"></i>
+                        <span>Metas</span>
+                    </a>
+                </li>
+                <li>
                     <a href="#" class="nav-item" data-view="pagamentos">
                         <i class="fas fa-heart-pulse"></i>
                         <span>Financeiro</span>
@@ -395,6 +401,119 @@
                         </tbody>
                     </table>
                 </div>
+            </section>
+
+            <!-- Metas View -->
+            <section id="metas" class="view">
+                <div class="metas-topbar">
+                    <div>
+                        <h1 class="page-title">Metas comerciais</h1>
+                        <p class="metas-subtitle">Acompanhe clientes fechados, novo MRR e pagamentos confirmados.</p>
+                    </div>
+                    <label class="metas-periodo-label" for="metas-periodo">
+                        Período
+                        <input type="month" id="metas-periodo" class="form-control">
+                    </label>
+                </div>
+
+                <div class="section-container glass metas-config">
+                    <div class="metas-config-copy">
+                        <span class="metas-eyebrow">Objetivo do período</span>
+                        <h2>Defina onde quer chegar</h2>
+                        <p>As metas são salvas por mês e comparadas com os pagamentos registrados no Financeiro.</p>
+                    </div>
+                    <form id="metas-form" class="metas-form">
+                        <label>
+                            Clientes fechados
+                            <input type="number" id="meta-clientes" class="form-control" min="0" step="1" value="60" required>
+                        </label>
+                        <label>
+                            Novo MRR
+                            <div class="metas-money-input"><span>R$</span><input type="number" id="meta-mrr" class="form-control" min="0" step="0.01" value="5000" required></div>
+                        </label>
+                        <label>
+                            Pagamentos recebidos
+                            <div class="metas-money-input"><span>R$</span><input type="number" id="meta-recebimentos" class="form-control" min="0" step="0.01" value="5000" required></div>
+                        </label>
+                        <button type="submit" class="btn-primary"><i class="fas fa-check"></i> Salvar metas</button>
+                    </form>
+                    <p id="metas-save-status" class="metas-save-status" aria-live="polite"></p>
+                </div>
+
+                <div class="stats-grid metas-kpis">
+                    <div class="stat-card glass">
+                        <div class="stat-label">Clientes fechados</div>
+                        <div id="metas-kpi-clientes" class="stat-value">0 de 60</div>
+                        <div id="metas-kpi-clientes-sub" class="stat-sub">0% da meta</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-label">Novo MRR fechado</div>
+                        <div id="metas-kpi-mrr" class="stat-value">R$ 0,00</div>
+                        <div id="metas-kpi-mrr-sub" class="stat-sub">de R$ 5.000,00</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-label">Pagamentos no período</div>
+                        <div id="metas-kpi-recebido" class="stat-value">R$ 0,00</div>
+                        <div id="metas-kpi-recebido-sub" class="stat-sub">de R$ 5.000,00</div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-label">Ticket médio dos fechamentos</div>
+                        <div id="metas-kpi-ticket" class="stat-value">R$ 0,00</div>
+                        <div id="metas-kpi-ticket-sub" class="stat-sub">MRR médio por novo cliente</div>
+                    </div>
+                </div>
+
+                <div class="metas-progress-grid">
+                    <div class="metas-progress-card glass">
+                        <div class="metas-progress-head"><span>Clientes</span><strong id="metas-progress-clientes-label">0%</strong></div>
+                        <div class="metas-progress-track"><span id="metas-progress-clientes"></span></div>
+                        <p id="metas-progress-clientes-copy">Faltam 60 clientes para a meta.</p>
+                    </div>
+                    <div class="metas-progress-card glass">
+                        <div class="metas-progress-head"><span>Novo MRR</span><strong id="metas-progress-mrr-label">0%</strong></div>
+                        <div class="metas-progress-track"><span id="metas-progress-mrr"></span></div>
+                        <p id="metas-progress-mrr-copy">Faltam R$ 5.000,00 para a meta.</p>
+                    </div>
+                    <div class="metas-progress-card glass">
+                        <div class="metas-progress-head"><span>Pagamentos</span><strong id="metas-progress-recebido-label">0%</strong></div>
+                        <div class="metas-progress-track"><span id="metas-progress-recebido"></span></div>
+                        <p id="metas-progress-recebido-copy">Faltam R$ 5.000,00 para a meta.</p>
+                    </div>
+                </div>
+
+                <div class="section-container glass metas-table-card">
+                    <div class="table-header">
+                        <div>
+                            <h2 class="table-title">Clientes fechados no período</h2>
+                            <span id="metas-fechados-sub" class="chart-sub">Primeira mensalidade registrada no mês selecionado</span>
+                        </div>
+                        <span id="metas-fechados-total" class="chart-badge">0 clientes</span>
+                    </div>
+                    <div class="metas-table-scroll">
+                        <table class="client-table">
+                            <thead><tr><th>Cliente</th><th>Fechou em</th><th>Plano</th><th>Novo MRR</th><th>Recebido no período</th><th>Total trazido</th><th>Último pagamento</th></tr></thead>
+                            <tbody id="metas-fechados-body"><tr><td colspan="7" class="metas-empty">Carregando...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="section-container glass metas-table-card">
+                    <div class="table-header">
+                        <div>
+                            <h2 class="table-title">Pagamentos por cliente</h2>
+                            <span class="chart-sub">Tudo o que entrou no mês, incluindo clientes antigos e cobranças extras</span>
+                        </div>
+                        <span id="metas-pagamentos-total" class="chart-badge">R$ 0,00</span>
+                    </div>
+                    <div class="metas-table-scroll">
+                        <table class="client-table">
+                            <thead><tr><th>Cliente</th><th>Situação</th><th>Mensalidades</th><th>Extras</th><th>Recebido no período</th><th>Total trazido</th><th>Pagamentos</th></tr></thead>
+                            <tbody id="metas-pagamentos-body"><tr><td colspan="7" class="metas-empty">Carregando...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <p class="metas-rule"><i class="fas fa-circle-info"></i> Um cliente conta como fechado no mês da primeira mensalidade registrada. Cobranças extras entram apenas em pagamentos recebidos.</p>
             </section>
 
             <!-- Pagamentos View -->
