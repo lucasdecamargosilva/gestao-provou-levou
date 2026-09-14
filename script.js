@@ -18,6 +18,7 @@ const PLAN_VALUES = {
     'Crescimento': 147,
     'Acelerador': 347,
     'Performance': 547,
+    'Expansão': 749,
     'Escala': 997
 };
 
@@ -33,6 +34,7 @@ const PLAN_LIMITS = {
     'Crescimento': 100,
     'Acelerador': 300,
     'Performance': 500,
+    'Expansão': 800,
     'Escala': 1200
 };
 
