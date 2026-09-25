@@ -38,6 +38,43 @@ const PLAN_LIMITS = {
     'Escala': 1200
 };
 
+// Provou Catálogo usa os MESMOS nomes de plano da loja online, com preço e
+// franquia diferentes (Escala: 1.200 fotos/R$ 997 na loja, 500/R$ 369 no
+// catálogo). Ler PLAN_VALUES direto inflava o MRR de todo catálogo.
+const CATALOG_PLAN_VALUES = {
+    'Essencial': 39,
+    'Crescimento': 79,
+    'Profissional': 159,
+    'Escala': 369,
+    'Volume 1.000': 699,
+    'Volume 1.500': 959,
+    'Volume 2.500': 1499
+};
+
+const CATALOG_PLAN_LIMITS = {
+    'Essencial': 50,
+    'Crescimento': 100,
+    'Profissional': 200,
+    'Escala': 500,
+    'Volume 1.000': 1000,
+    'Volume 1.500': 1500,
+    'Volume 2.500': 2500
+};
+
+function isCatalogo(c) {
+    return c.platform === 'catalogo' || /\/catalogo\//i.test(c.website || '');
+}
+
+// Franquia do plano sem os créditos (fotos_extras). Único lugar que decide:
+// personalizado → valor gravado; catálogo → tabela do catálogo; resto → loja.
+function basePlanLimit(c) {
+    if (c.plan === 'Personalizado') {
+        return (c.limitePersonalizado != null && c.limitePersonalizado > 0) ? c.limitePersonalizado : null;
+    }
+    if (isCatalogo(c) && CATALOG_PLAN_LIMITS[c.plan] != null) return CATALOG_PLAN_LIMITS[c.plan];
+    return PLAN_LIMITS[c.plan];
+}
+
 // ─── Controle de Acesso ────────────────────────────────────────────────
 // Apenas estes emails podem acessar o painel de gestão.
 // Para adicionar novo admin, inclua o email aqui.
@@ -53,6 +90,9 @@ function isAdminEmail(email) {
 function getClientMonthlyValue(client) {
     if (client.valorPersonalizado != null && client.valorPersonalizado > 0) {
         return client.valorPersonalizado;
+    }
+    if (isCatalogo(client) && CATALOG_PLAN_VALUES[client.plan] != null) {
+        return CATALOG_PLAN_VALUES[client.plan];
     }
     return PLAN_VALUES[client.plan] || 0;
 }
@@ -815,13 +855,7 @@ function renderExcessoProvas(cache) {
     const rows = [];
     for (const c of clients) {
         if (c.status === 'Inativo') continue; // loja inativa não entra em excesso de provas
-        const plan = c.plan || '';
-        let base;
-        if (plan === 'Personalizado') {
-            base = (c.limitePersonalizado != null && c.limitePersonalizado > 0) ? c.limitePersonalizado : null;
-        } else {
-            base = PLAN_LIMITS[plan];
-        }
+        const base = basePlanLimit(c);
         if (base == null || base === Infinity) continue;
         const limit = base + (c.fotosExtras || 0);
         // Precisa ter data de início (último pagamento / implementação) pra contar "desde então".
@@ -1287,6 +1321,7 @@ async function loadClients() {
             plan: s.plan || 'Starter',
             status: s.status || 'Ativo',
             website: s.domain || '',
+            platform: s.platform || '',
             date: new Date(s.created_at).toISOString().split('T')[0],
             lastPayment: s.last_payment || '-',
             implementationDate: s.implementation_date || null,
@@ -1314,7 +1349,7 @@ async function autoRefreshLucroLiquido() {
     try {
         await computeProvasCustoTotal();
         const active = clients.filter(c => c.status === 'Ativo');
-        const mrr = active.reduce((sum, c) => sum + (PLAN_VALUES[c.plan] || 0), 0);
+        const mrr = active.reduce((sum, c) => sum + getClientMonthlyValue(c), 0);
         renderLucroLiquido(mrr);
     } catch (err) {
         console.warn('Auto-refresh lucro falhou:', err);
@@ -1877,14 +1912,9 @@ async function loadLimites() {
             if (c.status === 'Inativo') continue; // loja inativa não é monitorada em limites
             const dom = normalizeProofOrigin(c.website);
             // Para plano Personalizado, usa limitePersonalizado; senão, usa PLAN_LIMITS
-            let basePlanLimit;
-            if (c.plan === 'Personalizado') {
-                basePlanLimit = (c.limitePersonalizado != null && c.limitePersonalizado > 0) ? c.limitePersonalizado : null;
-            } else {
-                basePlanLimit = PLAN_LIMITS[c.plan];
-            }
+            const baseLimite = basePlanLimit(c);
             const extras = c.fotosExtras || 0;
-            const limit = (basePlanLimit === Infinity) ? Infinity : (basePlanLimit != null ? basePlanLimit + extras : null);
+            const limit = (baseLimite === Infinity) ? Infinity : (baseLimite != null ? baseLimite + extras : null);
             let limitLabel;
             if (limit === Infinity) {
                 limitLabel = 'Ilimitado';
@@ -2241,7 +2271,7 @@ var lastRevenueLevel = 0;
 function updateProvinha() {
     var active = clients.filter(function(c) { return c.status === 'Ativo'; });
     var activeCount = active.length;
-    var mrr = active.reduce(function(sum, c) { return sum + (PLAN_VALUES[c.plan] || 0); }, 0);
+    var mrr = active.reduce(function(sum, c) { return sum + getClientMonthlyValue(c); }, 0);
 
     var growthLevel = getLevel(activeCount, GROWTH_LEVELS);
     var revenueLevel = getLevel(mrr, REVENUE_LEVELS);
@@ -2393,12 +2423,7 @@ function payStartDate(c) {
 }
 
 function payPlanLimit(c) {
-    let base;
-    if (c.plan === 'Personalizado') {
-        base = (c.limitePersonalizado != null && c.limitePersonalizado > 0) ? c.limitePersonalizado : null;
-    } else {
-        base = PLAN_LIMITS[c.plan];
-    }
+    const base = basePlanLimit(c);
     if (base == null) return null;
     return base + (c.fotosExtras || 0);
 }
@@ -3847,11 +3872,64 @@ function dataCurta(iso) {
     return `${d}/${m}`;
 }
 
+// Faturamento separado por tipo de cliente. Atendemos dois produtos — loja
+// online (widget no e-commerce) e Provou Catálogo (vitrine nossa pra ótica sem
+// loja virtual) — com preço e porte bem diferentes; somados, um escondia o outro.
+// Faturamento = dinheiro que entrou (pagamentos_clientes), não estimativa.
+function renderTipoCliente(meses) {
+    const alvo = document.getElementById('fin-tipo-cliente');
+    if (!alvo) return;
+    const janela = new Set(meses);
+    const porId = {};
+    clients.forEach(c => { porId[String(c.id)] = c; });
+
+    const novo = () => ({ receita: 0, pagantes: new Set(), mrr: 0, ativos: 0 });
+    const g = { online: novo(), catalogo: novo() };
+
+    saudeState.pagamentos.forEach(p => {
+        if (!janela.has(p.mes)) return;
+        const c = porId[String(p.store)];
+        if (!c) return;
+        const t = isCatalogo(c) ? 'catalogo' : 'online';
+        g[t].receita += p.valor;
+        g[t].pagantes.add(String(p.store));
+    });
+
+    // MRR pela MESMA regra do card "MRR Ativo" desta tela (ativos + inadimplentes),
+    // senão a soma dos dois tipos não bate com ele — atrasado continua sendo
+    // receita recorrente até ser cancelado.
+    (payState.rows || []).forEach(r => {
+        if (r.tab !== 'ativos' && r.tab !== 'inadimplentes') return;
+        const t = isCatalogo(r.c) ? 'catalogo' : 'online';
+        g[t].mrr += r.valor;
+        g[t].ativos++;
+    });
+
+    const total = g.online.receita + g.catalogo.receita;
+    const rotulo = meses.length > 1 ? `${mesLabel(meses[0])} a ${mesLabel(meses[meses.length - 1])}` : mesLabel(meses[0]);
+    setText('fin-tipo-periodo', rotulo);
+
+    const bloco = (t, nome, icone) => {
+        const x = g[t];
+        const pct = total > 0 ? Math.round(x.receita / total * 100) : 0;
+        return `<div class="tipo-bloco is-${t}">
+            <div class="tipo-cab"><span class="ic" data-ic="${icone}"></span>${nome}</div>
+            <div class="tipo-valor">${formatBRL(x.receita)}</div>
+            <div class="tipo-sub">${x.pagantes.size} pagante${x.pagantes.size === 1 ? '' : 's'} no período · ${pct}% do total</div>
+            <div class="tipo-barra"><span style="width:${pct}%"></span></div>
+            <div class="tipo-mrr">MRR <b>${formatBRL(x.mrr)}</b> · ${x.ativos} cliente${x.ativos === 1 ? '' : 's'} pagando</div>
+        </div>`;
+    };
+    alvo.innerHTML = bloco('online', 'Lojas online', 'recorrencia') + bloco('catalogo', 'Provou Catálogo', 'camadas');
+    aplicarIcones(alvo);
+}
+
 function renderSaude() {
     const meses = janelaSaude();
     if (!meses.length) return;
     const analise = janelaAnalise();
     renderKPIsSaude(analise);
+    renderTipoCliente(analise);
     renderFaturamentoDetalhado(analise);
     renderCustoPorCliente();
     renderAtividades();
