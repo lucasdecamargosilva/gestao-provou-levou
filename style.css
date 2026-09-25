@@ -3379,3 +3379,18 @@ main { gap: 16px; }
 @media (max-width: 720px) {
     .tipo-grid { grid-template-columns: 1fr; }
 }
+
+/* ─── Período personalizado do Financeiro ───────────────────── */
+.periodo-custom { display: inline-flex; align-items: center; gap: 6px; }
+.periodo-custom[hidden] { display: none; }
+.periodo-custom input[type="date"] { min-width: 132px; }
+.periodo-ate { font-size: 12px; color: var(--text-muted); }
+
+/* No celular as duas datas não cabem ao lado do seletor e do Atualizar:
+   a barra quebra linha e as datas ganham a linha inteira de baixo. */
+.pay-topbar-actions { flex-wrap: wrap; }
+@media (max-width: 720px) {
+    .pay-topbar-actions { width: 100%; }
+    .periodo-custom { flex: 1 1 100%; order: 3; }
+    .periodo-custom input[type="date"] { min-width: 0; flex: 1 1 0; }
+}

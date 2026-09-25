@@ -3318,14 +3318,13 @@ function agendaRecebimentos() {
 }
 
 // Quanto cada cliente pagou no período, do maior para o menor
-function renderFaturamentoDetalhado(meses) {
+function renderFaturamentoDetalhado(jan) {
     const box = document.getElementById('sa-detalhado');
     if (!box) return;
-    const dentro = new Set(meses);
 
     const porStore = {};
     saudeState.pagamentos.forEach(p => {
-        if (!dentro.has(p.mes)) return;
+        if (!noPeriodo(p, jan)) return;
         if (!porStore[p.store]) porStore[p.store] = { total: 0, mens: 0, extra: 0 };
         porStore[p.store].total += p.valor;
         if (p.tipo === 'mensalidade') porStore[p.store].mens += p.valor;
@@ -3334,9 +3333,7 @@ function renderFaturamentoDetalhado(meses) {
 
     const linhas = Object.entries(porStore).sort((a, b) => b[1].total - a[1].total);
     const total = linhas.reduce((s, l) => s + l[1].total, 0);
-    const rotulo = meses.length === 1 ? mesLabel(meses[0]) : `${mesLabel(meses[0])} a ${mesLabel(meses[meses.length - 1])}`;
-
-    setText('det-sub', `${linhas.length} cliente(s) pagaram em ${rotulo}`);
+    setText('det-sub', `${linhas.length} cliente(s) pagaram · ${jan.rotulo}`);
     setText('det-total', formatBRL(total));
 
     if (!linhas.length) {
@@ -3719,45 +3716,126 @@ function janelaSaude() {
     if (!pagos.length) return [];
     const todos = mesesEntre(pagos[0].mes, pagos[pagos.length - 1].mes);
     const p = periodoSelecionado();
-    const n = (p === 'mes-atual' || p === 'mes-passado') ? 6 : (parseInt(p, 10) || 6);
+    // Só "6"/"12" mudam o tamanho dos gráficos; o resto mostra 6 meses de
+    // contexto ('7d' viraria 7 MESES num parseInt).
+    const n = (p === '6' || p === '12') ? parseInt(p, 10) : 6;
     return todos.slice(Math.max(0, todos.length - n));
 }
 
 // Já os números do mês (KPIs, ranking, concentração) seguem o filtro escolhido.
 function janelaAnalise() {
-    const p = periodoSelecionado();
-    if (p === 'mes-atual') return [mesRelativo(0)];
-    if (p === 'mes-passado') return [mesRelativo(-1)];
-    return janelaSaude();
+    return janelaDatas().meses;
 }
 
-function renderKPIsSaude(meses) {
-    const mesAtual = meses[meses.length - 1];
-    const doMes = saudeState.pagamentos.filter(p => p.mes === mesAtual);
-    const recebido = doMes.reduce((s, p) => s + p.valor, 0);
-    const pagantes = new Set(doMes.map(p => p.store)).size;
-    // Com extrato do mês, o custo da operação vem das categorias reais; sem ele, estima
-    const cat = saudeState.categorias[mesAtual];
-    // "Estornos e cancelamentos" é dinheiro que VOLTOU pra conta — somar isso
-    // como custo comia o lucro à toa (em jul/26 eram R$ 2.205).
-    const c = cat && cat.categorias
-        ? {
+// Datas em horário LOCAL (toISOString é UTC: depois das 21h em Brasília já
+// virava o dia seguinte).
+function isoLocal(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function isoHoje() { return isoLocal(new Date()); }
+function isoDiasAtras(n) { const d = new Date(); d.setDate(d.getDate() - n); return isoLocal(d); }
+function fimDoMes(mes) {
+    const [y, m] = mes.split('-').map(Number);
+    return `${mes}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`;
+}
+function diasEntre(a, b) {
+    return Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 86400000);
+}
+function dataCurtaBR(iso) { return iso.slice(8, 10) + '/' + iso.slice(5, 7); }
+
+// O período escolhido no filtro, em DIAS. Faturamento e pagantes filtram por
+// data exata; o custo (guardado por mês) entra proporcional — ver custoPeriodo.
+function janelaDatas() {
+    const p = periodoSelecionado();
+    const hoje = isoHoje();
+    let ini, fim, rotulo;
+    if (p === '7d' || p === '15d') {
+        const n = parseInt(p, 10);
+        ini = isoDiasAtras(n - 1); fim = hoje; rotulo = `últimos ${n} dias`;
+    } else if (p === 'custom') {
+        const a = (document.getElementById('saude-ini') || {}).value;
+        const b = (document.getElementById('saude-fim') || {}).value;
+        if (a && b && a <= b) { ini = a; fim = b; }
+        else { ini = hoje.slice(0, 7) + '-01'; fim = hoje; }
+        rotulo = `${dataCurtaBR(ini)} a ${dataCurtaBR(fim)}`;
+    } else if (p === 'mes-passado') {
+        const m = mesRelativo(-1);
+        ini = m + '-01'; fim = fimDoMes(m); rotulo = mesLabel(m);
+    } else if (p === '6' || p === '12') {
+        const ms = janelaSaude();
+        const m0 = ms.length ? ms[0] : hoje.slice(0, 7);
+        ini = m0 + '-01'; fim = fimDoMes(hoje.slice(0, 7));
+        rotulo = `${mesLabel(m0)} a ${mesLabel(hoje.slice(0, 7))}`;
+    } else {
+        const m = hoje.slice(0, 7);
+        ini = m + '-01'; fim = fimDoMes(m); rotulo = mesLabel(m);
+    }
+    return { ini, fim, rotulo, meses: mesesEntre(ini.slice(0, 7), fim.slice(0, 7)) };
+}
+
+function noPeriodo(p, jan) { return p.data >= jan.ini && p.data <= jan.fim; }
+
+// Custo da operação de UM mês: categorias reais do extrato quando existem,
+// senão a estimativa. "Estornos e cancelamentos" é dinheiro que VOLTOU pra
+// conta — somar isso como custo comia o lucro à toa (em jul/26 eram R$ 2.205).
+function custoOperacaoMes(mes) {
+    const cat = saudeState.categorias[mes];
+    if (cat && cat.categorias) {
+        return {
             total: Object.entries(cat.categorias)
                 .filter(([k]) => cat.negocio[k] && k !== 'Estornos e cancelamentos')
                 .reduce((s, l) => s + l[1], 0),
             real: true
-        }
-        : custoDoMes(mesAtual);
+        };
+    }
+    return custoDoMes(mes);
+}
+
+// Fração do custo de um mês que cai dentro do período. O mês corrente divide
+// pelos dias JÁ corridos: o custo dele é o acumulado até hoje, não o do mês cheio.
+function fracaoDoMes(mes, jan) {
+    const primeiro = mes + '-01';
+    const ultimo = fimDoMes(mes);
+    const hoje = isoHoje();
+    const teto = (hoje >= primeiro && hoje < ultimo) ? hoje : ultimo;
+    const ini = jan.ini > primeiro ? jan.ini : primeiro;
+    const fim = jan.fim < teto ? jan.fim : teto;
+    if (fim < ini) return 0;
+    return Math.min(1, (diasEntre(ini, fim) + 1) / (diasEntre(primeiro, teto) + 1));
+}
+
+function custoPeriodo(jan) {
+    let total = 0, real = true, inteiro = true;
+    jan.meses.forEach(m => {
+        const c = custoOperacaoMes(m);
+        const f = fracaoDoMes(m, jan);
+        if (f < 1) inteiro = false;
+        if (!c.real) real = false;
+        total += c.total * f;
+    });
+    return { total, real, inteiro };
+}
+
+function renderKPIsSaude(jan) {
+    const mesAtual = jan.meses[jan.meses.length - 1];
+    const doPeriodo = saudeState.pagamentos.filter(p => noPeriodo(p, jan));
+    const recebido = doPeriodo.reduce((s, p) => s + p.valor, 0);
+    const pagantes = new Set(doPeriodo.map(p => p.store)).size;
+    const c = custoPeriodo(jan);
     const lucro = recebido - c.total;
     const margem = recebido > 0 ? (lucro / recebido) * 100 : 0;
     const provas = saudeState.provas[mesAtual];
 
     setText('sa-recebido', formatBRL(recebido));
-    setText('sa-recebido-sub', `${mesLabel(mesAtual)} · ${pagantes} cliente(s)`);
+    setText('sa-recebido-sub', `${jan.rotulo} · ${pagantes} cliente(s)`);
     setText('sa-custo', formatBRL(c.total));
-    setText('sa-custo-sub', c.real
-        ? 'custo real do mês'
-        : (provas != null ? `${provas.toLocaleString('pt-BR')} provas × R$ ${CUSTO_MEDIO_PROVA.toFixed(2).replace('.', ',')}` : 'estimativa'));
+    setText('sa-custo-sub', !c.inteiro
+        ? 'proporcional aos dias do período'
+        : c.real
+            ? (jan.meses.length > 1 ? 'custo real dos meses' : 'custo real do mês')
+            : (jan.meses.length === 1 && provas != null
+                ? `${provas.toLocaleString('pt-BR')} provas × R$ ${CUSTO_MEDIO_PROVA.toFixed(2).replace('.', ',')}`
+                : 'estimativa'));
     setText('sa-lucro', formatBRL(lucro));
     setText('sa-lucro-sub', 'faturamento menos custo da operação');
     setText('sa-margem', `${margem.toFixed(0)}%`);
@@ -3876,10 +3954,9 @@ function dataCurta(iso) {
 // online (widget no e-commerce) e Provou Catálogo (vitrine nossa pra ótica sem
 // loja virtual) — com preço e porte bem diferentes; somados, um escondia o outro.
 // Faturamento = dinheiro que entrou (pagamentos_clientes), não estimativa.
-function renderTipoCliente(meses) {
+function renderTipoCliente(jan) {
     const alvo = document.getElementById('fin-tipo-cliente');
     if (!alvo) return;
-    const janela = new Set(meses);
     const porId = {};
     clients.forEach(c => { porId[String(c.id)] = c; });
 
@@ -3887,7 +3964,7 @@ function renderTipoCliente(meses) {
     const g = { online: novo(), catalogo: novo() };
 
     saudeState.pagamentos.forEach(p => {
-        if (!janela.has(p.mes)) return;
+        if (!noPeriodo(p, jan)) return;
         const c = porId[String(p.store)];
         if (!c) return;
         const t = isCatalogo(c) ? 'catalogo' : 'online';
@@ -3906,8 +3983,7 @@ function renderTipoCliente(meses) {
     });
 
     const total = g.online.receita + g.catalogo.receita;
-    const rotulo = meses.length > 1 ? `${mesLabel(meses[0])} a ${mesLabel(meses[meses.length - 1])}` : mesLabel(meses[0]);
-    setText('fin-tipo-periodo', rotulo);
+    setText('fin-tipo-periodo', jan.rotulo);
 
     const bloco = (t, nome, icone) => {
         const x = g[t];
@@ -3927,10 +4003,11 @@ function renderTipoCliente(meses) {
 function renderSaude() {
     const meses = janelaSaude();
     if (!meses.length) return;
-    const analise = janelaAnalise();
-    renderKPIsSaude(analise);
-    renderTipoCliente(analise);
-    renderFaturamentoDetalhado(analise);
+    const jan = janelaDatas();
+    const analise = jan.meses;
+    renderKPIsSaude(jan);
+    renderTipoCliente(jan);
+    renderFaturamentoDetalhado(jan);
     renderCustoPorCliente();
     renderAtividades();
     renderCustosCategoria(analise[analise.length - 1]);
@@ -3962,7 +4039,23 @@ async function loadSaude(forcar) {
 
 function setupSaudeUI() {
     const sel = document.getElementById('saude-periodo');
-    if (sel) sel.addEventListener('change', renderSaude);
+    const caixa = document.getElementById('saude-custom');
+    const iniEl = document.getElementById('saude-ini');
+    const fimEl = document.getElementById('saude-fim');
+    const hoje = isoHoje();
+    [iniEl, fimEl].forEach(el => { if (el) el.max = hoje; });
+    const sincroniza = () => { if (caixa) caixa.hidden = !(sel && sel.value === 'custom'); };
+    if (sel) sel.addEventListener('change', () => {
+        // Abriu o personalizado vazio: já vem com "do dia 1 até hoje"
+        if (sel.value === 'custom' && iniEl && fimEl && !iniEl.value && !fimEl.value) {
+            iniEl.value = hoje.slice(0, 7) + '-01';
+            fimEl.value = hoje;
+        }
+        sincroniza();
+        renderSaude();
+    });
+    [iniEl, fimEl].forEach(el => { if (el) el.addEventListener('change', renderSaude); });
+    sincroniza();
     const btn = document.getElementById('btn-saude-refresh');
     if (btn) btn.addEventListener('click', () => loadSaude(true));
 }
