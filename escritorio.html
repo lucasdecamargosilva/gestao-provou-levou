@@ -315,6 +315,7 @@ function parede(x1, z1, x2, z2, h = 4.2, t = .32, cor = C.parede) {
   const len = Math.hypot(x2 - x1, z2 - z1), g = new THREE.Group();
   g.add(box(len, h, t, cor, 0, h / 2, 0, .06));
   g.add(box(len + .02, .12, t + .06, C.paredeTopo, 0, h + .02, 0, .05));
+  [-len / 2, len / 2].forEach(dx => { g.add(cyl(t / 2 + .03, t / 2 + .03, h, cor, dx, h / 2, 0, 18)); g.add(cyl(t / 2 + .06, t / 2 + .06, .12, C.paredeTopo, dx, h + .02, 0, 18)); });
   g.position.set((x1 + x2) / 2, 0, (z1 + z2) / 2); g.rotation.y = -Math.atan2(z2 - z1, x2 - x1); scene.add(g); return g;
 }
 // painel roxo em arco na parede, com jardineira (marca registrada da arte)
@@ -366,6 +367,7 @@ function mesaCurva(cx, cz, r, a0, a1, rotY, texs, g = scene, lugares = 2) {
   for (let i = 0; i < lugares; i++) {
     const a = a0 + (a1 - a0) * (i + .5) / lugares, px = Math.cos(a) * r, pz = -Math.sin(a) * r;
     monitor(grupo, px * 1.04, .78, pz * 1.04, Math.atan2(-px, -pz) + Math.PI, texs[i % texs.length]);
+    const kx = Math.cos(a) * (r - .22), kz = -Math.sin(a) * (r - .22); const kk = new THREE.Group(); kk.add(box(.5, .025, .17, '#f1f1f4', 0, 0, 0, .01)); kk.add(box(.07, .025, .1, '#f1f1f4', .36, 0, .02, .02)); kk.position.set(kx, .79, kz); kk.rotation.y = Math.atan2(-px, -pz) + Math.PI; grupo.add(kk);
     const cx2 = Math.cos(a) * (r - 1.05), cz2 = -Math.sin(a) * (r - 1.05);
     cadeira(cx2, cz2, Math.atan2(cx2, cz2) + Math.PI, grupo);
     vagas.push({ x: cx2, z: cz2, rot: Math.atan2(px - cx2, pz - cz2) });
@@ -469,7 +471,6 @@ planta(-2.6, -16.8, 1.05); planta(12.3, -16.6, 1); planta(-3, -6.3, .9);
 // ───────────── COMERCIAL · CRM (azul, canto direito) ─────────────
 TELAS.crm = telaKanban();
 quadro(19.5, 2.7, -18.02 + .1, 0, 5.2, 3.4, TELAS.crm, '#ffffff');
-VAGAS.push(...mesaCurva(19, -9.5, 3.3, 3.5, 5.6, 0, [TELAS.crm, TELAS.mk], scene, 3).map(v => ({ ...v, area: 'comercial' })));
 { const bal = new THREE.Group(); bal.add(box(5, .9, .9, '#f7f4fa', 0, .45, 0, .1)); bal.position.set(18.5, 0, -1.5); scene.add(bal);
   VAGAS.push({ x: 17, z: -.5, rot: Math.PI, area: 'comercial' }); cadeira(17, -.5, 0); monitor(scene, 17, .9, -1.6, 0, TELAS.crm, .7); }
 mesaRedonda(22, 1, 2); planta(23, -16.8, 1); planta(14.9, -16.8, .9);
@@ -505,7 +506,6 @@ painelRoxo(-24 + .12, 13.5, Math.PI / 2, 2, 3);
 // ───────────── ATENDIMENTO (verde) ─────────────
 TELAS.chat = telaChat();
 VAGAS.push(...mesaCurva(10.5, 9.5, 3.2, .4, 2.6, 0, [TELAS.chat], scene, 3).map(v => ({ ...v, area: 'atendimento', fone: true })));
-VAGAS.push(...mesaCurva(17.5, 14.5, 2.2, 3.3, 5.9, 0, [TELAS.chat], scene, 3).map(v => ({ ...v, area: 'atendimento', fone: true })));
 planta(22.8, 6.5, 1.1); planta(6, 16.8, 1); planta(23, 16.8, .9);
 for (let z = 14.8; z < 18; z += .9) folhagem(scene, 5.1, 1.35, z, .5, 5);
 
@@ -561,6 +561,90 @@ function desenhaHolograma(d) {
 }
 desenhaHolograma(null);
 
+// ═════════════ DETALHES DA ARTE (tudo o que aparece na imagem) ═════════════
+function teclado(g, x, y, z, rotY) { const k = new THREE.Group(); k.add(box(.5, .025, .17, '#f1f1f4', 0, 0, 0, .01)); k.add(box(.07, .025, .1, '#f1f1f4', .36, 0, .02, .02)); k.position.set(x, y, z); k.rotation.y = rotY; g.add(k); }
+function notebook(g, x, y, z, rotY, tex) {
+  const n = new THREE.Group(); n.add(box(.46, .025, .32, '#c9ccd6', 0, 0, 0, .01));
+  const tela = new THREE.Group(); tela.add(box(.46, .3, .02, '#c9ccd6', 0, .15, 0, .01));
+  const t = new THREE.Mesh(new THREE.PlaneGeometry(.42, .26), new THREE.MeshBasicMaterial({ map: tex || TELAS.fin })); t.position.set(0, .15, .012); tela.add(t);
+  tela.position.z = -.16; tela.rotation.x = -.25; n.add(tela); n.position.set(x, y, z); n.rotation.y = rotY; g.add(n); return n;
+}
+function xicara(g, x, y, z) { g.add(cyl(.045, .04, .09, '#ffffff', x, y + .045, z, 12)); }
+function cartaz(x, y, z, rotY, w, h, tex) { return quadro(x, y, z, rotY, w, h, tex, '#ffffff'); }
+function arcoParede(cx, cz, r, a0, a1, h = 2.4, t = .3, cor = C.parede) {
+  const f = new THREE.Shape(); f.absarc(0, 0, r + t / 2, a0, a1, false); f.absarc(0, 0, r - t / 2, a1, a0, true);
+  const m = new THREE.Mesh(new THREE.ExtrudeGeometry(f, { depth: h, bevelEnabled: true, bevelSize: .04, bevelThickness: .04, curveSegments: 40 }), mat(cor));
+  m.rotation.x = -Math.PI / 2; m.position.set(cx, 0, cz); m.castShadow = m.receiveShadow = true; scene.add(m);
+  const topo = new THREE.Mesh(new THREE.ExtrudeGeometry(f, { depth: .1, bevelEnabled: false, curveSegments: 40 }), mat(C.paredeTopo)); topo.rotation.x = -Math.PI / 2; topo.position.set(cx, h, cz); scene.add(topo);
+  [a0, a1].forEach(a => { const c = cyl(t / 2 + .02, t / 2 + .02, h, cor, cx + Math.cos(a) * r, h / 2, cz - Math.sin(a) * r, 20); scene.add(c); });
+}
+function poltrona(x, z, rotY, cor = '#efe6f7') { const g = new THREE.Group(); g.add(box(1.05, .4, .95, cor, 0, .3, 0, .14)); g.add(box(1.05, .6, .24, cor, 0, .72, .36, .12)); g.add(box(.2, .45, .95, cor, -.46, .5, 0, .1)); g.add(box(.2, .45, .95, cor, .46, .5, 0, .1)); g.position.set(x, 0, z); g.rotation.y = rotY; scene.add(g); }
+function mesinha(x, z, r = .45) { const g = new THREE.Group(); g.add(cyl(r, r, .05, C.mesa, 0, .52, 0, 28)); g.add(cyl(.04, .04, .5, C.cinza, 0, .26, 0, 10)); g.add(cyl(.22, .22, .03, C.cinza, 0, .02, 0, 16)); g.position.set(x, 0, z); scene.add(g); return g; }
+function bolsa(g, x, y, z, cor, rot = 0) { const b = new THREE.Group(); b.add(box(.34, .24, .14, cor, 0, .12, 0, .05)); const alca = new THREE.Mesh(new THREE.TorusGeometry(.1, .012, 6, 16, Math.PI), mat(cor)); alca.position.y = .24; b.add(alca); b.position.set(x, y, z); b.rotation.y = rot; g.add(b); }
+function gradeOculos(x, y, z, rotY, cols = 3, lins = 4) {
+  const g = new THREE.Group(); g.add(box(cols * .55 + .2, lins * .42 + .3, .08, '#ffffff', 0, 0, 0, .05));
+  const cores = ['#2d2238', '#6b4a2e', '#b8826a', '#1d1d24', '#8a6ad8'];
+  for (let c = 0; c < cols; c++) for (let r = 0; r < lins; r++) { const o = new THREE.Group(); const aro = mat(cores[(c + r * 2) % cores.length], { roughness: .35, metalness: .3 });
+    [-.12, .12].forEach(dx => { const t = new THREE.Mesh(new THREE.TorusGeometry(.085, .018, 8, 20), aro); t.position.x = dx; t.scale.y = .78; o.add(t); }); o.add(box(.07, .015, .015, aro, 0, .02, 0, 0));
+    o.position.set(-(cols - 1) * .275 + c * .55, (lins - 1) * .21 - r * .42, .06); g.add(o); }
+  g.position.set(x, y, z); g.rotation.y = rotY; scene.add(g);
+}
+function holofoteTeto(x, y, z) { const l = new THREE.Mesh(new THREE.CircleGeometry(.18, 16), new THREE.MeshBasicMaterial({ color: '#fff7e8' })); l.position.set(x, y, z); l.rotation.x = Math.PI / 2; scene.add(l); }
+
+// ── Financeiro: aparador sob a tela, cartaz pequeno, mesinha com notebook ──
+{ const ap = new THREE.Group(); ap.add(box(2.6, .55, .5, '#ffffff', 0, .28, 0, .06)); ap.add(box(2.6, .04, .52, '#ece4f6', 0, .57, 0, .02));
+  planta(-.8, 0, .32, ap).position.y = .58; planta(.3, 0, .28, ap).position.y = .58; xicara(ap, .9, .58, 0);
+  ap.position.set(-23.55, 0, -12.5); ap.rotation.y = Math.PI / 2; scene.add(ap); }
+cartaz(-24.02 + .1, 3, -8.3, Math.PI / 2, 1.2, 1.5, telaGrafico('claro', '#a78bfa', [3, 5, 4, 7, 9], ''));
+{ const m = new THREE.Group(); m.add(box(1.7, .06, .8, C.mesa, 0, .74, 0, .03)); m.add(box(.08, .72, .7, C.mesaBorda, -.78, .36, 0, .02)); m.add(box(.08, .72, .7, C.mesaBorda, .78, .36, 0, .02));
+  notebook(m, 0, .78, -.05, 0, TELAS.fin); m.position.set(-8.2, 0, -10.8); m.rotation.y = -.5; scene.add(m); cadeira(-7.8, -10.1, -.5 + Math.PI);
+  VAGAS.push({ x: -7.8, z: -10.1, rot: -.5 + Math.PI + Math.PI, area: 'financeiro' }); }
+planta(-5.9, -15.5, .9); teclado(scene, -20.5, .78, -6.2, .4);
+
+// ── Marketing: quadro branco com gráfico, parede curva, cantinho com notebook ──
+cartaz(-1.2 + 3.2, 2.6, -18.02 + .1, 0, 2.2, 1.6, telaGrafico('claro', '#60a5fa', [2, 4, 3, 6, 8, 7, 10], ''));
+arcoParede(5, -2.5, 3.2, Math.PI * .05, Math.PI * .72, 2.6);
+{ const t = mesinha(-2.4, -9.8, .55); notebook(t, 0, .56, 0, .5, TELAS.mk); cadeira(-2.4, -8.9, Math.PI); VAGAS.push({ x: -2.4, z: -8.9, rot: 0, area: 'marketing' }); }
+planta(12.5, -6.2, .95);
+
+// ── CRM: cartazes, bancada reta com 3 monitores, balcão na divisória ──
+cartaz(15.4, 2.8, -18.02 + .1, 0, 1.4, 1.8, telaGrafico('claro', '#3b82f6', [3, 4, 6, 5, 8], ''));
+quadro(14.2, 2.2, -12, -Math.PI / 2, 1, .7, TELAS.chat, '#1f2937');
+{ const b = new THREE.Group(); b.add(box(6.4, .07, 1, C.mesa, 0, .74, 0, .03)); b.add(box(6.4, .7, .06, C.mesaBorda, 0, .38, -.45, .02));
+  [-2.1, 0, 2.1].forEach((x, i) => { monitor(b, x - .5, .78, -.3, 0, TELAS.crm, .7); monitor(b, x + .5, .78, -.3, 0, TELAS.mk, .7); teclado(b, x, .78, .15, 0); cadeira(x, 1, Math.PI, b); });
+  b.position.set(19, 0, -14.2); scene.add(b);
+  [-2.1, 0, 2.1].forEach((x, i) => { if (i < 2) VAGAS.push({ x: 19 + x, z: -14.2 + 1, rot: Math.PI, area: 'comercial' }); }); }
+{ const bal = new THREE.Group(); bal.add(box(2.4, 1.05, .6, '#ffffff', 0, .52, 0, .1)); notebook(bal, .3, 1.08, 0, Math.PI, TELAS.crm); bal.position.set(15.2, 0, -3.5); bal.rotation.y = Math.PI / 2; scene.add(bal);
+  VAGAS.push({ x: 16.1, z: -3.2, rot: -Math.PI / 2, area: 'comercial', empe: true }); }
+
+// ── Atendimento: mesa de reunião com 4 de fone e notebook ──
+{ const cx = 17.4, cz = 14.2; const mesa = new THREE.Group(); mesa.add(cyl(1.5, 1.5, .07, C.mesa, 0, .75, 0, 40)); mesa.add(cyl(.12, .12, .72, C.cinza, 0, .36, 0, 12)); mesa.add(cyl(.5, .5, .04, C.cinza, 0, .02, 0, 20)); mesa.position.set(cx, 0, cz); scene.add(mesa);
+  [0, 1, 2, 3].forEach(i => { const a = .3 + i * Math.PI / 2; const x = cx + Math.cos(a) * 2.05, z = cz + Math.sin(a) * 2.05; const olha = Math.atan2(cx - x, cz - z);
+    notebook(scene, cx + Math.cos(a) * 1.05, .79, cz + Math.sin(a) * 1.05, olha + Math.PI, TELAS.chat); cadeira(x, z, olha + Math.PI);
+    VAGAS.push({ x, z, rot: olha, area: 'atendimento', fone: true }); }); }
+teclado(scene, 10.5, .78, 7.2, 0);
+
+// ── Provador: mesa central com bolsas, banquinho com cliente, grades de óculos, clientes olhando ──
+{ const v = new THREE.Group(); v.add(cyl(1.25, 1.25, .8, '#ffffff', 0, .4, 0, 40)); v.children[0].scale.z = .62; v.add(cyl(1.3, 1.3, .05, '#f3e9ef', 0, .82, 0, 40)); v.children[1].scale.z = .64;
+  ['#caa46a', '#2d2238', '#d9a0b6', '#8a6ad8', '#6f5a3e', '#e7d6c4'].forEach((c, i) => bolsa(v, -.8 + (i % 3) * .8, .84, i < 3 ? -.25 : .28, c, i * .6));
+  v.position.set(-17.2, 0, 7.8); scene.add(v); }
+gradeOculos(-20.8, 2.2, -.85, 0); gradeOculos(-23.85, 2.2, 4.6, Math.PI / 2); gradeOculos(-23.85, 2.2, 8.7, Math.PI / 2);
+{ const banco = new THREE.Group(); banco.add(box(1.6, .45, .6, '#f3dfe8', 0, .25, 0, .12)); banco.position.set(-20.5, 0, 16.6); scene.add(banco); planta(-19.2, 17, .7);
+  VAGAS.push({ x: -20.5, z: 16.4, rot: Math.PI, area: 'provador', relax: true }); }
+VAGAS.push({ x: -14.9, z: 3.6, rot: Math.PI, area: 'provador', empe: true }, { x: -17.3, z: .6, rot: Math.PI, area: 'provador', empe: true },
+  { x: -18.6, z: 9.6, rot: 2.5, area: 'provador', empe: true }, { x: -13.8, z: 12.2, rot: -Math.PI / 2, area: 'provador', empe: true });
+
+// ── Saguão: plataforma em losango iluminada + pessoas conversando ──
+{ const s = new THREE.Shape(); s.moveTo(0, 3.3); s.lineTo(3.3, 0); s.lineTo(0, -3.3); s.lineTo(-3.3, 0); s.lineTo(0, 3.3);
+  const furo = new THREE.Path(); furo.moveTo(0, 3.05); furo.lineTo(3.05, 0); furo.lineTo(0, -3.05); furo.lineTo(-3.05, 0); furo.lineTo(0, 3.05); s.holes.push(furo);
+  const borda = new THREE.Mesh(new THREE.ShapeGeometry(s), new THREE.MeshBasicMaterial({ color: '#c4a7ff', transparent: true, opacity: .85, toneMapped: false }));
+  borda.rotation.x = -Math.PI / 2; borda.position.set(-.5, .075, 1.2); scene.add(borda); window.__losango = borda; }
+VAGAS.push({ x: -2.6, z: 4.4, rot: .4, area: 'lobby', empe: true }, { x: -1.4, z: 5, rot: -2.6, area: 'lobby', empe: true }, { x: 3.8, z: -1.2, rot: -1.8, area: 'lobby', empe: true });
+
+// ── Recepção: poltronas, mesinha, plantas ──
+poltrona(-8.6, 15.2, Math.PI / 2); poltrona(-8.6, 13.6, Math.PI / 2); mesinha(-7.2, 14.4, .35); planta(-.6, 8.2, .9); planta(1.2, 17, .85);
+VAGAS.push({ x: -.2, z: 16.6, rot: Math.PI, area: 'recepcao', relax: true });
+
 // ───────────── PESSOAS ─────────────
 const PELE = ['#f3cfb3', '#e3b18f', '#c68a62', '#8d5a3b', '#f6d7c3'];
 const CABELO = ['#2b1d16', '#5a3a24', '#8a5a33', '#1a1a1a', '#b0793f', '#3d2a20'];
@@ -614,8 +698,8 @@ class Pessoa {
   poseSentado(t) {
     this.pernas.forEach(p => { p.quadril.rotation.x = -1.5; p.joelho.rotation.x = 1.5; });
     this.corpo.position.y = -.4;
-    const dig = Math.sin(t * 9 + this.fase) * .06;
-    this.bracos[0].rotation.x = -1.05 + dig; this.bracos[1].rotation.x = -1.05 - dig; this.bracos[0].rotation.z = -.12; this.bracos[1].rotation.z = .12;
+    const dig = this.relax ? 0 : Math.sin(t * 9 + this.fase) * .06; const braco = this.relax ? -.55 : -1.05;
+    this.bracos[0].rotation.x = braco + dig; this.bracos[1].rotation.x = braco - dig; this.bracos[0].rotation.z = -.12; this.bracos[1].rotation.z = .12;
     this.cabeca.rotation.y = Math.sin(t * .25 + this.fase) * .18; this.cabeca.rotation.x = .08;
   }
 }
@@ -625,22 +709,22 @@ const NOS = {
   lobbyN: [0, -3.5], lobbyC: [2.5, 2], lobbyO: [-7.5, 1], lobbyS: [-3, 5.5], lobbyL: [9.5, 1.5], crmPorta: [12.5, -2], crmIn: [18.5, -4.5],
   finPorta: [-14, -3.8], finIn: [-14, -7], finIn2: [-19, -9], mkPorta: [7.5, -5.5], mkIn: [3, -7.5], mkIn2: [9, -8],
   provPorta: [-11.8, 10.5], provIn: [-16, 5.5], provIn2: [-15.5, 12], provIn3: [-20.5, 3],
-  atPorta: [5.5, 4.2], atIn: [10, 6.2], atIn2: [19.5, 8], recIn: [-3, 10], recIn2: [-1, 15.5], recPorta: [-3, 6.8], holo: [-.5, 4.2], holo2: [2.8, 0]
+  atPorta: [5.5, 4.2], atIn: [10, 6.2], atIn2: [19.5, 8], recIn: [-3, 10], recIn2: [-1, 15.5], recPorta: [-3, 6.8], holo: [-.5, 4.2], holo2: [2.8, 0], portaA: [-2.5, 17.3], portaB: [-6.3, 17.3]
 };
 const LIGA = [['lobbyN', 'lobbyC'], ['lobbyC', 'lobbyO'], ['lobbyC', 'lobbyS'], ['lobbyC', 'lobbyL'], ['lobbyC', 'holo'], ['lobbyC', 'holo2'], ['lobbyN', 'holo2'], ['lobbyL', 'crmPorta'], ['crmPorta', 'crmIn'],
   ['lobbyO', 'finPorta'], ['lobbyN', 'finPorta'], ['finPorta', 'finIn'], ['finIn', 'finIn2'], ['lobbyN', 'mkPorta'], ['mkPorta', 'mkIn'], ['mkIn', 'mkIn2'],
   ['lobbyO', 'provPorta'], ['lobbyS', 'provPorta'], ['provPorta', 'provIn2'], ['provIn2', 'provIn'], ['provIn', 'provIn3'],
-  ['lobbyL', 'atPorta'], ['atPorta', 'atIn'], ['atIn', 'atIn2'], ['lobbyS', 'recPorta'], ['recPorta', 'recIn'], ['recIn', 'recIn2']];
+  ['lobbyL', 'atPorta'], ['atPorta', 'atIn'], ['atIn', 'atIn2'], ['lobbyS', 'recPorta'], ['recPorta', 'recIn'], ['recIn', 'recIn2'], ['recIn2', 'portaA'], ['recIn2', 'portaB']];
 const VIZ = {}; LIGA.forEach(([a, b]) => { (VIZ[a] = VIZ[a] || []).push(b); (VIZ[b] = VIZ[b] || []).push(a); });
-const DESTINOS = ['finIn', 'finIn2', 'mkIn', 'mkIn2', 'crmIn', 'provIn', 'provIn2', 'provIn3', 'atIn', 'atIn2', 'recIn', 'recIn2', 'holo', 'holo2', 'lobbyC', 'lobbyO'];
+const DESTINOS = ['finIn', 'finIn2', 'mkIn', 'mkIn2', 'crmIn', 'provIn', 'provIn2', 'provIn3', 'atIn', 'atIn2', 'recIn', 'recIn2', 'holo', 'holo2', 'lobbyC', 'lobbyO', 'portaA', 'portaB'];
 function rota(de, para) { const ant = { [de]: null }, fila = [de]; while (fila.length) { const n = fila.shift(); if (n === para) break; (VIZ[n] || []).forEach(v => { if (!(v in ant)) { ant[v] = n; fila.push(v); } }); }
   const r = []; let n = para; while (n) { r.unshift(n); n = ant[n]; } return r; }
 const PESSOAS = [];
 // sentados nas mesas
-VAGAS.forEach((v, i) => { const p = new Pessoa(i + 3, { fone: v.fone }); p.fixo = v; p.g.position.set(v.x, 0, v.z); p.g.rotation.y = v.rot; p.estado = v.empe ? 'parado' : 'sentado'; PESSOAS.push(p); });
+VAGAS.forEach((v, i) => { const p = new Pessoa(i + 3, { fone: v.fone }); p.relax = !!v.relax; p.fixo = v; p.g.position.set(v.x, 0, v.z); p.g.rotation.y = v.rot; p.estado = v.empe ? 'parado' : 'sentado'; PESSOAS.push(p); });
 // andando
 Object.keys(NOS).forEach(() => {});
-for (let i = 0; i < 14; i++) { const p = new Pessoa(40 + i); const ini = DESTINOS[i % DESTINOS.length]; p.no = ini; const [x, z] = NOS[ini]; p.g.position.set(x + (i % 3) * .4, 0, z); p.andante = true; p.espera = 1 + i * .6; PESSOAS.push(p); }
+for (let i = 0; i < 13; i++) { const p = new Pessoa(40 + i); const ini = DESTINOS[i % DESTINOS.length]; p.no = ini; const [x, z] = NOS[ini]; p.g.position.set(x + (i % 3) * .4, 0, z); p.andante = true; p.espera = 1 + i * .6; PESSOAS.push(p); }
 function atualizaPessoas(dt, t) {
   PESSOAS.forEach(p => {
     if (p.fixo) { p.estado === 'sentado' ? p.poseSentado(t) : p.poseParado(t); return; }
@@ -711,6 +795,7 @@ function loop() {
   placaMat.opacity = .9 + Math.sin(t * 2.2) * .06; brilhoChao.material.opacity = .22 + Math.sin(t * 2.2) * .08; luzH.intensity = 16 + Math.sin(t * 2.2) * 4;
   FAISCAS.forEach(f => { const k = (Math.sin(t * 2 + f.f) + 1) / 2; f.s.material.opacity = k; f.s.scale.setScalar(.25 + k * .45); });
   if (window.__megafone) window.__megafone.rotation.z = Math.sin(t * 2.6) * .05;
+  if (window.__losango) window.__losango.material.opacity = .6 + Math.sin(t * 2.2) * .25;
   Object.values(ZONAS).forEach(m => { const alvo = m.userData.sel ? .1 : (m.userData.area === hoverKey ? .07 : 0); m.material.emissiveIntensity += (alvo - m.material.emissiveIntensity) * .15; });
   if (voo) {
     voo.t = Math.min(1, voo.t + dt * 1.5); const e = 1 - Math.pow(1 - voo.t, 3);
