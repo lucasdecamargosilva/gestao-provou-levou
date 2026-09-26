@@ -1,0 +1,571 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Escritório · Provou Levou</title>
+<link rel="icon" href="logo.png">
+<link rel="preload" as="image" href="escritorio-cena.webp">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="env-config.js"></script>
+<style>
+  @font-face{font-family:'HelveticaNow';src:url('helveticanowdisplay-medium.ttf') format('truetype');font-display:swap}
+  :root{
+    --bg:#ebe8f3; --card:#ffffff; --linha:rgba(23,18,31,.11);
+    --ink:#17121f; --ink2:rgba(23,18,31,.74); --ink3:rgba(23,18,31,.58);
+    --roxo:#7c3aed; --lilas:#a78bfa; --destaque:#6d28d9; --verde:#0d9668; --vermelho:#c2410c;
+    --fonte:'HelveticaNow',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--fonte);-webkit-font-smoothing:antialiased}
+
+  /* ── Palco: a imagem da cena + camadas interativas por cima (mesmas coordenadas) ── */
+  #vista{position:fixed;inset:0;overflow:hidden;touch-action:none;cursor:grab;background:#dad6e4}
+  #vista.arrastando{cursor:grabbing}
+  #palco{position:absolute;left:0;top:0;width:2000px;height:1125px;transform-origin:0 0;will-change:transform}
+  #palco img{position:absolute;inset:0;width:100%;height:100%;user-select:none;-webkit-user-drag:none;pointer-events:none;
+    -webkit-mask-image:radial-gradient(ellipse 58% 60% at 50% 50%,#000 78%,transparent 100%);mask-image:radial-gradient(ellipse 58% 60% at 50% 50%,#000 78%,transparent 100%)}
+  /* selos e placar ficam fora do palco: tamanho fixo na tela, posição acompanha o zoom */
+  #camada{position:absolute;inset:0;pointer-events:none}
+  #camada > *{pointer-events:auto}
+  #palco svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+  .zona{fill:rgba(124,58,237,0);stroke:rgba(124,58,237,0);stroke-width:3;cursor:pointer;transition:fill .25s,stroke .25s}
+  .zona:hover,.zona.sel{fill:rgba(124,58,237,.09);stroke:rgba(124,58,237,.55)}
+
+  /* brilho do holograma central (em cima da arte) */
+  .brilho{position:absolute;left:1000px;top:560px;width:420px;height:300px;margin:-150px 0 0 -210px;border-radius:50%;pointer-events:none;
+    background:radial-gradient(ellipse,rgba(196,160,255,.55) 0%,rgba(167,139,250,.25) 40%,rgba(167,139,250,0) 70%);mix-blend-mode:screen;animation:pulsa 3.2s ease-in-out infinite}
+  @keyframes pulsa{0%,100%{opacity:.55;transform:scale(.96)}50%{opacity:1;transform:scale(1.04)}}
+  .faisca{position:absolute;width:14px;height:14px;margin:-7px;pointer-events:none;animation:pisca 2.4s ease-in-out infinite}
+  .faisca::before,.faisca::after{content:'';position:absolute;left:50%;top:50%;background:#fff;border-radius:2px;box-shadow:0 0 8px #d8c7ff}
+  .faisca::before{width:2px;height:14px;margin:-7px 0 0 -1px}
+  .faisca::after{width:14px;height:2px;margin:-1px 0 0 -7px}
+  @keyframes pisca{0%,100%{opacity:0;transform:scale(.4) rotate(0)}50%{opacity:1;transform:scale(1) rotate(45deg)}}
+
+  /* placar do faturamento sobre o holograma */
+  .placar{position:absolute;transform:translate(-50%,-100%);background:rgba(76,29,149,.82);color:#fff;border:1px solid rgba(216,199,255,.7);
+    border-radius:14px;padding:9px 14px 10px;text-align:center;cursor:pointer;box-shadow:0 10px 30px rgba(76,29,149,.35),0 0 24px rgba(167,139,250,.55);animation:flutua 4s ease-in-out infinite;white-space:nowrap}
+  .placar small{display:block;font-size:12px;opacity:.85;letter-spacing:.02em}
+  .placar b{display:block;font-size:26px;letter-spacing:-.03em;font-weight:600;font-variant-numeric:tabular-nums}
+  .placar i{font-style:normal;font-size:12px}
+  @keyframes flutua{0%,100%{margin-top:0}50%{margin-top:-6px}}
+
+  /* selos de nível: cobrem os selos desenhados na arte (mesmo lugar, mesmo estilo) */
+  .selo{position:absolute;transform:translate(-50%,-50%) scale(var(--k,1));display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.96);border:1px solid rgba(124,58,237,.18);
+    border-radius:999px;padding:5px 10px 5px 5px;box-shadow:0 4px 14px rgba(76,29,149,.16);cursor:pointer;white-space:nowrap;animation:flutua 3.6s ease-in-out infinite;transition:box-shadow .2s}
+  .selo.peq{transform:translate(-50%,-50%) scale(calc(var(--k,1) * .7))}
+  .selo:hover,.selo.sel{box-shadow:0 0 0 3px rgba(124,58,237,.22),0 6px 18px rgba(76,29,149,.2)}
+  .selo .nv{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#3b2a00;
+    background:radial-gradient(circle at 35% 30%,#fff3b0,#f5c542 55%,#d99a0b);box-shadow:inset 0 -2px 0 rgba(0,0,0,.12)}
+  .selo .txt{display:flex;flex-direction:column;gap:3px}
+  .selo .nome{font-size:13px;font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+  .selo .trilho{width:92px;height:7px;border-radius:9px;background:#e6e1f2;overflow:hidden}
+  .selo .trilho i{display:block;height:100%;width:100%;border-radius:9px;background:linear-gradient(90deg,#34d399,#10b981);transform:scaleX(0);transform-origin:left;transition:transform .9s}
+  .selo .kpi{font-size:11.5px;color:var(--ink2)}
+
+  /* HUD */
+  .hud{position:fixed;top:16px;left:16px;right:16px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;pointer-events:none;z-index:5}
+  .hud > *{pointer-events:auto}
+  .marca{background:rgba(255,255,255,.9);backdrop-filter:blur(10px);border:1px solid var(--linha);border-radius:16px;padding:12px 16px;min-width:240px;box-shadow:0 6px 24px rgba(76,29,149,.10)}
+  .marca b{display:block;font-size:15px;font-weight:600;letter-spacing:-.02em}
+  .marca small{display:block;font-size:11.5px;color:var(--ink3);margin-top:2px}
+  .nivel-emp{display:flex;align-items:center;gap:10px;margin-top:10px}
+  .pill{background:linear-gradient(135deg,var(--lilas),var(--roxo));color:#fff;font-weight:700;font-size:12.5px;border-radius:10px;padding:5px 9px;white-space:nowrap}
+  .barra{flex:1;height:7px;border-radius:9px;background:rgba(124,58,237,.14);overflow:hidden;min-width:90px}
+  .barra i{display:block;height:100%;width:100%;border-radius:9px;background:linear-gradient(90deg,var(--lilas),var(--roxo));transform:scaleX(0);transform-origin:left;transition:transform .8s}
+  .acoes{display:flex;gap:8px}
+  .btn{background:rgba(255,255,255,.9);backdrop-filter:blur(10px);border:1px solid var(--linha);color:var(--ink2);font:inherit;font-size:12.5px;padding:9px 13px;border-radius:11px;cursor:pointer;text-decoration:none;white-space:nowrap}
+  .btn:hover{border-color:rgba(124,58,237,.4);color:var(--roxo)}
+  .zoombox{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:6px;z-index:4}
+  .zoombox .btn{width:40px;height:40px;padding:0;font-size:18px}
+  .ajuda{position:fixed;left:16px;bottom:16px;font-size:11.5px;color:var(--ink3);background:rgba(255,255,255,.8);border-radius:10px;padding:7px 10px;z-index:4}
+
+  /* Painel que afunila: área → tópico → loja */
+  .painel{position:fixed;top:16px;right:16px;bottom:16px;width:420px;max-width:calc(100vw - 32px);background:rgba(255,255,255,.97);backdrop-filter:blur(14px);border:1px solid var(--linha);
+    border-radius:18px;box-shadow:0 18px 50px rgba(76,29,149,.18);transform:translateX(calc(100% + 40px));transition:transform .45s cubic-bezier(.2,.8,.2,1);z-index:6;display:flex;flex-direction:column}
+  .painel.aberto{transform:none}
+  .painel header{padding:14px 18px 12px;border-bottom:1px solid var(--linha)}
+  .trilha{display:flex;flex-wrap:wrap;align-items:center;gap:4px;font-size:12px;color:var(--ink3);margin-bottom:6px;min-height:18px}
+  .trilha button{background:none;border:0;padding:0;font:inherit;color:var(--roxo);cursor:pointer}
+  .trilha span.sep{opacity:.5}
+  .cab{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+  .painel h2{margin:0;font-size:18px;font-weight:600;letter-spacing:-.02em}
+  .painel header small{display:block;color:var(--ink3);font-size:12px;margin-top:3px}
+  .painel .fechar{background:none;border:0;font-size:22px;color:var(--ink3);cursor:pointer;line-height:1;padding:2px 4px}
+  .painel .corpo{padding:14px 18px 18px;overflow:auto;flex:1}
+  .painel footer{padding:12px 18px;border-top:1px solid var(--linha)}
+  .painel footer a{display:block;text-align:center;background:var(--roxo);color:#fff;text-decoration:none;border-radius:11px;padding:11px;font-size:13.5px;font-weight:600}
+  .painel footer a:hover{background:var(--destaque)}
+  .nivel-area{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .kp{background:#faf8ff;border:1px solid var(--linha);border-radius:12px;padding:12px;text-align:left;font:inherit;color:inherit}
+  button.kp{cursor:pointer;transition:border-color .2s,transform .2s}
+  button.kp:hover{border-color:rgba(124,58,237,.5);transform:translateY(-1px)}
+  button.kp .mais{float:right;color:var(--roxo);font-size:12px;opacity:.7}
+  .kp .n{display:block;font-size:21px;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+  .kp .l{display:block;font-size:11px;color:var(--ink3);margin-top:5px;line-height:1.35}
+  .kp .v{font-size:11px;margin-top:4px;display:block}
+  .v.up{color:var(--verde)} .v.down{color:var(--vermelho)}
+  .kp.largo{grid-column:1/-1}
+  .secao{font-size:11.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px}
+  .topicos{display:flex;flex-direction:column;gap:6px}
+  .topico{display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid var(--linha);border-radius:11px;padding:11px 12px;cursor:pointer;font:inherit;font-size:13px;color:var(--ink);text-align:left}
+  .topico:hover{border-color:rgba(124,58,237,.5);color:var(--roxo)}
+  .topico span{color:var(--ink3);font-size:12px}
+  .dica{margin-top:14px;background:#f5f0ff;border-radius:12px;padding:12px 13px;font-size:12.5px;line-height:1.5;color:var(--ink2)}
+  .dica b{color:var(--destaque)}
+  .busca{width:100%;border:1px solid var(--linha);border-radius:10px;padding:9px 11px;font:inherit;font-size:13px;margin-bottom:10px;outline:none}
+  .busca:focus{border-color:var(--roxo)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{text-align:left;font-weight:500;color:var(--ink3);font-size:11px;padding:6px 6px;border-bottom:1px solid var(--linha);cursor:pointer;white-space:nowrap;position:sticky;top:-14px;background:#fff}
+  th.num,td.num{text-align:right;font-variant-numeric:tabular-nums}
+  td{padding:8px 6px;border-bottom:1px solid rgba(23,18,31,.06);vertical-align:top;word-break:break-word}
+  tr.clicavel{cursor:pointer} tr.clicavel:hover td{background:#f7f3ff}
+  tr.clicavel td:first-child{color:var(--destaque)}
+  .vazio{color:var(--ink3);font-size:13px;padding:20px 0;text-align:center}
+  .grafico{display:flex;align-items:flex-end;gap:3px;height:140px;margin:6px 0 4px}
+  .grafico div{flex:1;background:linear-gradient(180deg,var(--lilas),var(--roxo));border-radius:3px 3px 0 0;min-height:2px;position:relative}
+  .grafico div:hover::after{content:attr(data-t);position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:#fff;border:1px solid var(--linha);border-radius:7px;padding:4px 7px;font-size:11px;white-space:nowrap;margin-bottom:4px;z-index:2}
+  .eixo{display:flex;justify-content:space-between;font-size:10.5px;color:var(--ink3);margin-bottom:10px}
+  .carregando{color:var(--ink3);font-size:13px;padding:18px 0}
+
+  .aviso{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:9;background:var(--bg);font-size:14px;color:var(--ink2);text-align:center;padding:24px}
+  .aviso a{color:var(--roxo)}
+
+  @media (max-width:700px){
+    .marca{min-width:0;flex:1}
+    .acoes .btn.oculta-mob,.ajuda{display:none}
+    .painel{top:auto;left:8px;right:8px;bottom:8px;width:auto;max-width:none;height:70vh;transform:translateY(calc(100% + 30px))}
+    .zoombox{bottom:12px;right:12px}
+  }
+  @media (prefers-reduced-motion:reduce){ .brilho,.faisca,.placar,.selo{animation:none} }
+</style>
+</head>
+<body>
+<div id="vista">
+  <div id="palco">
+    <img id="cena" src="escritorio-cena.webp" srcset="escritorio-cena-m.webp 2048w, escritorio-cena.webp 4096w" sizes="(max-width: 900px) 2048px, 4096px" alt="Escritório da Provou Levou">
+    <div class="brilho"></div>
+    <svg viewBox="0 0 2000 1125" id="zonas" aria-label="Áreas do escritório"></svg>
+  </div>
+  <div id="camada"></div>
+</div>
+
+<div class="hud">
+  <div class="marca">
+    <b>Provou Levou · Escritório</b>
+    <small id="atualizado">Carregando os números…</small>
+    <div class="nivel-emp"><span class="pill" id="nivel-emp">Nível –</span><div class="barra"><i id="barra-emp"></i></div></div>
+  </div>
+  <div class="acoes">
+    <button class="btn" id="btn-visao">Visão geral</button>
+    <button class="btn" id="btn-atualizar">Atualizar</button>
+    <a class="btn oculta-mob" href="index.html">Painel de gestão</a>
+  </div>
+</div>
+<div class="zoombox"><button class="btn" id="z-mais" aria-label="Aproximar">+</button><button class="btn" id="z-menos" aria-label="Afastar">−</button></div>
+<div class="ajuda">Clique numa sala para abrir · clique nos números para ir afunilando · arraste para andar · role para aproximar</div>
+
+<aside class="painel" id="painel" aria-live="polite">
+  <header>
+    <nav class="trilha" id="trilha"></nav>
+    <div class="cab"><div><h2 id="p-titulo">–</h2><small id="p-sub"></small></div><button class="fechar" id="p-fechar" aria-label="Fechar">×</button></div>
+  </header>
+  <div class="corpo" id="p-corpo"></div>
+  <footer id="p-rodape"></footer>
+</aside>
+<div class="aviso" id="aviso">Carregando o escritório…</div>
+
+<script>
+(function () {
+'use strict';
+// ───────────────────────── util ─────────────────────────
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const brl = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+const brl2 = v => v == null ? '—' : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const num = v => Number(v || 0).toLocaleString('pt-BR');
+const pct = (a, b) => (!b ? null : Math.round((a / b - 1) * 100));
+const data = v => { if (!v) return '—'; const d = new Date(String(v).length <= 10 ? v + 'T12:00' : v); return isNaN(d) ? esc(v) : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }); };
+const quando = v => { if (!v) return '—'; const d = new Date(v); const h = (Date.now() - d) / 36e5; return h < 1 ? 'agora há pouco' : h < 24 ? 'há ' + Math.round(h) + 'h' : 'há ' + Math.round(h / 24) + ' dias'; };
+const var_ = v => v == null ? '' : '<span class="v ' + (v >= 0 ? 'up' : 'down') + '">' + (v >= 0 ? '▲ ' : '▼ ') + Math.abs(v) + '%</span>';
+const DEMO_MODE = new URLSearchParams(location.search).get('demo') === '1';
+const db = window.supabase.createClient(window.LOCAL_SUPABASE_URL, window.LOCAL_SUPABASE_KEY);
+
+// ───────────────── níveis (período atual × anterior) ─────────────────
+function nivelPorRazao(r) {
+  if (r == null || !isFinite(r)) return { n: 3, p: .5 };
+  const f = [0, .75, .95, 1.05, 1.25, 1.6]; let n = 1;
+  for (let i = 1; i < 5; i++) if (r >= f[i]) n = i + 1;
+  return { n, p: Math.max(.08, Math.min(1, (r - f[n - 1]) / (f[n] - f[n - 1]))) };
+}
+const razao = (a, b) => (b > 0 ? a / b : (a > 0 ? 1.3 : null));
+function calculaAreas(d) {
+  const f = d.financeiro, pv = d.provador, mk = d.marketing, cm = d.comercial, at = d.atendimento;
+  const rMk = [razao(mk.seo.cliques_28d, mk.seo.cliques_28d_ant), razao(mk.ads.leads_7d, mk.ads.leads_7d_ant)].filter(x => x != null);
+  const taxa = at.disparos_7d ? at.entregues_7d / at.disparos_7d : null;
+  const ret = (at.lojas_ativas + at.lojas_inativas) ? at.lojas_ativas / (at.lojas_ativas + at.lojas_inativas) : null;
+  return {
+    financeiro: { nivel: nivelPorRazao(razao(f.receita_mes, f.receita_mes_ant_ate_hoje)), kpi: brl(f.receita_mes) + ' no mês' },
+    marketing: { nivel: nivelPorRazao(rMk.length ? rMk.reduce((a, b) => a + b, 0) / rMk.length : null), kpi: num(mk.ads.leads_7d) + ' leads (7d)' },
+    comercial: { nivel: nivelPorRazao(razao(cm.clientes_novos_30d, cm.clientes_novos_30d_ant)), kpi: cm.clientes_novos_30d + ' clientes novos' },
+    atendimento: { nivel: nivelPorRazao(taxa == null ? ret / .85 : ((taxa / .9) + (ret / .85)) / 2), kpi: at.lojas_ativas + ' lojas ativas' },
+    provador: { nivel: nivelPorRazao(razao(pv.provas_30d, pv.provas_30d_ant)), kpi: num(pv.provas_hoje) + ' provas hoje' }
+  };
+}
+
+// ───────────────── mapa das salas na imagem (coordenadas 2000×1125) ─────────────────
+const AREAS = [
+  { key: 'financeiro', nome: 'Financeiro', sub: 'Faturamento, recebimentos e lucro', selo: [505, 160],
+    pts: [[80,360],[605,88],[910,240],[905,445],[770,462],[600,545],[215,600],[95,548]] },
+  { key: 'marketing', nome: 'Marketing', sub: 'SEO e tráfego pago', selo: [1345, 166],
+    pts: [[915,240],[1215,88],[1648,330],[1545,378],[1535,480],[1330,580],[1110,560],[985,380],[930,440]] },
+  { key: 'comercial', nome: 'Comercial · CRM', sub: 'Leads, testes grátis e clientes novos', selo: [1805, 416],
+    pts: [[1545,378],[1650,330],[1945,470],[1942,720],[1680,835],[1445,742],[1430,600],[1535,480]] },
+  { key: 'atendimento', nome: 'Atendimento', sub: 'Lojas ativas, WhatsApp e retenção', selo: [1388, 596],
+    pts: [[1070,700],[1310,590],[1440,600],[1445,742],[1680,835],[1400,1000],[1110,860]] },
+  { key: 'provador', nome: 'Provador · Produto', sub: 'Provas, lojas usando e custo', selo: [677, 570],
+    pts: [[210,610],[460,490],[790,690],[570,905],[210,745]] }
+];
+// selos menores desenhados na arte que não são de uma sala: cobrimos com o selo da sala mais próxima
+const SELOS_EXTRAS = [['financeiro', 512, 492], ['comercial', 1620, 453], ['marketing', 1100, 340]];
+
+const svg = $('zonas'), camada = $('camada'), palco = $('palco');
+AREAS.forEach(a => {
+  const p = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+  p.setAttribute('points', a.pts.map(q => q.join(',')).join(' ')); p.setAttribute('class', 'zona'); p.dataset.area = a.key;
+  p.addEventListener('click', ev => { if (!moveu) abreArea(a.key); }); svg.appendChild(p); a.el = p;
+});
+const holo = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+holo.setAttribute('points', '880,440 1120,440 1130,700 870,700'); holo.setAttribute('class', 'zona');
+holo.addEventListener('click', () => { if (!moveu) abreGeral(); }); svg.appendChild(holo);
+
+function criaSelo(a, x, y, pequeno) {
+  const el = document.createElement('div'); el.className = 'selo'; el.dataset.x = x; el.dataset.y = y;
+  el.style.animationDelay = (-Math.random() * 3) + 's';
+  el.innerHTML = '<span class="nv">–</span><span class="txt"><span class="nome">' + esc(a.nome) + '</span><span class="trilho"><i></i></span>' + (pequeno ? '' : '<span class="kpi">…</span>') + '</span>';
+  if (pequeno) { el.classList.add('peq'); el.querySelector('.nome').textContent = a.nome.split(' ·')[0]; }
+  el.addEventListener('click', ev => { ev.stopPropagation(); if (!moveu) abreArea(a.key); });
+  el.addEventListener('pointerdown', ev => ev.stopPropagation());
+  camada.appendChild(el); (a.selos = a.selos || []).push(el);
+}
+AREAS.forEach(a => criaSelo(a, a.selo[0], a.selo[1]));
+SELOS_EXTRAS.forEach(([k, x, y]) => criaSelo(AREAS.find(a => a.key === k), x, y, true));
+
+const placar = document.createElement('div'); placar.className = 'placar'; placar.dataset.x = 1003; placar.dataset.y = 392;
+placar.innerHTML = '<small>Faturamento do mês</small><b id="placar-v">—</b><i id="placar-var"></i>';
+placar.addEventListener('click', ev => { ev.stopPropagation(); if (!moveu) abreGeral(); });
+placar.addEventListener('pointerdown', ev => ev.stopPropagation());
+camada.appendChild(placar);
+[[905,470],[1110,470],[870,540],[1075,420],[1150,560],[960,610]].forEach(([x, y], i) => {
+  const f = document.createElement('div'); f.className = 'faisca'; f.style.left = x + 'px'; f.style.top = y + 'px'; f.style.animationDelay = (i * .45) + 's'; palco.appendChild(f);
+});
+
+// ───────────────── zoom e arrasto (mouse, roda e dedos) ─────────────────
+const vista = $('vista');
+const Wp = 2000, Hp = 1125;
+let cam = { s: 1, x: 0, y: 0 }, anima = null;
+function escalaMin() { return Math.min(innerWidth / Wp, innerHeight / Hp) * .98; }
+function limita(c) {
+  const s = Math.max(escalaMin(), Math.min(c.s, escalaMin() * 4.5));
+  const w = Wp * s, h = Hp * s, folga = 120;
+  const x = w <= innerWidth ? (innerWidth - w) / 2 : Math.min(folga, Math.max(innerWidth - w - folga, c.x));
+  const y = h <= innerHeight ? (innerHeight - h) / 2 : Math.min(folga, Math.max(innerHeight - h - folga, c.y));
+  return { s, x, y };
+}
+function aplica() {
+  palco.style.transform = 'translate(' + cam.x + 'px,' + cam.y + 'px) scale(' + cam.s + ')';
+  // selos crescem um pouco com o zoom, mas nunca ficam ilegíveis
+  const mob = innerWidth < 700;
+  const k = mob ? Math.max(.6, Math.min(1, cam.s * 2.2)) : Math.max(.72, Math.min(1.15, cam.s / escalaMin() * .78));
+  camada.style.setProperty('--k', k.toFixed(3));
+  for (const el of camada.children) { el.style.left = (cam.x + el.dataset.x * cam.s) + 'px'; el.style.top = (cam.y + el.dataset.y * cam.s) + 'px'; }
+}
+function casa() {
+  // celular em pé: abre aproximado (o andar ocupa ~metade da altura) e dá pra arrastar pros lados
+  const s = innerWidth < 700 && innerHeight > innerWidth ? Math.max(escalaMin(), innerHeight * .5 / Hp) : escalaMin();
+  return limita({ s, x: (innerWidth - Wp * s) / 2, y: (innerHeight - Hp * s) / 2 });
+}
+cam = casa(); aplica();
+function zoomEm(px, py, fator) {
+  const s2 = cam.s * fator; const wx = (px - cam.x) / cam.s, wy = (py - cam.y) / cam.s;
+  cam = limita({ s: s2, x: px - wx * s2, y: py - wy * s2 }); aplica();
+}
+function voaPara(alvo, dur = 650) {
+  const de = { ...cam }; const t0 = performance.now(); cancelAnimationFrame(anima);
+  const passo = t => { const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+    cam = { s: de.s + (alvo.s - de.s) * e, x: de.x + (alvo.x - de.x) * e, y: de.y + (alvo.y - de.y) * e }; aplica(); if (k < 1) anima = requestAnimationFrame(passo); };
+  anima = requestAnimationFrame(passo);
+}
+function focaArea(a) {
+  const xs = a.pts.map(p => p[0]), ys = a.pts.map(p => p[1]);
+  const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+  const bw = Math.max(...xs) - Math.min(...xs), bh = Math.max(...ys) - Math.min(...ys);
+  const mob = innerWidth < 700, livreW = mob ? innerWidth : innerWidth - 460, livreH = mob ? innerHeight * .3 : innerHeight;
+  const s = Math.min(livreW / (bw * 1.25), livreH / (bh * 1.25), escalaMin() * 3.2);
+  const ox = mob ? innerWidth / 2 : livreW / 2 + 10, oy = mob ? innerHeight * .17 + 40 : innerHeight / 2;
+  voaPara(limita({ s, x: ox - cx * s, y: oy - cy * s }));
+}
+let arr = null, moveu = false, pinca = 0; const toques = new Map();
+vista.addEventListener('pointerdown', e => { toques.set(e.pointerId, [e.clientX, e.clientY]); arr = { x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y }; moveu = false; vista.setPointerCapture(e.pointerId); cancelAnimationFrame(anima); });
+vista.addEventListener('pointermove', e => {
+  if (!toques.has(e.pointerId)) return;
+  toques.set(e.pointerId, [e.clientX, e.clientY]);
+  if (toques.size === 2) { // pinça: zoom pela variação da distância entre os dedos
+    const [a, b] = [...toques.values()]; const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+    if (pinca) zoomEm((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, d / pinca);
+    pinca = d; moveu = true; return;
+  }
+  if (!arr) return;
+  const dx = e.clientX - arr.x, dy = e.clientY - arr.y;
+  if (Math.hypot(dx, dy) > 5) { moveu = true; vista.classList.add('arrastando'); }
+  if (moveu) { cam = limita({ s: cam.s, x: arr.cx + dx, y: arr.cy + dy }); aplica(); }
+});
+const solta = e => { toques.delete(e.pointerId); pinca = 0; if (!toques.size) { arr = null; vista.classList.remove('arrastando'); setTimeout(() => { moveu = false; }, 0); } else { const v = [...toques.values()][0]; arr = { x: v[0], y: v[1], cx: cam.x, cy: cam.y }; } };
+vista.addEventListener('pointerup', solta); vista.addEventListener('pointercancel', solta);
+vista.addEventListener('wheel', e => { e.preventDefault(); zoomEm(e.clientX, e.clientY, Math.exp(-e.deltaY * .0015)); }, { passive: false });
+$('z-mais').addEventListener('click', () => zoomEm(innerWidth / 2, innerHeight / 2, 1.3));
+$('z-menos').addEventListener('click', () => zoomEm(innerWidth / 2, innerHeight / 2, 1 / 1.3));
+addEventListener('resize', () => { cam = limita(cam); aplica(); });
+
+// ───────────────── dados ─────────────────
+let DADOS = null;
+async function rpc(nome, args) {
+  if (DEMO_MODE) return demo(nome, args);
+  const { data, error } = await db.rpc(nome, args || {});
+  if (error) throw error;
+  return typeof data === 'string' ? JSON.parse(data) : data;
+}
+function aplicaDados(d) {
+  DADOS = d; const areas = calculaAreas(d); let soma = 0;
+  AREAS.forEach(a => {
+    const ar = areas[a.key]; soma += ar.nivel.n + ar.nivel.p;
+    a.selos.forEach(el => {
+      el.querySelector('.nv').textContent = ar.nivel.n;
+      el.querySelector('.trilho i').style.transform = 'scaleX(' + ar.nivel.p.toFixed(2) + ')';
+      const k = el.querySelector('.kpi'); if (k) k.textContent = ar.kpi;
+      el.title = a.nome + ' · nível ' + ar.nivel.n + ' · ' + ar.kpi;
+    });
+  });
+  const media = soma / AREAS.length, nEmp = Math.floor(media);
+  $('nivel-emp').textContent = 'Empresa · Nível ' + nEmp;
+  $('barra-emp').style.transform = 'scaleX(' + Math.max(.05, media - nEmp).toFixed(2) + ')';
+  $('atualizado').textContent = DEMO_MODE ? 'Modo demonstração · números de exemplo' : 'Atualizado às ' + new Date(d.gerado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  $('placar-v').textContent = brl(d.financeiro.receita_mes);
+  const v = pct(d.financeiro.receita_mes, d.financeiro.receita_mes_ant_ate_hoje);
+  $('placar-var').textContent = v == null ? '' : (v >= 0 ? '▲ ' : '▼ ') + Math.abs(v) + '% vs. mês passado';
+  if (pilha.length) render(true);
+}
+
+// ───────────────── painel que afunila ─────────────────
+// Cada tópico = uma lista do servidor (pl_escritorio_detalhe). Colunas: [chave, título, formato]
+const TOPICOS = {
+  fin_pagamentos: { t: 'Pagamentos do mês', cols: [['loja','Loja'],['valor','Valor','brl2'],['data','Data','data'],['tipo','Tipo']] },
+  fin_meses: { t: 'Receita por mês', graf: ['mes','total','brl'], cols: [['mes','Mês'],['total','Recebido','brl'],['clientes','Clientes','num']] },
+  fin_fluxo: { t: 'Fluxo de caixa', cols: [['mes','Mês'],['receita_bruta','Receita','brl'],['custo_provas','Custo provas','brl'],['lucro_negocio','Lucro','brl']] },
+  fin_atrasados: { t: 'Pagamentos atrasados', cols: [['loja','Loja'],['plano','Plano'],['ultimo_pagamento','Último pgto','data'],['dias','Dias','num']] },
+  prov_lojas: { t: 'Provas por loja', cols: [['loja','Loja'],['provas_30d','30 dias','num'],['provas_7d','7 dias','num'],['provas_hoje','Hoje','num'],['custo_30d','Custo','brl']] },
+  prov_dias: { t: 'Provas por dia', graf: ['dia','provas','num'], cols: [['dia','Dia','data'],['provas','Provas','num']] },
+  mk_campanhas: { t: 'Campanhas (30 dias)', cols: [['campanha','Campanha'],['gasto','Gasto','brl'],['leads','Leads','num'],['custo_por_lead','Custo/lead','brl2']] },
+  mk_consultas: { t: 'O que buscam no Google', cols: [['consulta','Busca'],['cliques','Cliques','num'],['impressoes','Vezes vista','num'],['posicao','Posição','dec']] },
+  mk_paginas: { t: 'Páginas mais vistas no Google', cols: [['pagina','Página','url'],['cliques','Cliques','num'],['impressoes','Vezes vista','num'],['posicao','Posição','dec']] },
+  mk_seo_dias: { t: 'Cliques do Google por dia', graf: ['dia','cliques','num'], cols: [['dia','Dia','data'],['cliques','Cliques','num'],['impressoes','Vezes vista','num']] },
+  com_testes: { t: 'Lojas em teste grátis', cols: [['loja','Loja'],['dias','Dias','num'],['provas_7d','Provas 7d','num'],['plataforma','Plataforma']] },
+  com_novos: { t: 'Clientes novos (90 dias)', cols: [['loja','Loja'],['primeiro_pagamento','1º pgto','data'],['plano','Plano'],['pago_ate_hoje','Já pagou','brl']] },
+  com_leads_dias: { t: 'Leads por dia (WhatsApp comercial)', graf: ['dia','leads','num'], cols: [['dia','Dia','data'],['leads','Leads','num']] },
+  at_ativas: { t: 'Lojas ativas', cols: [['loja','Loja'],['plano','Plano'],['provas_7d','Provas 7d','num'],['ultima_prova','Última prova','quando']] },
+  at_risco: { t: 'Lojas em risco', cols: [['loja','Loja'],['motivo','Motivo'],['provas_7d','Provas 7d','num']] },
+  at_saidas: { t: 'Lojas que saíram', cols: [['loja','Loja'],['plano','Plano'],['atualizado','Saída','data']] },
+  at_whatsapp: { t: 'WhatsApp por loja (7 dias)', cols: [['email','Loja (login)'],['enviados','Enviados','num'],['entregues','Entregues','num'],['falharam','Falhas','num']] }
+};
+const FMT = {
+  brl: v => brl(v), brl2: v => brl2(v), num: v => num(v), data: v => data(v), quando: v => quando(v),
+  dec: v => v == null ? '—' : Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 1 }),
+  url: v => esc(String(v || '').replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') || '/')
+};
+function cartao(n, l, v, topico, largo) {
+  const tag = topico ? 'button' : 'div';
+  return '<' + tag + ' class="kp' + (largo ? ' largo' : '') + '"' + (topico ? ' data-topico="' + topico + '"' : '') + '>' + (topico ? '<span class="mais">ver ›</span>' : '') +
+    '<span class="n">' + esc(n) + '</span><span class="l">' + esc(l) + '</span>' + var_(v) + '</' + tag + '>';
+}
+function resumoArea(key, d) {
+  const f = d.financeiro, pv = d.provador, mk = d.marketing, cm = d.comercial, at = d.atendimento;
+  if (key === 'financeiro') return {
+    html: cartao(brl(f.receita_mes), 'recebido este mês · ver pagamentos', pct(f.receita_mes, f.receita_mes_ant_ate_hoje), 'fin_pagamentos', true) +
+      cartao(brl(f.receita_mes_ant), 'mês passado inteiro', null, 'fin_meses') + cartao(brl(f.recebido_30d), 'últimos 30 dias', null, 'fin_meses') +
+      cartao(num(f.pagamentos_mes), 'pagamentos no mês', null, 'fin_pagamentos') + cartao(f.lucro_ultimo_mes != null ? brl(f.lucro_ultimo_mes) : '—', 'lucro do último mês fechado', null, 'fin_fluxo'),
+    mais: ['fin_meses', 'fin_fluxo', 'fin_atrasados'],
+    dica: pct(f.receita_mes, f.receita_mes_ant_ate_hoje) < 0 ? 'O mês está <b>abaixo</b> do mesmo período do mês passado. Veja <b>Pagamentos atrasados</b>.' : 'O mês está <b>acima</b> do mesmo período do mês passado.',
+    link: ['index.html#pagamentos', 'Abrir o financeiro completo']
+  };
+  if (key === 'provador') return {
+    html: cartao(num(pv.provas_hoje), 'provas hoje', null, 'prov_dias') + cartao(num(pv.provas_7d), 'últimos 7 dias', null, 'prov_dias') +
+      cartao(num(pv.provas_30d), 'últimos 30 dias', pct(pv.provas_30d, pv.provas_30d_ant), 'prov_dias') + cartao(num(pv.lojas_com_prova_7d), 'lojas com prova na semana', null, 'prov_lojas') +
+      cartao(brl(pv.custo_30d), 'custo estimado das provas (30d) · por loja', null, 'prov_lojas', true),
+    mais: ['prov_lojas', 'prov_dias'],
+    dica: 'O custo é estimado em <b>R$ 0,25 por prova</b>. Clique numa loja da lista para ver a ficha dela.',
+    link: ['index.html#dashboard', 'Abrir provas no painel']
+  };
+  if (key === 'marketing') return {
+    html: cartao(num(mk.ads.leads_7d), 'leads dos anúncios (7d)', pct(mk.ads.leads_7d, mk.ads.leads_7d_ant), 'mk_campanhas') + cartao(brl(mk.ads.gasto_7d), 'investido em anúncios (7d)', pct(mk.ads.gasto_7d, mk.ads.gasto_7d_ant), 'mk_campanhas') +
+      cartao(num(mk.seo.cliques_28d), 'cliques do Google (28d)', pct(mk.seo.cliques_28d, mk.seo.cliques_28d_ant), 'mk_seo_dias') + cartao(mk.seo.posicao_media != null ? String(mk.seo.posicao_media).replace('.', ',') : '—', 'posição média no Google', null, 'mk_consultas'),
+    mais: ['mk_campanhas', 'mk_consultas', 'mk_paginas', 'mk_seo_dias'],
+    dica: (Number(mk.ads.gasto_7d) === 0 ? '<b>Anúncios parados:</b> nenhum gasto nos últimos 7 dias. ' : '') + (mk.seo.ultimo_dia ? 'Dados do Google até <b>' + data(mk.seo.ultimo_dia) + '</b>.' : ''),
+    link: ['trafego.html', 'Abrir painel de tráfego']
+  };
+  if (key === 'comercial') return {
+    html: cartao(num(cm.leads_30d), 'leads no WhatsApp comercial (30d)', pct(cm.leads_30d, cm.leads_30d_ant), 'com_leads_dias') + cartao(num(cm.clientes_novos_30d), 'clientes novos pagantes (30d)', pct(cm.clientes_novos_30d, cm.clientes_novos_30d_ant), 'com_novos') +
+      cartao(num(cm.em_teste), 'lojas em teste grátis', null, 'com_testes') + cartao(num(cm.testes_novos_30d), 'testes novos (30d)', null, 'com_testes'),
+    mais: ['com_testes', 'com_novos', 'com_leads_dias'],
+    dica: 'Os testes com <b>mais provas</b> aparecem primeiro: são os mais prontos pra fechar.',
+    link: ['index.html#metas', 'Abrir metas comerciais']
+  };
+  return {
+    html: cartao(num(at.lojas_ativas), 'lojas ativas pagando', null, 'at_ativas') + cartao(num(at.lojas_inativas), 'lojas que saíram', null, 'at_saidas') +
+      cartao(num(at.entregues_7d), 'mensagens entregues (7d)', null, 'at_whatsapp') + cartao(at.disparos_7d ? Math.round(at.entregues_7d / at.disparos_7d * 100) + '%' : '—', 'taxa de entrega do WhatsApp', null, 'at_whatsapp') +
+      cartao(num(at.respostas_7d), 'respostas de clientes (7d)', null, 'at_whatsapp', true),
+    mais: ['at_risco', 'at_ativas', 'at_saidas', 'at_whatsapp'],
+    dica: '<b>Lojas em risco</b> = ativas sem prova na semana ou com pagamento atrasado. É por onde começar.',
+    link: ['index.html#pagamentos', 'Abrir clientes']
+  };
+}
+
+// pilha de navegação: [{tipo:'area',key}, {tipo:'topico',id}, {tipo:'loja',id,nome}]
+let pilha = [];
+const painel = $('painel');
+function abreArea(key) { pilha = [{ tipo: 'area', key }]; render(); focaArea(AREAS.find(a => a.key === key)); marcaSel(key); }
+function abreGeral() { pilha = [{ tipo: 'geral' }]; render(); marcaSel(null); voaPara(casa()); }
+function vaiPara(item) { pilha.push(item); render(); }
+function volta(i) { pilha = pilha.slice(0, i + 1); render(); }
+function marcaSel(key) { AREAS.forEach(a => { a.el.classList.toggle('sel', a.key === key); a.selos.forEach(s => s.classList.toggle('sel', a.key === key)); }); }
+function fecha() { painel.classList.remove('aberto'); pilha = []; marcaSel(null); voaPara(casa()); }
+$('p-fechar').addEventListener('click', fecha); $('btn-visao').addEventListener('click', fecha);
+$('btn-atualizar').addEventListener('click', carrega);
+
+function nomeDe(item) {
+  if (item.tipo === 'geral') return 'Visão geral';
+  if (item.tipo === 'area') return AREAS.find(a => a.key === item.key).nome;
+  if (item.tipo === 'topico') return TOPICOS[item.id].t;
+  return item.nome || 'Loja';
+}
+async function render(soAtualiza) {
+  if (!DADOS || !pilha.length) return;
+  const topo = pilha[pilha.length - 1];
+  $('trilha').innerHTML = pilha.length > 1 ? pilha.map((it, i) => i < pilha.length - 1 ? '<button data-i="' + i + '">' + esc(nomeDe(it)) + '</button><span class="sep">›</span>' : '').join('') : '';
+  $('trilha').querySelectorAll('button').forEach(b => b.addEventListener('click', () => volta(+b.dataset.i)));
+  painel.classList.add('aberto');
+  const corpo = $('p-corpo'), rod = $('p-rodape');
+  if (topo.tipo === 'geral') {
+    const areas = calculaAreas(DADOS);
+    $('p-titulo').textContent = 'Visão geral da empresa'; $('p-sub').textContent = 'Como cada área está hoje';
+    corpo.innerHTML = '<div class="kpis">' + cartao(brl(DADOS.financeiro.receita_mes), 'faturamento do mês', pct(DADOS.financeiro.receita_mes, DADOS.financeiro.receita_mes_ant_ate_hoje), null, true) + '</div>' +
+      '<div class="secao">Áreas</div><div class="topicos">' + AREAS.map(a => '<button class="topico" data-area="' + a.key + '">' + esc(a.nome) + '<span>Nível ' + areas[a.key].nivel.n + ' · ' + esc(areas[a.key].kpi) + ' ›</span></button>').join('') + '</div>' +
+      '<div class="dica">O nível de cada área compara o período atual com o anterior: <b>3</b> é estável, <b>4–5</b> está crescendo, <b>1–2</b> está caindo.</div>';
+    corpo.querySelectorAll('[data-area]').forEach(b => b.addEventListener('click', () => abreArea(b.dataset.area)));
+    rod.innerHTML = '<a href="index.html">Abrir painel de gestão →</a>';
+    return;
+  }
+  if (topo.tipo === 'area') {
+    const a = AREAS.find(x => x.key === topo.key), ar = calculaAreas(DADOS)[topo.key], c = resumoArea(topo.key, DADOS);
+    $('p-titulo').textContent = a.nome; $('p-sub').textContent = a.sub;
+    corpo.innerHTML = '<div class="nivel-area"><span class="pill">Nível ' + ar.nivel.n + '</span><div class="barra"><i style="transform:scaleX(' + ar.nivel.p.toFixed(2) + ')"></i></div></div>' +
+      '<div class="kpis">' + c.html + '</div>' +
+      '<div class="secao">Aprofundar</div><div class="topicos">' + c.mais.map(t => '<button class="topico" data-topico="' + t + '">' + esc(TOPICOS[t].t) + '<span>›</span></button>').join('') + '</div>' +
+      (c.dica ? '<div class="dica">' + c.dica + '</div>' : '');
+    corpo.querySelectorAll('[data-topico]').forEach(b => b.addEventListener('click', () => vaiPara({ tipo: 'topico', id: b.dataset.topico })));
+    rod.innerHTML = '<a href="' + c.link[0] + '">' + esc(c.link[1]) + ' →</a>';
+    return;
+  }
+  rod.innerHTML = '';
+  if (topo.tipo === 'topico') {
+    const cfg = TOPICOS[topo.id];
+    $('p-titulo').textContent = cfg.t; $('p-sub').textContent = nomeDe(pilha[0]);
+    if (!soAtualiza) corpo.innerHTML = '<div class="carregando">Carregando…</div>';
+    let linhas;
+    try { linhas = await rpc('pl_escritorio_detalhe', { p_topico: topo.id }); } catch (e) { corpo.innerHTML = '<div class="vazio">Não consegui carregar: ' + esc(e.message) + '</div>'; return; }
+    if (pilha[pilha.length - 1] !== topo) return; // usuário já navegou
+    tabela(corpo, cfg, linhas || []);
+    return;
+  }
+  if (topo.tipo === 'loja') {
+    $('p-titulo').textContent = topo.nome || 'Loja'; $('p-sub').textContent = 'Ficha da loja';
+    corpo.innerHTML = '<div class="carregando">Carregando…</div>';
+    let l; try { l = await rpc('pl_escritorio_loja', { p_loja_id: topo.id }); } catch (e) { corpo.innerHTML = '<div class="vazio">Não consegui carregar: ' + esc(e.message) + '</div>'; return; }
+    if (pilha[pilha.length - 1] !== topo) return;
+    if (!l) { corpo.innerHTML = '<div class="vazio">Loja não encontrada.</div>'; return; }
+    const pagos = (l.pagamentos || []).reduce((s, p) => s + Number(p.valor || 0), 0);
+    corpo.innerHTML = '<div class="kpis">' + cartao(esc(l.status || '—'), 'status · plano ' + (l.plano || '—')) + cartao(num(l.provas_30d), 'provas em 30 dias') +
+      cartao(brl(pagos), 'total já pago · ' + (l.pagamentos || []).length + ' pagamentos') + cartao(data(l.ultimo_pagamento), 'último pagamento') + '</div>' +
+      '<div class="secao">Provas por dia (30 dias)</div>' + grafico(l.provas_dias || [], 'dia', 'provas', num) +
+      '<div class="secao">Pagamentos</div>' + ((l.pagamentos || []).length ? '<table><thead><tr><th>Data</th><th class="num">Valor</th><th>Tipo</th></tr></thead><tbody>' +
+        l.pagamentos.map(p => '<tr><td>' + data(p.data) + '</td><td class="num">' + brl2(p.valor) + '</td><td>' + esc(p.tipo || '') + '</td></tr>').join('') + '</tbody></table>' : '<div class="vazio">Nenhum pagamento registrado.</div>') +
+      '<div class="dica">Contato: <b>' + esc(l.contato || '—') + '</b> · ' + esc(l.email || '') + '<br>Plataforma: ' + esc(l.plataforma || '—') + ' · desde ' + data(l.desde) + '</div>';
+  }
+}
+function grafico(linhas, kx, ky, fmt) {
+  if (!linhas.length) return '<div class="vazio">Sem dados no período.</div>';
+  const max = Math.max(...linhas.map(r => Number(r[ky] || 0)), 1);
+  return '<div class="grafico">' + linhas.map(r => '<div style="height:' + Math.max(1.5, Number(r[ky] || 0) / max * 100) + '%" data-t="' + esc((kx === 'mes' ? r[kx] : data(r[kx])) + ': ' + fmt(r[ky])) + '"></div>').join('') + '</div>' +
+    '<div class="eixo"><span>' + esc(kx === 'mes' ? linhas[0][kx] : data(linhas[0][kx])) + '</span><span>' + esc(kx === 'mes' ? linhas[linhas.length - 1][kx] : data(linhas[linhas.length - 1][kx])) + '</span></div>';
+}
+function tabela(corpo, cfg, linhas) {
+  let ordem = null, dir = -1, filtro = '';
+  const desenha = () => {
+    let rows = linhas.filter(r => !filtro || cfg.cols.some(([k]) => String(r[k] == null ? '' : r[k]).toLowerCase().includes(filtro)));
+    if (ordem) rows = rows.slice().sort((a, b) => { const x = a[ordem], y = b[ordem]; const nx = Number(x), ny = Number(y); return (isFinite(nx) && isFinite(ny) && x !== '' && y !== '' ? nx - ny : String(x || '').localeCompare(String(y || ''))) * dir; });
+    const tb = corpo.querySelector('tbody');
+    tb.innerHTML = rows.length ? rows.map((r, i) => '<tr' + (r.loja_id ? ' class="clicavel" data-i="' + linhas.indexOf(r) + '"' : '') + '>' + cfg.cols.map(([k, , f]) => '<td' + (f && f !== 'url' && f !== 'data' ? ' class="num"' : '') + '>' + (f ? FMT[f](r[k]) : esc(r[k] == null ? '—' : r[k])) + '</td>').join('') + '</tr>').join('')
+      : '<tr><td colspan="' + cfg.cols.length + '" class="vazio">Nada encontrado.</td></tr>';
+    tb.querySelectorAll('tr.clicavel').forEach(tr => tr.addEventListener('click', () => { const r = linhas[+tr.dataset.i]; vaiPara({ tipo: 'loja', id: r.loja_id, nome: r.loja }); }));
+    corpo.querySelector('.contagem').textContent = rows.length + (rows.length === 1 ? ' item' : ' itens') + (linhas.some(r => r.loja_id) ? ' · clique numa loja para ver a ficha' : '');
+  };
+  corpo.innerHTML = (cfg.graf ? grafico(linhas, cfg.graf[0], cfg.graf[1], FMT[cfg.graf[2]]) : '') +
+    (linhas.length > 8 ? '<input class="busca" placeholder="Buscar…" aria-label="Buscar na lista">' : '') +
+    '<div class="secao contagem" style="margin-top:4px"></div>' +
+    '<table><thead><tr>' + cfg.cols.map(([k, t, f]) => '<th data-k="' + k + '"' + (f && f !== 'url' && f !== 'data' ? ' class="num"' : '') + '>' + esc(t) + '</th>').join('') + '</tr></thead><tbody></tbody></table>';
+  const busca = corpo.querySelector('.busca'); if (busca) busca.addEventListener('input', () => { filtro = busca.value.trim().toLowerCase(); desenha(); });
+  corpo.querySelectorAll('th').forEach(th => th.addEventListener('click', () => { const k = th.dataset.k; dir = ordem === k ? -dir : -1; ordem = k; desenha(); }));
+  desenha();
+}
+
+// ───────────────── demonstração (?demo=1) ─────────────────
+function demo(nome, args) {
+  if (nome === 'pl_escritorio') return {
+    gerado_em: new Date().toISOString(),
+    financeiro: { receita_mes: 36000, receita_mes_ant_ate_hoje: 32000, receita_mes_ant: 58000, recebido_30d: 46000, pagamentos_mes: 54, lucro_ultimo_mes: 27000 },
+    provador: { provas_hoje: 1800, provas_7d: 13000, provas_30d: 67000, provas_30d_ant: 70000, lojas_com_prova_7d: 66, custo_30d: 16750 },
+    marketing: { seo: { cliques_28d: 120, cliques_28d_ant: 100, posicao_media: 12.4, ultimo_dia: '2026-09-24' }, ads: { gasto_7d: 350, gasto_7d_ant: 320, leads_7d: 60, leads_7d_ant: 57 } },
+    comercial: { leads_30d: 459, leads_30d_ant: 234, em_teste: 88, testes_novos_30d: 73, clientes_novos_30d: 17, clientes_novos_30d_ant: 7 },
+    atendimento: { lojas_ativas: 62, lojas_inativas: 19, disparos_7d: 3956, entregues_7d: 3780, respostas_7d: 379 }
+  };
+  if (nome === 'pl_escritorio_loja') return { loja: args.p_loja_id, contato: 'Loja exemplo', email: 'contato@exemplo.com', plano: 'Crescimento', status: 'Ativo', plataforma: 'nuvemshop', desde: '2026-07-01', ultimo_pagamento: '2026-09-10', provas_30d: 900,
+    pagamentos: [{ data: '2026-09-10', valor: 147, tipo: 'mensalidade' }, { data: '2026-08-10', valor: 147, tipo: 'mensalidade' }], provas_dias: Array.from({ length: 30 }, (_, i) => ({ dia: new Date(Date.now() - (29 - i) * 864e5).toISOString().slice(0, 10), provas: 10 + (i * 7) % 40 })) };
+  const cfg = TOPICOS[args.p_topico];
+  return Array.from({ length: cfg.graf ? 30 : 14 }, (_, i) => { const r = { loja_id: cfg.cols[0][0] === 'loja' ? 'exemplo-' + i : undefined };
+    cfg.cols.forEach(([k, , f]) => { r[k] = f === 'data' || k === 'dia' ? new Date(Date.now() - (cfg.graf ? 29 - i : i) * 864e5).toISOString().slice(0, 10) : f === 'num' || f === 'brl' || f === 'brl2' || f === 'dec' ? 5 + (i * 37) % 300 : k === 'mes' ? '2026-0' + (1 + i % 9) : k === 'loja' ? 'loja' + (i + 1) + '.com.br' : 'exemplo ' + (i + 1); });
+    if (cfg.graf) r[cfg.graf[1]] = 20 + (i * 53) % 180; return r; });
+}
+
+// ───────────────── carregar ─────────────────
+const aviso = $('aviso');
+async function carrega() {
+  try { aplicaDados(await rpc('pl_escritorio')); aviso.style.display = 'none'; }
+  catch (e) {
+    const semLogin = /permiss|JWT|42501|401/.test((e.message || '') + ' ' + (e.code || ''));
+    aviso.style.display = 'flex';
+    aviso.innerHTML = semLogin ? 'Entre no painel de gestão para ver o escritório.<br><br><a href="index.html">Fazer login</a>' : 'Não consegui carregar os números: ' + esc(e.message);
+  }
+}
+(async () => {
+  if (!DEMO_MODE) {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) { aviso.innerHTML = 'Entre no painel de gestão para ver o escritório.<br><br><a href="index.html">Fazer login</a>'; return; }
+  }
+  await carrega();
+  if (!DEMO_MODE) setInterval(carrega, 5 * 60 * 1000);
+})();
+})();
+</script>
+</body>
+</html>
