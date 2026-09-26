@@ -146,6 +146,9 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 // ───────────────────────── util ─────────────────────────
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -240,6 +243,7 @@ scene.add(sol);
 
 // ───────────── materiais ─────────────
 const MAT = {};
+const TROCAS = []; // objetos simples que viram modelo realista quando os .glb carregarem
 const mat = (cor, o = {}) => MAT[cor + JSON.stringify(o)] || (MAT[cor + JSON.stringify(o)] = new THREE.MeshStandardMaterial(Object.assign({ color: cor, roughness: .78, metalness: 0, envMapIntensity: .55 }, o)));
 const C = {
   parede: '#f4f0f8', paredeTopo: '#ebe4f4', roxo: '#7b3fe4', roxoEsc: '#6a31d1',
@@ -339,7 +343,7 @@ function planta(x, z, s = 1, g = scene) {
   p.add(cyl(.34, .26, .6, C.vaso, 0, .3, 0, 20));
   for (let i = 0; i < 9; i++) { const f = new THREE.Mesh(new THREE.SphereGeometry(.3, 8, 6), folhaMats[i % 4]); const a = i * 2.4; const alt = .9 + (i % 4) * .22;
     f.scale.set(1.6, .45, .75); f.position.set(Math.cos(a) * .32, alt, Math.sin(a) * .32); f.rotation.set(.5, -a, .7); f.castShadow = true; p.add(f); }
-  p.position.set(x, 0, z); p.scale.setScalar(s); g.add(p); return p;
+  p.position.set(x, 0, z); p.scale.setScalar(s); g.add(p); TROCAS.push({ g: p, tipo: s < .6 ? 'plantaP' : 'planta' }); return p;
 }
 function cadeira(x, z, rotY, g = scene, cor = '#f2f2f5') {
   const c = new THREE.Group();
@@ -387,7 +391,7 @@ function sofa(x, z, rotY, cor = '#efe6f7') {
   g.add(box(2.2, .42, .9, cor, 0, .3, 0, .12)); g.add(box(2.2, .6, .24, cor, 0, .72, .34, .1));
   g.add(box(.22, .5, .9, cor, -1.05, .5, 0, .1)); g.add(box(.22, .5, .9, cor, 1.05, .5, 0, .1));
   g.add(box(.5, .4, .14, '#b99ae8', -.55, .78, .2, .08));
-  g.position.set(x, 0, z); g.rotation.y = rotY; scene.add(g);
+  g.position.set(x, 0, z); g.rotation.y = rotY; scene.add(g); TROCAS.push({ g, tipo: 'sofa' });
 }
 function mesaRedonda(x, z, cadeiras = 3) {
   const g = new THREE.Group(); g.add(cyl(.75, .75, .06, C.mesa, 0, .74, 0, 32)); g.add(cyl(.06, .06, .72, C.cinza, 0, .36, 0, 10)); g.add(cyl(.35, .35, .04, C.cinza, 0, .02, 0, 16));
@@ -578,7 +582,7 @@ function arcoParede(cx, cz, r, a0, a1, h = 2.4, t = .3, cor = C.parede) {
   const topo = new THREE.Mesh(new THREE.ExtrudeGeometry(f, { depth: .1, bevelEnabled: false, curveSegments: 40 }), mat(C.paredeTopo)); topo.rotation.x = -Math.PI / 2; topo.position.set(cx, h, cz); scene.add(topo);
   [a0, a1].forEach(a => { const c = cyl(t / 2 + .02, t / 2 + .02, h, cor, cx + Math.cos(a) * r, h / 2, cz - Math.sin(a) * r, 20); scene.add(c); });
 }
-function poltrona(x, z, rotY, cor = '#efe6f7') { const g = new THREE.Group(); g.add(box(1.05, .4, .95, cor, 0, .3, 0, .14)); g.add(box(1.05, .6, .24, cor, 0, .72, .36, .12)); g.add(box(.2, .45, .95, cor, -.46, .5, 0, .1)); g.add(box(.2, .45, .95, cor, .46, .5, 0, .1)); g.position.set(x, 0, z); g.rotation.y = rotY; scene.add(g); }
+function poltrona(x, z, rotY, cor = '#efe6f7') { const g = new THREE.Group(); g.add(box(1.05, .4, .95, cor, 0, .3, 0, .14)); g.add(box(1.05, .6, .24, cor, 0, .72, .36, .12)); g.add(box(.2, .45, .95, cor, -.46, .5, 0, .1)); g.add(box(.2, .45, .95, cor, .46, .5, 0, .1)); g.position.set(x, 0, z); g.rotation.y = rotY; scene.add(g); TROCAS.push({ g, tipo: 'poltrona' }); }
 function mesinha(x, z, r = .45) { const g = new THREE.Group(); g.add(cyl(r, r, .05, C.mesa, 0, .52, 0, 28)); g.add(cyl(.04, .04, .5, C.cinza, 0, .26, 0, 10)); g.add(cyl(.22, .22, .03, C.cinza, 0, .02, 0, 16)); g.position.set(x, 0, z); scene.add(g); return g; }
 function bolsa(g, x, y, z, cor, rot = 0) { const b = new THREE.Group(); b.add(box(.34, .24, .14, cor, 0, .12, 0, .05)); const alca = new THREE.Mesh(new THREE.TorusGeometry(.1, .012, 6, 16, Math.PI), mat(cor)); alca.position.y = .24; b.add(alca); b.position.set(x, y, z); b.rotation.y = rot; g.add(b); }
 function gradeOculos(x, y, z, rotY, cols = 3, lins = 4) {
@@ -642,7 +646,7 @@ VAGAS.push({ x: -14.9, z: 3.6, rot: Math.PI, area: 'provador', empe: true }, { x
 VAGAS.push({ x: -2.6, z: 4.4, rot: .4, area: 'lobby', empe: true }, { x: -1.4, z: 5, rot: -2.6, area: 'lobby', empe: true }, { x: 3.8, z: -1.2, rot: -1.8, area: 'lobby', empe: true });
 
 // ── Recepção: poltronas, mesinha, plantas ──
-poltrona(-8.6, 15.2, Math.PI / 2); poltrona(-8.6, 13.6, Math.PI / 2); mesinha(-7.2, 14.4, .35); planta(-.6, 8.2, .9); planta(1.2, 17, .85);
+poltrona(-8.6, 15.2, Math.PI / 2); poltrona(-8.6, 13.6, Math.PI / 2); TROCAS.push({ g: mesinha(-7.2, 14.4, .35), tipo: 'mesaCentro' }); planta(-.6, 8.2, .9); planta(1.2, 17, .85);
 VAGAS.push({ x: -.2, z: 16.6, rot: Math.PI, area: 'recepcao', relax: true });
 
 // ───────────── PESSOAS ─────────────
@@ -684,6 +688,7 @@ class Pessoa {
     scene.add(this.g);
   }
   poseAndar(t) {
+    if (this.mix) return this.anima(this.clipAndar);
     const a = Math.sin(t) * .55;
     this.pernas[0].quadril.rotation.x = a; this.pernas[1].quadril.rotation.x = -a;
     this.pernas[0].joelho.rotation.x = Math.max(0, -Math.sin(t)) * .7; this.pernas[1].joelho.rotation.x = Math.max(0, Math.sin(t)) * .7;
@@ -691,11 +696,13 @@ class Pessoa {
     this.corpo.position.y = Math.abs(Math.cos(t)) * .045; this.cabeca.rotation.y = 0;
   }
   poseParado(t) {
+    if (this.mix) return this.anima(this.clipParado);
     this.pernas.forEach(p => { p.quadril.rotation.x = 0; p.joelho.rotation.x = 0; });
     this.bracos[0].rotation.x = Math.sin(t * .8) * .04; this.bracos[1].rotation.x = -Math.sin(t * .8) * .04; this.bracos[0].rotation.z = -.06; this.bracos[1].rotation.z = .06;
     this.corpo.position.y = Math.sin(t * 1.4) * .008; this.cabeca.rotation.y = Math.sin(t * .35 + this.fase) * .5;
   }
   poseSentado(t) {
+    if (this.mix) return this.anima(this.clipSentado);
     this.pernas.forEach(p => { p.quadril.rotation.x = -1.5; p.joelho.rotation.x = 1.5; });
     this.corpo.position.y = -.4;
     const dig = this.relax ? 0 : Math.sin(t * 9 + this.fase) * .06; const braco = this.relax ? -.55 : -1.05;
@@ -726,6 +733,7 @@ VAGAS.forEach((v, i) => { const p = new Pessoa(i + 3, { fone: v.fone }); p.relax
 Object.keys(NOS).forEach(() => {});
 for (let i = 0; i < 13; i++) { const p = new Pessoa(40 + i); const ini = DESTINOS[i % DESTINOS.length]; p.no = ini; const [x, z] = NOS[ini]; p.g.position.set(x + (i % 3) * .4, 0, z); p.andante = true; p.espera = 1 + i * .6; PESSOAS.push(p); }
 function atualizaPessoas(dt, t) {
+  PESSOAS.forEach(p => p.mix && p.mix.update(dt));
   PESSOAS.forEach(p => {
     if (p.fixo) { p.estado === 'sentado' ? p.poseSentado(t) : p.poseParado(t); return; }
     if (p.estado === 'parado') { p.poseParado(t); p.espera -= dt; if (p.espera <= 0) { let dest = p.no; while (dest === p.no) dest = DESTINOS[Math.floor(Math.random() * DESTINOS.length)]; p.caminho = rota(p.no, dest).slice(1).map(n => ({ n, alvo: new THREE.Vector3(NOS[n][0] + (Math.random() - .5) * 1.2, 0, NOS[n][1] + (Math.random() - .5) * 1.2) })); p.estado = 'andando'; } return; }
@@ -816,6 +824,100 @@ function atualizaTelas(d) {
   const t2 = TELAS.seo; desenhaGrafico(t2.userData.x, t2.userData.c.width, t2.userData.c.height, 'claro', '#3b82f6', null, 'Google · ' + num(d.marketing.seo.cliques_28d) + ' cliques'); t2.needsUpdate = true;
   desenhaHolograma(d);
 }
+
+// ───────────── modelos realistas (Poly Haven + Mixamo) ─────────────
+// A cena abre com as formas simples; quando os .glb chegam, cada pessoa/móvel é trocado pelo modelo real.
+const gltfLoader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+const carregaGlb = n => gltfLoader.loadAsync('modelos/' + n + '.glb').catch(e => { console.warn('modelo', n, e); return null; });
+const caixa = o => new THREE.Box3().setFromObject(o);
+function sombraReal(o) { o.traverse(m => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; m.frustumCulled = !m.isSkinnedMesh; } }); }
+
+// troca o conteúdo de um grupo simples por um modelo, ocupando o mesmo espaço
+function trocaPorModelo(item, modelo, { gira = 0, porAltura = false } = {}) {
+  const g = item.g, pai = g.parent; if (!pai) return;
+  const pos = g.position.clone(), rot = g.rotation.clone(), esc = g.scale.clone();
+  pai.remove(g); g.position.set(0, 0, 0); g.rotation.set(0, 0, 0); g.scale.set(1, 1, 1); g.updateMatrixWorld(true);
+  const alvo = caixa(g), ta = alvo.getSize(new THREE.Vector3()), ca = alvo.getCenter(new THREE.Vector3());
+  const m = modelo.clone(true); m.rotation.y = gira; m.updateMatrixWorld(true);
+  const bm = caixa(m), tm = bm.getSize(new THREE.Vector3());
+  const k = porAltura ? ta.y / tm.y : Math.max(ta.x, ta.z) / Math.max(tm.x, tm.z);
+  m.scale.multiplyScalar(k); m.updateMatrixWorld(true);
+  const b2 = caixa(m), c2 = b2.getCenter(new THREE.Vector3());
+  m.position.set(ca.x - c2.x, alvo.min.y - b2.min.y, ca.z - c2.z);
+  sombraReal(m);
+  g.clear(); g.add(m);
+  g.position.copy(pos); g.rotation.copy(rot); g.scale.copy(esc); pai.add(g);
+}
+
+// animações do Mixamo: só rotação dos ossos (+ posição do quadril), para servir em qualquer boneco
+function limpaClip(clip) {
+  clip.tracks = clip.tracks.filter(t => t.name.endsWith('.quaternion') || /Hips\.position$/.test(t.name));
+  clip.tracks.forEach(t => { t.name = t.name.replace(/^mixamorig\d*/, 'mixamorig'); }); // cada boneco do Mixamo numera o esqueleto (mixamorig6, mixamorig7…)
+  return clip;
+}
+// quem é mulher/homem (para o jeito de andar)
+const MODELOS_PESSOA = [
+  { n: 'pessoa1', f: true }, { n: 'pessoa2', f: true }, { n: 'pessoa3', f: true }, { n: 'pessoa4', f: false },
+  { n: 'pessoa5', f: false }, { n: 'pessoa6', f: false }, { n: 'pessoa7', f: true }, { n: 'pessoa8', f: true }
+];
+const ALTURA = 2.05;       // um pouco maior que o real, para dar leitura de longe
+const DESCE_SENTADO = -.1;  // ajuste fino para o quadril encostar no assento
+
+Pessoa.prototype.anima = function (nome) {
+  const a = this.acoes[nome] || this.acoes.parado; if (!a || this.atual === a) return;
+  a.reset().setEffectiveWeight(1).fadeIn(.35).play();
+  if (this.atual) this.atual.fadeOut(.35);
+  this.atual = a;
+  this.corpoReal.position.y = (nome === 'digitar' || nome === 'sentado' || nome === 'sentado_fala') ? DESCE_SENTADO : 0;
+};
+
+async function carregaModelosReais() {
+  const nomesAnim = ['andar_m', 'andar_f', 'parado', 'digitar', 'telefone', 'sentado', 'sentado_fala'];
+  const [pessoas, anims] = await Promise.all([
+    Promise.all(MODELOS_PESSOA.map(m => carregaGlb(m.n))),
+    Promise.all(nomesAnim.map(n => carregaGlb('anim_' + n)))
+  ]);
+  const CLIPS = {}; anims.forEach((g, i) => { if (g && g.animations[0]) CLIPS[nomesAnim[i]] = limpaClip(g.animations[0]); });
+  if (!CLIPS.parado || !CLIPS.andar_m) return;
+
+  // mede cada boneco uma vez (em pé, sem animação)
+  const base = pessoas.map((g, i) => {
+    if (!g) return null; const o = g.scene; o.traverse(b => { if (b.isBone) b.name = b.name.replace(/^mixamorig\d*/, 'mixamorig'); }); o.updateMatrixWorld(true);
+    const h = caixa(o).getSize(new THREE.Vector3()).y; return { o, k: ALTURA / h, f: MODELOS_PESSOA[i].f };
+  }).filter(Boolean);
+  if (!base.length) return;
+
+  PESSOAS.forEach((p, i) => {
+    const b = base[(i * 5 + 3) % base.length];
+    const o = SkeletonUtils.clone(b.o); o.scale.setScalar(b.k * (.95 + ((i * 37) % 10) / 100)); sombraReal(o);
+    p.corpoReal = new THREE.Group(); p.corpoReal.add(o); p.g.add(p.corpoReal); p.corpo.visible = false;
+    p.mix = new THREE.AnimationMixer(o); p.acoes = {};
+    Object.entries(CLIPS).forEach(([n, c]) => { p.acoes[n] = p.mix.clipAction(c); });
+    p.clipAndar = b.f && CLIPS.andar_f ? 'andar_f' : 'andar_m';
+    p.acoes[p.clipAndar].timeScale = p.vel / 1.9;
+    const v = p.fixo || {};
+    p.clipSentado = v.fone ? 'sentado_fala' : v.relax ? 'sentado' : 'digitar';
+    p.clipParado = (v.empe && i % 3 === 1 && CLIPS.telefone) ? 'telefone' : 'parado';
+    p.mix.update((i * .7) % 3); // cada um num ponto diferente da animação
+  });
+}
+
+async function carregaMoveisReais() {
+  const nomes = ['potted_plant_01', 'potted_plant_02', 'pachira_aquatica_01', 'potted_plant_04', 'calathea_orbifolia_01', 'anthurium_botany_01',
+    'sofa_03', 'modern_arm_chair_01', 'coffee_table_round_01'];
+  const gl = await Promise.all(nomes.map(carregaGlb)); const M = {}; nomes.forEach((n, i) => { if (gl[i]) M[n] = gl[i].scene; });
+  const grandes = ['potted_plant_01', 'pachira_aquatica_01', 'potted_plant_02'].filter(n => M[n]);
+  const pequenas = ['potted_plant_04'].filter(n => M[n]);
+  let ig = 0, ip = 0;
+  TROCAS.forEach(it => {
+    if (it.tipo === 'planta' && grandes.length) trocaPorModelo(it, M[grandes[ig++ % grandes.length]], { porAltura: true, gira: ig * 1.3 });
+    else if (it.tipo === 'plantaP' && pequenas.length) trocaPorModelo(it, M[pequenas[ip++ % pequenas.length]], { porAltura: true, gira: ip * 1.1 });
+    else if (it.tipo === 'sofa' && (M.sofa_03 || M.sofa_02)) trocaPorModelo(it, (M.sofa_03 || M.sofa_02), { gira: Math.PI });
+    else if (it.tipo === 'poltrona' && M.modern_arm_chair_01) trocaPorModelo(it, M.modern_arm_chair_01, { gira: Math.PI });
+    else if (it.tipo === 'mesaCentro' && M.coffee_table_round_01) trocaPorModelo(it, M.coffee_table_round_01);
+  });
+}
+window.__modelos = Promise.all([carregaModelosReais(), carregaMoveisReais()]).then(() => { window.__modelosOk = true; }).catch(e => console.warn('modelos reais', e));
 
 // ───────────────── dados ─────────────────
 let DADOS = null;
