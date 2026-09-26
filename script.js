@@ -4583,9 +4583,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 5. Navegação sidebar
     document.querySelectorAll('.nav-item').forEach(item => {
         item.addEventListener('click', e => {
-            e.preventDefault();
             const viewId = item.dataset.view;
-            if (viewId) switchView(viewId);
+            if (!viewId) return; // link para outra página (ex.: Escritório 3D) segue normal
+            e.preventDefault();
+            switchView(viewId);
         });
     });
 

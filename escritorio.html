@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Escritório · Provou Levou</title>
+<link rel="icon" href="logo.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="env-config.js"></script>
+<style>
+  @font-face{font-family:'HelveticaNow';src:url('helveticanowdisplay-medium.ttf') format('truetype');font-display:swap}
+  :root{
+    --bg:#efeaf8; --card:#ffffff; --linha:rgba(23,18,31,.11);
+    --ink:#17121f; --ink2:rgba(23,18,31,.74); --ink3:rgba(23,18,31,.58);
+    --roxo:#7c3aed; --lilas:#a78bfa; --destaque:#6d28d9; --verde:#0d9668; --vermelho:#c2410c;
+    --fonte:'HelveticaNow',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--fonte);-webkit-font-smoothing:antialiased}
+  #cena{position:fixed;inset:0}
+  #cena canvas{display:block}
+
+  /* HUD do topo */
+  .hud{position:fixed;top:16px;left:16px;right:16px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;pointer-events:none;z-index:5}
+  .hud > *{pointer-events:auto}
+  .marca{background:rgba(255,255,255,.86);backdrop-filter:blur(10px);border:1px solid var(--linha);border-radius:16px;padding:12px 16px;min-width:230px;box-shadow:0 6px 24px rgba(76,29,149,.10)}
+  .marca b{display:block;font-size:15px;font-weight:600;letter-spacing:-.02em}
+  .marca small{display:block;font-size:11.5px;color:var(--ink3);margin-top:2px}
+  .nivel-emp{display:flex;align-items:center;gap:10px;margin-top:10px}
+  .nivel-emp .selo{background:linear-gradient(135deg,var(--lilas),var(--roxo));color:#fff;font-weight:700;font-size:13px;border-radius:10px;padding:5px 9px;white-space:nowrap}
+  .barra{flex:1;height:7px;border-radius:9px;background:rgba(124,58,237,.14);overflow:hidden;min-width:90px}
+  .barra i{display:block;height:100%;width:100%;border-radius:9px;background:linear-gradient(90deg,var(--lilas),var(--roxo));transform:scaleX(0);transform-origin:left;transition:transform .8s}
+  .acoes{display:flex;gap:8px}
+  .btn{background:rgba(255,255,255,.86);backdrop-filter:blur(10px);border:1px solid var(--linha);color:var(--ink2);font:inherit;font-size:12.5px;padding:9px 13px;border-radius:11px;cursor:pointer;text-decoration:none;white-space:nowrap}
+  .btn:hover{border-color:rgba(124,58,237,.4);color:var(--roxo)}
+
+  /* Etiquetas 3D (CSS2D) */
+  .tag{transform:translateY(-6px);pointer-events:auto;cursor:pointer;user-select:none}
+  .tag .box{background:rgba(255,255,255,.92);border:1px solid var(--linha);border-radius:12px;padding:7px 10px 8px;box-shadow:0 6px 18px rgba(76,29,149,.14);min-width:148px;transition:transform .2s}
+  .tag:hover .box{transform:translateY(-3px);border-color:rgba(124,58,237,.45)}
+  .tag .top{display:flex;align-items:center;gap:7px}
+  .tag .nv{font-size:11px;font-weight:700;color:#fff;border-radius:7px;padding:2px 6px}
+  .tag .nome{font-size:12.5px;font-weight:600;letter-spacing:-.01em;white-space:nowrap}
+  .tag .kpi{font-size:11.5px;color:var(--ink2);margin-top:4px;white-space:nowrap}
+  .tag .barra{height:5px;margin-top:6px}
+  .tag.sel .box{border-color:var(--roxo);box-shadow:0 0 0 3px rgba(124,58,237,.18),0 6px 18px rgba(76,29,149,.14)}
+
+  /* Painel lateral */
+  .painel{position:fixed;top:16px;right:16px;bottom:16px;width:360px;max-width:calc(100vw - 32px);background:rgba(255,255,255,.95);backdrop-filter:blur(14px);border:1px solid var(--linha);border-radius:18px;box-shadow:0 18px 50px rgba(76,29,149,.18);transform:translateX(calc(100% + 40px));transition:transform .45s cubic-bezier(.2,.8,.2,1);z-index:6;display:flex;flex-direction:column}
+  .painel.aberto{transform:none}
+  .painel header{padding:18px 20px 12px;border-bottom:1px solid var(--linha);display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+  .painel h2{margin:0;font-size:18px;font-weight:600;letter-spacing:-.02em}
+  .painel header small{display:block;color:var(--ink3);font-size:12px;margin-top:3px}
+  .painel .fechar{background:none;border:0;font-size:22px;color:var(--ink3);cursor:pointer;line-height:1}
+  .painel .corpo{padding:16px 20px;overflow:auto;flex:1}
+  .painel .nivel-area{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .kp{background:#faf8ff;border:1px solid var(--linha);border-radius:12px;padding:12px}
+  .kp .n{display:block;font-size:21px;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+  .kp .l{display:block;font-size:11px;color:var(--ink3);margin-top:5px;line-height:1.35}
+  .kp .v{font-size:11px;margin-top:4px;display:block}
+  .kp .v.up{color:var(--verde)} .kp .v.down{color:var(--vermelho)}
+  .kp.largo{grid-column:1/-1}
+  .dica{margin-top:14px;background:#f5f0ff;border-radius:12px;padding:12px 13px;font-size:12.5px;line-height:1.5;color:var(--ink2)}
+  .dica b{color:var(--destaque)}
+  .painel footer{padding:14px 20px;border-top:1px solid var(--linha)}
+  .painel footer a{display:block;text-align:center;background:var(--roxo);color:#fff;text-decoration:none;border-radius:11px;padding:12px;font-size:13.5px;font-weight:600}
+  .painel footer a:hover{background:var(--destaque)}
+
+  .aviso{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:9;background:var(--bg);font-size:14px;color:var(--ink2);text-align:center;padding:24px}
+  .aviso a{color:var(--roxo)}
+  .ajuda{position:fixed;left:16px;bottom:16px;font-size:11.5px;color:var(--ink3);background:rgba(255,255,255,.75);border-radius:10px;padding:7px 10px;z-index:4}
+
+  @media (max-width:700px){
+    .marca{min-width:0;flex:1}
+    .acoes .btn.oculta-mob{display:none}
+    .painel{top:auto;left:8px;right:8px;bottom:8px;width:auto;max-width:none;height:62vh;transform:translateY(calc(100% + 30px))}
+    .ajuda{display:none}
+    .tag .box{min-width:0;padding:5px 8px}
+    .tag .kpi,.tag .barra{display:none}
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="cena"></div>
+
+<div class="hud">
+  <div class="marca">
+    <b>Provou Levou · Escritório</b>
+    <small id="atualizado">Carregando os números…</small>
+    <div class="nivel-emp"><span class="selo" id="nivel-emp">Nível –</span><div class="barra"><i id="barra-emp"></i></div></div>
+  </div>
+  <div class="acoes">
+    <button class="btn" id="btn-visao">Visão geral</button>
+    <button class="btn" id="btn-atualizar">Atualizar</button>
+    <a class="btn oculta-mob" href="index.html">Painel de gestão</a>
+  </div>
+</div>
+
+<aside class="painel" id="painel" aria-live="polite">
+  <header><div><h2 id="p-titulo">–</h2><small id="p-sub"></small></div><button class="fechar" id="p-fechar" aria-label="Fechar">×</button></header>
+  <div class="corpo" id="p-corpo"></div>
+  <footer id="p-rodape"></footer>
+</aside>
+
+<div class="ajuda">Clique numa área para ver os números · arraste para girar · role para aproximar</div>
+<div class="aviso" id="aviso">Carregando o escritório…</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+// ───────────────────────── Dados ─────────────────────────
+const db = window.supabase.createClient(window.LOCAL_SUPABASE_URL, window.LOCAL_SUPABASE_KEY);
+const aviso = document.getElementById('aviso');
+const brl = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+const num = v => Number(v || 0).toLocaleString('pt-BR');
+const pct = (a, b) => (!b ? null : Math.round((a / b - 1) * 100));
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+// razão atual/anterior → nível 1..5 e progresso dentro do nível
+function nivelPorRazao(r) {
+  if (r == null || !isFinite(r)) return { n: 3, p: .5 };
+  const faixas = [0, .75, .95, 1.05, 1.25, 1.6];
+  let n = 1; for (let i = 1; i < 5; i++) if (r >= faixas[i]) n = i + 1;
+  const lo = faixas[n - 1], hi = faixas[n];
+  return { n, p: Math.max(.08, Math.min(1, (r - lo) / (hi - lo))) };
+}
+const razao = (a, b) => (b > 0 ? a / b : (a > 0 ? 1.3 : null));
+
+let DADOS = null;
+function calculaAreas(d) {
+  const f = d.financeiro, pv = d.provador, mk = d.marketing, cm = d.comercial, at = d.atendimento;
+  const rSeo = razao(mk.seo.cliques_28d, mk.seo.cliques_28d_ant);
+  const rAds = razao(mk.ads.leads_7d, mk.ads.leads_7d_ant);
+  const rMk = [rSeo, rAds].filter(x => x != null);
+  const taxaEntrega = at.disparos_7d ? at.entregues_7d / at.disparos_7d : null;
+  const retencao = (at.lojas_ativas + at.lojas_inativas) ? at.lojas_ativas / (at.lojas_ativas + at.lojas_inativas) : null;
+  return {
+    financeiro: { nivel: nivelPorRazao(razao(f.receita_mes, f.receita_mes_ant_ate_hoje)), kpi: brl(f.receita_mes) + ' no mês' },
+    provador:   { nivel: nivelPorRazao(razao(pv.provas_30d, pv.provas_30d_ant)), kpi: num(pv.provas_hoje) + ' provas hoje' },
+    marketing:  { nivel: nivelPorRazao(rMk.length ? rMk.reduce((a, b) => a + b, 0) / rMk.length : null), kpi: num(mk.ads.leads_7d) + ' leads de anúncio (7d)' },
+    comercial:  { nivel: nivelPorRazao(razao(cm.clientes_novos_30d, cm.clientes_novos_30d_ant)), kpi: cm.clientes_novos_30d + ' clientes novos (30d)' },
+    atendimento:{ nivel: nivelPorRazao(taxaEntrega == null ? retencao / .85 : ((taxaEntrega / .9) + (retencao / .85)) / 2), kpi: at.lojas_ativas + ' lojas ativas' }
+  };
+}
+
+// ───────────────────────── Cena ─────────────────────────
+const host = document.getElementById('cena');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+host.appendChild(renderer.domElement);
+
+const labels = new CSS2DRenderer();
+labels.setSize(innerWidth, innerHeight);
+Object.assign(labels.domElement.style, { position: 'absolute', top: '0', left: '0', pointerEvents: 'none' });
+host.appendChild(labels.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#efeaf8');
+scene.fog = new THREE.Fog('#efeaf8', 70, 140);
+
+// Câmera ortográfica = visão isométrica "de maquete", igual à imagem escolhida
+const aspect = innerWidth / innerHeight;
+// enquadra o andar inteiro: em tela em pé (celular) quem manda é a largura
+const viewPara = asp => Math.max(22, 26 / asp);
+let VIEW = viewPara(aspect);
+const camera = new THREE.OrthographicCamera(-VIEW * aspect, VIEW * aspect, VIEW, -VIEW, 0.1, 400);
+const CASA = { pos: new THREE.Vector3(38, 40, 38), alvo: new THREE.Vector3(0, 0, 1), zoom: 1 };
+camera.position.copy(CASA.pos);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.copy(CASA.alvo);
+controls.enableDamping = true;
+controls.dampingFactor = .08;
+controls.minZoom = .6; controls.maxZoom = 3.2;
+controls.maxPolarAngle = Math.PI * .42; controls.minPolarAngle = Math.PI * .12;
+controls.screenSpacePanning = true;
+
+scene.add(new THREE.HemisphereLight('#ffffff', '#c9b8f0', 1.05));
+const sol = new THREE.DirectionalLight('#fff4e8', 1.6);
+sol.position.set(18, 32, 14);
+sol.castShadow = true;
+sol.shadow.mapSize.set(2048, 2048);
+Object.assign(sol.shadow.camera, { left: -34, right: 34, top: 34, bottom: -34, near: 1, far: 90 });
+sol.shadow.bias = -0.0006;
+scene.add(sol);
+
+// ───────────── Materiais e peças reutilizáveis ─────────────
+const M = c => new THREE.MeshStandardMaterial({ color: c, roughness: .82, metalness: .02 });
+const mat = {
+  parede: M('#f7f4fd'), paredeTopo: M('#ddd2f5'), madeira: M('#d9b48f'), mesa: M('#ffffff'), pe: M('#b9aed3'),
+  tela: new THREE.MeshStandardMaterial({ color: '#1e1b3a', roughness: .4 }), vaso: M('#f1ecfa'), folha: M('#5fb37e'),
+  cadeira: M('#8b7fb5'), vidro: new THREE.MeshStandardMaterial({ color: '#cfe8ff', transparent: true, opacity: .14, roughness: .1, depthWrite: false }),
+  cofre: new THREE.MeshStandardMaterial({ color: '#6d5a9e', roughness: .35, metalness: .55 })
+};
+function caixa(w, h, d, m, x, y, z, r = 0.06) {
+  const g = r > 0 ? new RoundedBoxGeometry(w, h, d, 2, Math.min(r, Math.min(w, h, d) / 2.2)) : new THREE.BoxGeometry(w, h, d);
+  const o = new THREE.Mesh(g, m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; return o;
+}
+// textura de tela desenhada em canvas (gráficos/kanban/chat), barata e nítida
+function telaTex(desenho, w = 512, h = 300) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x = c.getContext('2d'); desenho(x, w, h);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return { t, c, x };
+}
+function fundoTela(x, w, h, cor = '#1b1638') { x.fillStyle = cor; x.fillRect(0, 0, w, h); }
+function graficoLinha(x, w, h, pts, cor = '#a78bfa') {
+  fundoTela(x, w, h);
+  x.strokeStyle = 'rgba(255,255,255,.08)'; x.lineWidth = 1;
+  for (let i = 1; i < 5; i++) { x.beginPath(); x.moveTo(20, h * i / 5); x.lineTo(w - 20, h * i / 5); x.stroke(); }
+  const max = Math.max(...pts, 1); const px = i => 24 + i * (w - 48) / (pts.length - 1 || 1); const py = v => h - 26 - v / max * (h - 60);
+  const grad = x.createLinearGradient(0, 0, 0, h); grad.addColorStop(0, cor + 'aa'); grad.addColorStop(1, cor + '00');
+  x.beginPath(); x.moveTo(px(0), h - 26); pts.forEach((v, i) => x.lineTo(px(i), py(v))); x.lineTo(px(pts.length - 1), h - 26); x.fillStyle = grad; x.fill();
+  x.beginPath(); pts.forEach((v, i) => i ? x.lineTo(px(i), py(v)) : x.moveTo(px(i), py(v))); x.strokeStyle = cor; x.lineWidth = 5; x.lineJoin = 'round'; x.stroke();
+}
+function barras(x, w, h, vals, cores) {
+  fundoTela(x, w, h); const max = Math.max(...vals, 1); const bw = (w - 60) / vals.length;
+  vals.forEach((v, i) => { const bh = v / max * (h - 70); x.fillStyle = cores[i % cores.length]; x.fillRect(30 + i * bw + 8, h - 30 - bh, bw - 16, bh); });
+}
+function monitor(g, x, z, rotY, tex) {
+  const grupo = new THREE.Group();
+  grupo.add(caixa(.9, .05, .5, mat.pe, 0, .78, 0, .02));
+  const tela = new THREE.Mesh(new THREE.PlaneGeometry(1.0, .62), new THREE.MeshBasicMaterial({ map: tex || null, color: tex ? '#ffffff' : '#2b2552' }));
+  tela.position.set(0, 1.18, -.05); grupo.add(tela);
+  const tras = caixa(1.06, .68, .05, mat.tela, 0, 1.18, -.09, .02); grupo.add(tras);
+  grupo.position.set(x, 0, z); grupo.rotation.y = rotY; g.add(grupo); return grupo;
+}
+function mesaTrabalho(g, x, z, rotY = 0, tex) {
+  const m = new THREE.Group();
+  m.add(caixa(2.0, .1, 1.05, mat.mesa, 0, .74, 0, .04));
+  [[-.9, -.45], [.9, -.45], [-.9, .45], [.9, .45]].forEach(([a, b]) => m.add(caixa(.07, .72, .07, mat.pe, a, .36, b, 0)));
+  const mon = monitor(m, 0, -.2, 0, tex); mon.scale.setScalar(1);
+  const cad = new THREE.Group();
+  cad.add(caixa(.6, .1, .6, mat.cadeira, 0, .48, 0, .05)); cad.add(caixa(.6, .6, .1, mat.cadeira, 0, .8, .3, .05)); cad.add(caixa(.08, .44, .08, mat.pe, 0, .22, 0, 0));
+  cad.position.set(0, 0, .85); m.add(cad);
+  m.position.set(x, 0, z); m.rotation.y = rotY; g.add(m); return m;
+}
+function planta(g, x, z, s = 1) {
+  const p = new THREE.Group();
+  p.add(caixa(.5, .5, .5, mat.vaso, 0, .25, 0, .12));
+  const f = new THREE.Mesh(new THREE.IcosahedronGeometry(.55, 0), mat.folha); f.position.y = .95; f.castShadow = true; p.add(f);
+  const f2 = new THREE.Mesh(new THREE.IcosahedronGeometry(.38, 0), mat.folha); f2.position.set(.25, 1.35, .1); f2.castShadow = true; p.add(f2);
+  p.position.set(x, 0, z); p.scale.setScalar(s); g.add(p);
+}
+function quadroParede(g, x, y, z, rotY, w, h, tex) {
+  const q = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex }));
+  q.position.set(x, y, z); q.rotation.y = rotY; g.add(q);
+  const moldura = caixa(w + .16, h + .16, .06, mat.tela, x, y, z, .03); moldura.rotation.y = rotY;
+  moldura.position.add(new THREE.Vector3(-Math.sin(rotY) * .035, 0, -Math.cos(rotY) * .035)); g.add(moldura);
+  return q;
+}
+
+// ───────────── Planta baixa: tudo num andar só ─────────────
+// x → leste, z → sul. Paredes altas só no fundo (norte e oeste), como maquete aberta.
+const W = 44, D = 32;
+const piso = new THREE.Mesh(new RoundedBoxGeometry(W + 2, 1, D + 2, 3, .4), M('#ece4fb'));
+piso.position.y = -.5; piso.receiveShadow = true; scene.add(piso);
+const base = new THREE.Mesh(new RoundedBoxGeometry(W + 3.4, .6, D + 3.4, 3, .4), M('#d9cdf3'));
+base.position.y = -1.05; scene.add(base);
+
+const AREAS = [
+  { key: 'financeiro', nome: 'Financeiro', sub: 'Faturamento, recebimentos e lucro', cor: '#c4b5fd', piso: '#e9e1ff', x: -12.5, z: -8.5, w: 17, d: 13 },
+  { key: 'marketing', nome: 'Marketing', sub: 'SEO e tráfego pago', cor: '#93c5fd', piso: '#e0edff', x: 11.5, z: -8.5, w: 19, d: 13 },
+  { key: 'provador', nome: 'Provador · Produto', sub: 'Provas, lojas usando e custo', cor: '#f9a8d4', piso: '#ffe4f1', x: -14, z: 7.5, w: 14, d: 15 },
+  { key: 'comercial', nome: 'Comercial · CRM', sub: 'Leads, testes grátis e clientes novos', cor: '#86efac', piso: '#ddf7e6', x: 13.5, z: 3.5, w: 15, d: 9 },
+  { key: 'atendimento', nome: 'Atendimento · Sucesso', sub: 'Lojas ativas, WhatsApp e retenção', cor: '#5eead4', piso: '#d8f6f1', x: 13.5, z: 11.5, w: 15, d: 7 }
+];
+const zonaGrupo = {};
+const zonaPiso = {};
+AREAS.forEach(a => {
+  const g = new THREE.Group(); g.position.set(a.x, 0, a.z); g.userData.area = a.key; scene.add(g); zonaGrupo[a.key] = g;
+  const p = new THREE.Mesh(new RoundedBoxGeometry(a.w - .3, .08, a.d - .3, 2, .03), new THREE.MeshStandardMaterial({ color: a.piso, roughness: .9, emissive: a.cor, emissiveIntensity: 0 }));
+  p.position.y = .04; p.receiveShadow = true; p.userData.area = a.key; g.add(p); zonaPiso[a.key] = p;
+  // mureta baixa de divisão nas bordas (com vão de porta)
+  const alt = .9, esp = .22, meio = a.w / 2, fundo = a.d / 2;
+  const mureta = M('#ffffff');
+  const lado = (x1, z1, x2, z2) => { const len = Math.hypot(x2 - x1, z2 - z1); const m = caixa(x1 === x2 ? esp : len, alt, z1 === z2 ? esp : len, mureta, (x1 + x2) / 2, alt / 2, (z1 + z2) / 2, .05); g.add(m); };
+  const vao = 2.4;
+  lado(-meio, fundo, -vao / 2, fundo); lado(vao / 2, fundo, meio, fundo); // frente com porta
+});
+
+// paredes altas do fundo (norte e oeste), com rodapé roxo
+const Hp = 4.2;
+scene.add(caixa(W + 1, Hp, .4, mat.parede, 0, Hp / 2, -D / 2 - .5, .1));
+scene.add(caixa(.4, Hp, D + 1, mat.parede, -W / 2 - .5, Hp / 2, 0, .1));
+scene.add(caixa(W + 1, .25, .46, mat.paredeTopo, 0, Hp, -D / 2 - .5, .08));
+scene.add(caixa(.46, .25, D + 1, mat.paredeTopo, -W / 2 - .5, Hp, 0, .08));
+scene.add(caixa(W + 1, .3, .44, M('#7c3aed'), 0, .15, -D / 2 - .5, .05));
+scene.add(caixa(.44, .3, D + 1, M('#7c3aed'), -W / 2 - .5, .15, 0, .05));
+// divisórias de vidro entre as áreas (como na imagem)
+[[0, -8.5, .12, 3, 13], [-7, 7.5, 14, 3, .12], [6, 7.5, .12, 3, 16]].forEach(([x, z, w, h, d]) => {
+  const v = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat.vidro); v.position.set(x, h / 2, z); scene.add(v);
+});
+
+// ───────────── Telas dinâmicas (atualizadas com os dados) ─────────────
+const T = {
+  fin: telaTex((x, w, h) => graficoLinha(x, w, h, [3, 4, 3.5, 5, 6, 5.5, 7])),
+  mk: telaTex((x, w, h) => barras(x, w, h, [4, 6, 5, 8, 7, 9], ['#60a5fa', '#93c5fd'])),
+  seo: telaTex((x, w, h) => graficoLinha(x, w, h, [2, 3, 3, 4, 3, 5, 6], '#38bdf8')),
+  crm: telaTex((x, w, h) => { fundoTela(x, w, h, '#f8fafc'); ['#fde68a', '#bbf7d0', '#bfdbfe', '#fbcfe8'].forEach((c, i) => { x.fillStyle = '#e2e8f0'; x.fillRect(16 + i * 124, 18, 112, h - 36); for (let k = 0; k < 4 - (i % 2); k++) { x.fillStyle = c; x.fillRect(24 + i * 124, 34 + k * 58, 96, 44); } }); }),
+  chat: telaTex((x, w, h) => { fundoTela(x, w, h, '#ecfdf5'); for (let i = 0; i < 5; i++) { x.fillStyle = i % 2 ? '#bbf7d0' : '#ffffff'; const bw = 180 + (i * 53) % 140; x.beginPath(); x.roundRect(i % 2 ? w - bw - 24 : 24, 22 + i * 54, bw, 38, 14); x.fill(); } }),
+  prov: telaTex((x, w, h) => graficoLinha(x, w, h, [5, 6, 6, 7, 6, 8, 9], '#f472b6')),
+  holo: telaTex(() => {}, 1024, 600)
+};
+function desenhaHolograma(d) {
+  const { c, x } = T.holo; const w = c.width, h = c.height;
+  x.clearRect(0, 0, w, h);
+  const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(124,58,237,.78)'); g.addColorStop(1, 'rgba(91,33,182,.55)');
+  x.fillStyle = g; x.beginPath(); x.roundRect(8, 8, w - 16, h - 16, 36); x.fill();
+  x.strokeStyle = 'rgba(196,181,253,.9)'; x.lineWidth = 4; x.stroke();
+  x.fillStyle = '#ffffff'; x.font = '600 38px HelveticaNow, sans-serif'; x.fillText('Faturamento do mês', 56, 86);
+  const f = d ? d.financeiro : null;
+  x.font = '700 92px HelveticaNow, sans-serif'; x.fillText(f ? brl(f.receita_mes) : '—', 56, 190);
+  if (f) {
+    const v = pct(f.receita_mes, f.receita_mes_ant_ate_hoje);
+    x.font = '500 32px HelveticaNow, sans-serif'; x.fillStyle = v == null ? '#e9d5ff' : v >= 0 ? '#86efac' : '#fecaca';
+    x.fillText(v == null ? '' : (v >= 0 ? '▲ ' : '▼ ') + Math.abs(v) + '% vs. mesmo período do mês passado', 56, 240);
+  }
+  const serie = f && f.por_dia && f.por_dia.length ? f.por_dia.map(p => Number(p.v)) : [3, 5, 4, 6, 7, 6, 9, 8, 11];
+  let acc = 0; const cum = serie.map(v => (acc += v));
+  const max = Math.max(...cum, 1); const X0 = 56, X1 = w - 56, Y0 = h - 60, Y1 = 290;
+  const px = i => X0 + i * (X1 - X0) / (cum.length - 1 || 1), py = v => Y0 - v / max * (Y0 - Y1);
+  const ga = x.createLinearGradient(0, Y1, 0, Y0); ga.addColorStop(0, 'rgba(196,181,253,.75)'); ga.addColorStop(1, 'rgba(196,181,253,0)');
+  x.beginPath(); x.moveTo(px(0), Y0); cum.forEach((v, i) => x.lineTo(px(i), py(v))); x.lineTo(px(cum.length - 1), Y0); x.fillStyle = ga; x.fill();
+  x.beginPath(); cum.forEach((v, i) => i ? x.lineTo(px(i), py(v)) : x.moveTo(px(i), py(v))); x.strokeStyle = '#ffffff'; x.lineWidth = 7; x.lineJoin = 'round'; x.stroke();
+  const ul = cum.length - 1; x.fillStyle = '#fff'; x.beginPath(); x.arc(px(ul), py(cum[ul]), 11, 0, Math.PI * 2); x.fill();
+  T.holo.t.needsUpdate = true;
+}
+
+// ───────────── Móveis de cada área ─────────────
+(function montaFinanceiro() {
+  const g = zonaGrupo.financeiro;
+  mesaTrabalho(g, -4, -2, 0, T.fin.t); mesaTrabalho(g, -.5, -2, 0, T.fin.t); mesaTrabalho(g, 3, -2, 0);
+  mesaTrabalho(g, -4, 2.2, Math.PI, T.fin.t); mesaTrabalho(g, -.5, 2.2, Math.PI);
+  quadroParede(g, -1, 2.6, -6.35, 0, 7, 2.9, T.fin.t);
+  // cofre
+  const cf = new THREE.Group(); cf.add(caixa(1.7, 1.9, 1.5, mat.cofre, 0, .95, 0, .12));
+  const disco = new THREE.Mesh(new THREE.CylinderGeometry(.32, .32, .08, 24), M('#e9d5ff')); disco.rotation.x = Math.PI / 2; disco.position.set(0, 1.05, .78); cf.add(disco);
+  cf.position.set(6, 0, -4.6); g.add(cf);
+  // moedas
+  const moeda = new THREE.MeshStandardMaterial({ color: '#f5c542', metalness: .7, roughness: .3 });
+  for (let i = 0; i < 6; i++) { const m = new THREE.Mesh(new THREE.CylinderGeometry(.32, .32, .1, 20), moeda); m.position.set(6 + (i % 2) * .1, 1.95 + i * .11, -4.6); m.castShadow = true; g.add(m); }
+  planta(g, -7.4, -5.5); planta(g, 7.3, 5, .9);
+})();
+(function montaMarketing() {
+  const g = zonaGrupo.marketing;
+  mesaTrabalho(g, -5.5, -1.5, 0, T.mk.t); mesaTrabalho(g, -2, -1.5, 0, T.seo.t); mesaTrabalho(g, 1.5, -1.5, 0, T.mk.t);
+  mesaTrabalho(g, -2, 2.4, Math.PI, T.seo.t); mesaTrabalho(g, 1.5, 2.4, Math.PI);
+  quadroParede(g, -3.5, 2.6, -6.35, 0, 5.4, 2.9, T.seo.t);
+  quadroParede(g, 3.2, 2.6, -6.35, 0, 5.4, 2.9, T.mk.t);
+  // megafone
+  const mg = new THREE.Group();
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(.9, 2.2, 28, 1, true), new THREE.MeshStandardMaterial({ color: '#3b82f6', side: THREE.DoubleSide, roughness: .5 }));
+  cone.rotation.z = Math.PI / 2; cone.castShadow = true; mg.add(cone);
+  const cabo = caixa(.35, .9, .35, M('#1e3a8a'), .4, -.7, 0, .08); mg.add(cabo);
+  mg.position.set(6.8, 2.3, -3.6); mg.rotation.y = -.6; g.add(mg); g.userData.megafone = mg;
+  planta(g, 8.4, 5.2); planta(g, -8.4, 5.2, .85);
+})();
+(function montaProvador() {
+  const g = zonaGrupo.provador;
+  // espelhos de provador
+  const espelho = new THREE.MeshPhysicalMaterial({ color: '#f5f3ff', metalness: .9, roughness: .06 });
+  [-4, -1.2].forEach(x => { const e = caixa(2, 3.4, .12, espelho, x, 1.8, -6.7, .06); g.add(e); g.add(caixa(2.2, 3.6, .1, M('#f9a8d4'), x, 1.8, -6.8, .06)); });
+  // arara com roupas
+  const arara = new THREE.Group(); arara.add(caixa(3.6, .08, .08, mat.pe, 0, 2.4, 0, 0)); arara.add(caixa(.08, 2.4, .08, mat.pe, -1.75, 1.2, 0, 0)); arara.add(caixa(.08, 2.4, .08, mat.pe, 1.75, 1.2, 0, 0));
+  ['#f472b6', '#c084fc', '#fda4af', '#a5b4fc', '#fbcfe8', '#f9a8d4'].forEach((c, i) => arara.add(caixa(.5, 1.2, .08, M(c), -1.3 + i * .52, 1.7, 0, .04)));
+  arara.position.set(3.2, 0, -4.2); g.add(arara);
+  // vitrine de óculos
+  const vit = new THREE.Group(); vit.add(caixa(3.4, 1.1, 1.2, M('#ffffff'), 0, .55, 0, .08));
+  const tampo = new THREE.Mesh(new THREE.BoxGeometry(3.3, .9, 1.1), mat.vidro); tampo.position.set(0, 1.55, 0); vit.add(tampo);
+  const aro = new THREE.MeshStandardMaterial({ color: '#312e81', roughness: .3, metalness: .4 });
+  for (let i = 0; i < 4; i++) { const o = new THREE.Group(); [-.17, .17].forEach(dx => { const t = new THREE.Mesh(new THREE.TorusGeometry(.13, .025, 8, 20), aro); t.position.x = dx; o.add(t); }); o.position.set(-1.1 + i * .73, 1.35, 0); vit.add(o); }
+  vit.position.set(-2.5, 0, 2.8); g.add(vit);
+  quadroParede(g, 4.5, 2.4, 6.9, Math.PI, 3.2, 1.9, T.prov.t);
+  mesaTrabalho(g, 3.6, 2, Math.PI / 2, T.prov.t);
+  planta(g, -5.9, 6.2); planta(g, 5.9, -6.4, .9);
+})();
+(function montaComercial() {
+  const g = zonaGrupo.comercial;
+  mesaTrabalho(g, -4, -1, 0, T.crm.t); mesaTrabalho(g, -.5, -1, 0, T.crm.t); mesaTrabalho(g, 3, -1, 0);
+  // quadro kanban em pé
+  const k = new THREE.Group(); k.add(caixa(.12, 2.6, .12, mat.pe, -1.6, 1.3, 0, 0)); k.add(caixa(.12, 2.6, .12, mat.pe, 1.6, 1.3, 0, 0));
+  const q = new THREE.Mesh(new THREE.PlaneGeometry(3.1, 1.8), new THREE.MeshBasicMaterial({ map: T.crm.t })); q.position.set(0, 1.75, .07); k.add(q);
+  k.add(caixa(3.3, 2, .08, M('#ffffff'), 0, 1.75, 0, .04));
+  k.position.set(4.6, 0, 2.6); k.rotation.y = -Math.PI / 5; g.add(k);
+  planta(g, -6.6, 3);
+})();
+(function montaAtendimento() {
+  const g = zonaGrupo.atendimento;
+  // bancada em curva com headsets (atendimento)
+  for (let i = 0; i < 4; i++) { const a = -0.5 + i * .33; const m = mesaTrabalho(g, -3.8 + i * 2.6, -.4, 0, T.chat.t); m.rotation.y = a * .2; }
+  planta(g, 6.5, 2.2, .85); planta(g, -6.6, 2.2, .85);
+  // balões de conversa flutuando
+  const bal = new THREE.MeshStandardMaterial({ color: '#34d399', roughness: .4, emissive: '#10b981', emissiveIntensity: .25 });
+  g.userData.baloes = [];
+  for (let i = 0; i < 3; i++) { const b = new THREE.Mesh(new RoundedBoxGeometry(.9, .55, .2, 2, .12), bal); b.position.set(-3 + i * 3, 2.6 + i * .2, -.6); b.castShadow = true; g.add(b); g.userData.baloes.push(b); }
+})();
+
+// entrada de vidro (sul, centro) e saguão com holograma
+const entrada = new THREE.Group();
+entrada.add(caixa(8, .2, .5, M('#c4b5fd'), 0, 3.2, 0, .05));
+[-3.9, 3.9].forEach(x => entrada.add(caixa(.25, 3.3, .5, M('#c4b5fd'), x, 1.65, 0, .05)));
+const porta = new THREE.Mesh(new THREE.BoxGeometry(7.4, 3, .1), mat.vidro); porta.position.y = 1.5; entrada.add(porta);
+entrada.position.set(-1, 0, D / 2 + .2); scene.add(entrada);
+planta(scene, -6, D / 2 - 1); planta(scene, 4, D / 2 - 1);
+
+const holo = new THREE.Group();
+const baseHolo = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.8, .45, 48), new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: .4 }));
+baseHolo.position.y = .22; baseHolo.castShadow = true; baseHolo.receiveShadow = true; holo.add(baseHolo);
+const anel = new THREE.Mesh(new THREE.TorusGeometry(2.3, .07, 12, 64), new THREE.MeshBasicMaterial({ color: '#a78bfa' }));
+anel.rotation.x = Math.PI / 2; anel.position.y = .48; holo.add(anel);
+const feixe = new THREE.Mesh(new THREE.CylinderGeometry(2.1, 2.3, 7.4, 48, 1, true), new THREE.MeshBasicMaterial({ color: '#a78bfa', transparent: true, opacity: .09, side: THREE.DoubleSide, depthWrite: false }));
+feixe.position.y = 4.1; holo.add(feixe);
+const placa = new THREE.Mesh(new THREE.PlaneGeometry(9.6, 5.6), new THREE.MeshBasicMaterial({ map: T.holo.t, transparent: true, side: THREE.DoubleSide, depthWrite: false }));
+placa.position.y = 5.2; holo.add(placa);
+holo.position.set(-.5, 0, 1.5); scene.add(holo);
+holo.userData.area = 'financeiro';
+desenhaHolograma(null);
+
+// ───────────── Pessoas andando ─────────────
+const pessoas = [];
+const corPele = ['#f1c7a8', '#d9a07c', '#a8714f', '#7a4b33'];
+const corRoupa = ['#7c3aed', '#3b82f6', '#ec4899', '#10b981', '#f59e0b', '#64748b'];
+function pessoa(rota, vel) {
+  const p = new THREE.Group();
+  const corpo = new THREE.Mesh(new THREE.CapsuleGeometry(.28, .7, 4, 10), M(corRoupa[pessoas.length % corRoupa.length])); corpo.position.y = .75; corpo.castShadow = true; p.add(corpo);
+  const cab = new THREE.Mesh(new THREE.SphereGeometry(.24, 16, 12), M(corPele[pessoas.length % corPele.length])); cab.position.y = 1.5; cab.castShadow = true; p.add(cab);
+  scene.add(p); pessoas.push({ g: p, rota, t: Math.random(), vel });
+}
+const r = (...pts) => pts.map(([x, z]) => new THREE.Vector3(x, 0, z));
+pessoa(r([-4, 2], [5, 2], [5, -1], [-4, -1]), .035);
+pessoa(r([-9, 12], [-2, 12], [-2, 5], [-9, 5]), .03);
+pessoa(r([3, 14], [3, 4], [-3, 4], [-3, 14]), .028);
+pessoa(r([8, 1], [20, 1], [20, 6], [8, 6]), .03);
+pessoa(r([-19, -3], [-6, -3], [-6, -12], [-19, -12]), .025);
+pessoa(r([4, -3], [19, -3], [19, -11], [4, -11]), .027);
+pessoa(r([8, 9], [20, 9], [20, 14], [8, 14]), .032);
+function posRota(rota, t) {
+  const segs = rota.length; const tt = (t % 1) * segs; const i = Math.floor(tt), f = tt - i;
+  const a = rota[i], b = rota[(i + 1) % segs]; return { p: a.clone().lerp(b, f), dir: b.clone().sub(a) };
+}
+
+// ───────────── Etiquetas (nível + KPI) ─────────────
+const tags = {};
+AREAS.forEach(a => {
+  const el = document.createElement('div'); el.className = 'tag'; el.dataset.area = a.key;
+  el.innerHTML = '<div class="box"><div class="top"><span class="nv" style="background:' + a.cor.replace(/^#/, '#') + ';color:#1f1535">Nv –</span><span class="nome">' + esc(a.nome) + '</span></div><div class="kpi">…</div><div class="barra"><i></i></div></div>';
+  el.addEventListener('click', ev => { ev.stopPropagation(); abreArea(a.key); });
+  const o = new CSS2DObject(el); o.position.set(a.x, 5.6, a.z - a.d / 4); scene.add(o); tags[a.key] = el;
+});
+
+function aplicaDados(d) {
+  DADOS = d;
+  const areas = calculaAreas(d);
+  let soma = 0;
+  AREAS.forEach(a => {
+    const ar = areas[a.key]; soma += ar.nivel.n + ar.nivel.p;
+    const el = tags[a.key];
+    el.querySelector('.nv').textContent = 'Nv ' + ar.nivel.n;
+    el.querySelector('.kpi').textContent = ar.kpi;
+    el.querySelector('.barra i').style.transform = 'scaleX(' + ar.nivel.p.toFixed(2) + ')';
+    zonaPiso[a.key].material.emissiveIntensity = .04 + ar.nivel.n * .035; // área melhor "acende" mais
+  });
+  const media = soma / AREAS.length; const nEmp = Math.floor(media);
+  document.getElementById('nivel-emp').textContent = 'Empresa · Nível ' + nEmp;
+  document.getElementById('barra-emp').style.transform = 'scaleX(' + Math.max(.05, media - nEmp).toFixed(2) + ')';
+  const quando = new Date(d.gerado_em);
+  document.getElementById('atualizado').textContent = 'Atualizado às ' + quando.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  // telas com dados reais
+  const serie = (d.financeiro.por_dia || []).map(p => Number(p.v));
+  if (serie.length > 1) { graficoLinha(T.fin.x, T.fin.c.width, T.fin.c.height, serie); T.fin.t.needsUpdate = true; }
+  desenhaHolograma(d);
+  const aberta = document.getElementById('painel').dataset.area; if (aberta) abreArea(aberta, true);
+}
+
+// ───────────── Painel lateral por área ─────────────
+function kp(n, l, v, largo) {
+  const vv = v == null ? '' : '<span class="v ' + (v >= 0 ? 'up' : 'down') + '">' + (v >= 0 ? '▲ ' : '▼ ') + Math.abs(v) + '%</span>';
+  return '<div class="kp' + (largo ? ' largo' : '') + '"><span class="n">' + esc(n) + '</span><span class="l">' + esc(l) + '</span>' + vv + '</div>';
+}
+function conteudoArea(key, d) {
+  const f = d.financeiro, pv = d.provador, mk = d.marketing, cm = d.comercial, at = d.atendimento;
+  if (key === 'financeiro') return {
+    kpis: kp(brl(f.receita_mes), 'recebido este mês', pct(f.receita_mes, f.receita_mes_ant_ate_hoje), true) + kp(brl(f.receita_mes_ant), 'mês passado inteiro') + kp(brl(f.recebido_30d), 'últimos 30 dias') + kp(num(f.pagamentos_mes), 'pagamentos no mês') + kp(f.lucro_ultimo_mes != null ? brl(f.lucro_ultimo_mes) : '—', 'lucro do último mês fechado'),
+    dica: pct(f.receita_mes, f.receita_mes_ant_ate_hoje) < 0 ? 'O mês está <b>abaixo</b> do mesmo período do mês passado. Vale olhar a aba <b>A receber</b> no painel: pode ter cliente atrasado.' : 'O mês está <b>acima</b> do mesmo período do mês passado.',
+    link: ['index.html#pagamentos', 'Abrir pagamentos']
+  };
+  if (key === 'provador') return {
+    kpis: kp(num(pv.provas_hoje), 'provas hoje') + kp(num(pv.provas_7d), 'últimos 7 dias') + kp(num(pv.provas_30d), 'últimos 30 dias', pct(pv.provas_30d, pv.provas_30d_ant)) + kp(num(pv.lojas_com_prova_7d), 'lojas com prova na semana') + kp(brl(pv.custo_30d), 'custo estimado das provas (30d)', null, true),
+    dica: 'O custo é estimado em <b>R$ 0,25 por prova</b>. Lojas que usam muito e pagam pouco aparecem no painel em <b>Custo por loja</b>.',
+    link: ['index.html#dashboard', 'Abrir provas por loja']
+  };
+  if (key === 'marketing') return {
+    kpis: kp(num(mk.ads.leads_7d), 'leads dos anúncios (7d)', pct(mk.ads.leads_7d, mk.ads.leads_7d_ant)) + kp(brl(mk.ads.gasto_7d), 'investido em anúncios (7d)', pct(mk.ads.gasto_7d, mk.ads.gasto_7d_ant)) + kp(num(mk.seo.cliques_28d), 'cliques do Google (28d)', pct(mk.seo.cliques_28d, mk.seo.cliques_28d_ant)) + kp(mk.seo.posicao_media != null ? String(mk.seo.posicao_media).replace('.', ',') : '—', 'posição média no Google'),
+    dica: (Number(mk.ads.gasto_7d) === 0 ? '<b>Anúncios parados:</b> nenhum gasto nos últimos 7 dias (confira o limite de gasto da conta). ' : '') + (mk.seo.ultimo_dia ? 'Dados do Google até <b>' + new Date(mk.seo.ultimo_dia + 'T12:00').toLocaleDateString('pt-BR') + '</b>.' : ''),
+    link: ['trafego.html', 'Abrir painel de tráfego']
+  };
+  if (key === 'comercial') return {
+    kpis: kp(num(cm.leads_30d), 'leads no WhatsApp comercial (30d)', pct(cm.leads_30d, cm.leads_30d_ant)) + kp(num(cm.clientes_novos_30d), 'clientes novos pagantes (30d)', pct(cm.clientes_novos_30d, cm.clientes_novos_30d_ant)) + kp(num(cm.em_teste), 'lojas em teste grátis') + kp(num(cm.testes_novos_30d), 'testes novos (30d)'),
+    dica: 'Cada teste grátis é uma venda possível: o fechamento de fim de teste (ROI da loja) é o que mais converte.',
+    link: ['index.html#metas', 'Abrir metas comerciais']
+  };
+  return {
+    kpis: kp(num(at.lojas_ativas), 'lojas ativas pagando') + kp(num(at.lojas_inativas), 'lojas que saíram') + kp(num(at.entregues_7d), 'mensagens entregues (7d)') + kp(at.disparos_7d ? Math.round(at.entregues_7d / at.disparos_7d * 100) + '%' : '—', 'taxa de entrega do WhatsApp') + kp(num(at.respostas_7d), 'respostas de clientes (7d)', null, true),
+    dica: 'Mensagem aceita não é entregue: a taxa de entrega aqui já conta só o que chegou no celular do cliente.',
+    link: ['index.html#pagamentos', 'Abrir clientes']
+  };
+}
+const painel = document.getElementById('painel');
+function abreArea(key, soAtualiza) {
+  if (!DADOS) return;
+  const a = AREAS.find(x => x.key === key); const ar = calculaAreas(DADOS)[key]; const c = conteudoArea(key, DADOS);
+  painel.dataset.area = key;
+  document.getElementById('p-titulo').textContent = a.nome;
+  document.getElementById('p-sub').textContent = a.sub;
+  document.getElementById('p-corpo').innerHTML =
+    '<div class="nivel-area"><span class="selo" style="background:linear-gradient(135deg,' + a.cor + ',#7c3aed);color:#fff;border-radius:10px;padding:5px 9px;font-weight:700;font-size:13px">Nível ' + ar.nivel.n + '</span><div class="barra"><i style="transform:scaleX(' + ar.nivel.p.toFixed(2) + ')"></i></div></div>' +
+    '<div class="kpis">' + c.kpis + '</div>' + (c.dica ? '<div class="dica">' + c.dica + '</div>' : '');
+  document.getElementById('p-rodape').innerHTML = '<a href="' + c.link[0] + '">' + esc(c.link[1]) + ' →</a>';
+  painel.classList.add('aberto');
+  Object.values(tags).forEach(t => t.classList.toggle('sel', t.dataset.area === key));
+  if (!soAtualiza) {
+    const alvo = new THREE.Vector3(a.x, 0, a.z);
+    // no computador o painel ocupa a direita: empurra a área pra esquerda da tela
+    if (innerWidth >= 700) { const dir = new THREE.Vector3().subVectors(camera.position, controls.target).setY(0).normalize(); alvo.add(new THREE.Vector3(-dir.z, 0, dir.x).multiplyScalar(-5.5)); }
+    else alvo.z += 4; // no celular o painel sobe de baixo: área vai pra cima
+    voa(alvo, innerWidth < 700 ? 1.5 : 1.9);
+  }
+}
+function fechaPainel() { painel.classList.remove('aberto'); delete painel.dataset.area; Object.values(tags).forEach(t => t.classList.remove('sel')); voa(CASA.alvo.clone(), 1); }
+document.getElementById('p-fechar').addEventListener('click', fechaPainel);
+document.getElementById('btn-visao').addEventListener('click', fechaPainel);
+document.getElementById('btn-atualizar').addEventListener('click', carrega);
+
+// animação suave da câmera até a área
+let voo = null;
+function voa(alvo, zoom) {
+  const off = camera.position.clone().sub(controls.target);
+  voo = { t: 0, de: controls.target.clone(), para: alvo, z0: camera.zoom, z1: zoom, off };
+}
+
+// clique no chão da área também abre
+const ray = new THREE.Raycaster(); const mouse = new THREE.Vector2(); let arrasto = null;
+renderer.domElement.addEventListener('pointerdown', e => { arrasto = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!arrasto || Math.hypot(e.clientX - arrasto[0], e.clientY - arrasto[1]) > 6) return;
+  mouse.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  ray.setFromCamera(mouse, camera);
+  const hit = ray.intersectObjects(scene.children, true).find(h => { let o = h.object; while (o) { if (o.userData && o.userData.area) return true; o = o.parent; } return false; });
+  if (hit) { let o = hit.object; while (o && !(o.userData && o.userData.area)) o = o.parent; abreArea(o.userData.area); }
+});
+let hoverArea = null;
+renderer.domElement.addEventListener('pointermove', e => {
+  mouse.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  ray.setFromCamera(mouse, camera);
+  const hit = ray.intersectObjects(Object.values(zonaPiso), false)[0];
+  const k = hit ? hit.object.userData.area : null;
+  if (k !== hoverArea) { hoverArea = k; renderer.domElement.style.cursor = k ? 'pointer' : 'default'; }
+});
+
+// ───────────── Loop ─────────────
+const relogio = new THREE.Clock();
+function loop() {
+  const dt = Math.min(relogio.getDelta(), .05), t = relogio.elapsedTime;
+  pessoas.forEach(p => {
+    p.t += p.vel * dt * 2; const { p: pos, dir } = posRota(p.rota, p.t);
+    p.g.position.set(pos.x, Math.abs(Math.sin(t * 9 + p.vel * 100)) * .06, pos.z);
+    p.g.rotation.y = Math.atan2(dir.x, dir.z);
+  });
+  placa.lookAt(camera.position.x, placa.getWorldPosition(new THREE.Vector3()).y, camera.position.z);
+  placa.position.y = 5.2 + Math.sin(t * 1.4) * .12;
+  anel.material.color.setHSL(.72, .8, .72 + Math.sin(t * 2) * .06);
+  feixe.material.opacity = .07 + Math.sin(t * 2) * .025;
+  const mg = zonaGrupo.marketing.userData.megafone; if (mg) mg.rotation.z = Math.sin(t * 3) * .06;
+  (zonaGrupo.atendimento.userData.baloes || []).forEach((b, i) => { b.position.y = 2.6 + i * .2 + Math.sin(t * 2 + i) * .18; });
+  if (hoverArea) { const pz = zonaPiso[hoverArea]; pz.material.emissiveIntensity += (0.38 - pz.material.emissiveIntensity) * .15; }
+  if (voo) {
+    voo.t = Math.min(1, voo.t + dt * 1.6); const e = 1 - Math.pow(1 - voo.t, 3);
+    controls.target.lerpVectors(voo.de, voo.para, e); camera.position.copy(controls.target).add(voo.off);
+    camera.zoom = voo.z0 + (voo.z1 - voo.z0) * e; camera.updateProjectionMatrix(); if (voo.t >= 1) voo = null;
+  }
+  controls.update();
+  renderer.render(scene, camera); labels.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+loop();
+
+addEventListener('resize', () => {
+  const a = innerWidth / innerHeight; VIEW = viewPara(a);
+  Object.assign(camera, { left: -VIEW * a, right: VIEW * a, top: VIEW, bottom: -VIEW }); camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight); labels.setSize(innerWidth, innerHeight);
+});
+
+// ───────────── Login + carregamento ─────────────
+async function carrega() {
+  const { data, error } = await db.rpc('pl_escritorio');
+  if (error) {
+    const semLogin = /permiss|JWT|42501|401/.test(error.message + ' ' + (error.code || ''));
+    aviso.style.display = 'flex';
+    aviso.innerHTML = semLogin ? 'Entre no painel de gestão para ver o escritório.<br><br><a href="index.html">Fazer login</a>' : 'Não consegui carregar os números: ' + esc(error.message);
+    return;
+  }
+  aviso.style.display = 'none';
+  aplicaDados(typeof data === 'string' ? JSON.parse(data) : data);
+}
+// ?demo=1 → números de exemplo (sem login), só para ver/testar a cena
+const DEMO = {
+  gerado_em: new Date().toISOString(),
+  financeiro: { receita_mes: 36000, receita_mes_ant_ate_hoje: 32000, receita_mes_ant: 58000, recebido_30d: 46000, pagamentos_mes: 54, lucro_ultimo_mes: 27000, por_dia: Array.from({ length: 25 }, (_, i) => ({ d: i, v: 800 + (i * 377) % 2200 })) },
+  provador: { provas_hoje: 1800, provas_7d: 13000, provas_30d: 67000, provas_30d_ant: 70000, lojas_com_prova_7d: 66, custo_30d: 16750 },
+  marketing: { seo: { cliques_28d: 120, cliques_28d_ant: 100, impressoes_28d: 4000, posicao_media: 12.4, ultimo_dia: '2026-09-24' }, ads: { gasto_7d: 350, gasto_7d_ant: 320, leads_7d: 60, leads_7d_ant: 57, cliques_7d: 900 } },
+  comercial: { leads_30d: 459, leads_30d_ant: 234, em_teste: 88, testes_novos_30d: 73, clientes_novos_30d: 17, clientes_novos_30d_ant: 7 },
+  atendimento: { lojas_ativas: 62, lojas_inativas: 19, disparos_7d: 3956, entregues_7d: 3780, respostas_7d: 379 }
+};
+(async () => {
+  if (new URLSearchParams(location.search).get('demo') === '1') { aviso.style.display = 'none'; aplicaDados(DEMO); document.getElementById('atualizado').textContent = 'Modo demonstração · números de exemplo'; return; }
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) { aviso.innerHTML = 'Entre no painel de gestão para ver o escritório.<br><br><a href="index.html">Fazer login</a>'; return; }
+  await carrega();
+  setInterval(carrega, 5 * 60 * 1000); // atualiza sozinho a cada 5 min
+})();
+</script>
+</body>
+</html>
