@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Catálogos · Gestão Provou Levou</title>
+<link rel="icon" href="logo.png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="env-config.js"></script>
+<style>
+  /* Painel de catálogos (Provou Catálogo): de onde veio cada loja, grupo, responsável e se está testando de fato.
+     Dados: rpc pl_catalog_painel() — security definer, só responde para os admins do painel. */
+  :root { --bg:#F5F4F0; --card:#fff; --ink:#0A0A0A; --muted:#6b6b6b; --line:rgba(0,0,0,.08);
+          --roxo:#7C3AED; --roxo-soft:rgba(124,58,237,.08); --verde:#10B981; --amarelo:#F59E0B; --vermelho:#EF4444; --cinza:#9CA3AF; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:'Inter',system-ui,sans-serif; font-size:14px; }
+  header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:18px 28px; border-bottom:1px solid var(--line); background:var(--card); position:sticky; top:0; z-index:5; }
+  header a.voltar { color:var(--muted); text-decoration:none; font-size:13px; }
+  header h1 { font-size:20px; margin:0; letter-spacing:-.02em; }
+  header h1 span { color:var(--roxo); font-style:italic; }
+  main { padding:22px 28px 60px; max-width:1500px; margin:0 auto; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:18px; }
+  .kpi { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 16px; cursor:pointer; transition:border-color .15s; }
+  .kpi:hover, .kpi.on { border-color:var(--roxo); }
+  .kpi b { display:block; font-size:26px; letter-spacing:-.03em; }
+  .kpi span { font-size:12px; color:var(--muted); }
+  .filtros { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; align-items:center; }
+  .filtros input, .filtros select { border:1px solid var(--line); background:var(--card); border-radius:10px; padding:9px 12px; font:inherit; }
+  .filtros input { flex:1; min-width:220px; }
+  .tabela { background:var(--card); border:1px solid var(--line); border-radius:16px; overflow:auto; }
+  table { width:100%; border-collapse:collapse; min-width:1150px; }
+  th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); font-weight:600; padding:11px 12px; border-bottom:1px solid var(--line); background:#FAFAF8; position:sticky; top:0; cursor:pointer; white-space:nowrap; }
+  td { padding:11px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr:hover td { background:#FCFBFF; }
+  .loja b { display:block; }
+  .sub { color:var(--muted); font-size:12px; margin-top:2px; }
+  a.link { color:var(--roxo); text-decoration:none; }
+  a.link:hover { text-decoration:underline; }
+  .badge { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600; border-radius:999px; padding:4px 10px; white-space:nowrap; }
+  .badge i { width:7px; height:7px; border-radius:50%; background:currentColor; display:inline-block; }
+  .b-verde { color:#047857; background:rgba(16,185,129,.12); }
+  .b-amarelo { color:#B45309; background:rgba(245,158,11,.14); }
+  .b-vermelho { color:#B91C1C; background:rgba(239,68,68,.12); }
+  .b-cinza { color:#4B5563; background:rgba(156,163,175,.18); }
+  .b-roxo { color:#6D28D9; background:var(--roxo-soft); }
+  .num { font-variant-numeric:tabular-nums; }
+  .num b { font-size:15px; }
+  .resp { font-weight:600; }
+  .vazio { padding:40px; text-align:center; color:var(--muted); }
+  .aviso { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; border-radius:12px; padding:14px 16px; margin-bottom:16px; }
+  @media (max-width:700px){ header, main { padding-left:14px; padding-right:14px; } }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <a class="voltar" href="index.html">← Gestão</a>
+    <h1>Catálogos <span>Provou Catálogo.</span></h1>
+  </div>
+  <div class="sub" id="atualizado"></div>
+</header>
+<main>
+  <div id="aviso"></div>
+  <div class="kpis" id="kpis"></div>
+  <div class="filtros">
+    <input id="busca" type="search" placeholder="Buscar loja, lead, telefone, e-mail ou grupo…">
+    <select id="f-resp"><option value="">Todos os responsáveis</option></select>
+    <select id="f-sit"><option value="">Todas as situações</option></select>
+    <select id="f-per">
+      <option value="">Criados em qualquer data</option>
+      <option value="7">Criados nos últimos 7 dias</option>
+      <option value="30" selected>Criados nos últimos 30 dias</option>
+    </select>
+    <select id="f-ativo">
+      <option value="ativos" selected>Só ativos</option>
+      <option value="">Ativos e desativados</option>
+    </select>
+  </div>
+  <div class="tabela"><table>
+    <thead><tr>
+      <th data-ord="criado_em">Loja · criado</th>
+      <th data-ord="dias">Teste</th>
+      <th data-ord="lead_nome">Lead</th>
+      <th data-ord="responsavel">Responsável</th>
+      <th data-ord="grupo_nome">Grupo</th>
+      <th data-ord="produtos">Produtos</th>
+      <th data-ord="provas_7d">Provas</th>
+      <th data-ord="sit">Situação</th>
+    </tr></thead>
+    <tbody id="linhas"><tr><td colspan="8" class="vazio">Carregando…</td></tr></tbody>
+  </table></div>
+</main>
+<script>
+(() => {
+  'use strict';
+  const db = window.supabase.createClient(window.LOCAL_SUPABASE_URL, window.LOCAL_SUPABASE_KEY);
+  const $ = s => document.querySelector(s);
+  const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  const dataBR = d => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone:'America/Sao_Paulo' }) : '—';
+  const haDias = d => { if (!d) return null; return Math.floor((Date.now() - new Date(d).getTime()) / 86400000); };
+  const quando = d => { const n = haDias(d); if (n == null) return 'nunca'; return n === 0 ? 'hoje' : n === 1 ? 'ontem' : 'há ' + n + ' dias'; };
+  const ETAPA = { testando:'Teste grátis', testando_ativo:'Testando', teste_catalogo_7_dias:'Teste 7 dias', fechou:'Convertido', perdida:'Perdido', stand_by:'Stand by', testou_e_saiu:'Testou e saiu', passou_prazo:'Passou do prazo', aguardando_cadastro:'Aguardando cadastro', interessado:'Interessado', proposta_enviada:'Proposta enviada', negociando:'Negociando', parou_responder:'Parou de responder', respondeu:'Respondeu', meta:'Meta', contatar:'Contatar' };
+  let dados = [], ord = { campo:'criado_em', dir:-1 }, kpiSel = -1;
+  // [rótulo, filtro] — fixos, para o clique no número do topo saber qual está selecionado
+  const KPIS = [
+    ['Catálogos ativos', r => r.ativo],
+    ['Criados em 7 dias', r => r.ativo && r.dias < 7],
+    ['Testando de fato', r => r._sit.id === 'testando'],
+    ['Sem produto', r => r._sit.id === 'sem_produto'],
+    ['Parados / sem prova', r => ['parado','sem_prova'].includes(r._sit.id)],
+    ['Teste vencido sem pagar', r => r.ativo && !pagante(r) && r.dias >= 7],
+    ['Pagantes', r => r.ativo && !!pagante(r)],
+  ];
+
+  // Situação de uso — o que importa no dia a dia: cadastrou produto? clientes estão provando?
+  function situacao(r) {
+    if (!r.ativo) return { id:'desativado', txt:'Desativado', cls:'b-cinza', peso:0 };
+    if (!r.produtos) return r.dias >= 2
+      ? { id:'sem_produto', txt:'Sem produto · ' + r.dias + 'd', cls:'b-vermelho', peso:1 }
+      : { id:'novo', txt:'Recém-criado', cls:'b-roxo', peso:2 };
+    if (r.provas_7d > 0) return { id:'testando', txt:'Testando de fato', cls:'b-verde', peso:5 };
+    if (r.provas > 0) return { id:'parado', txt:'Parado (sem prova em 7d)', cls:'b-amarelo', peso:3 };
+    return { id:'sem_prova', txt:'Tem produto, sem prova', cls:'b-amarelo', peso:4 };
+  }
+  function pagante(r) {
+    const s = String(r.status || '').toLowerCase();
+    if (s.includes('teste') || !r.ultimo_pagamento) return null;
+    return s;
+  }
+  function teste(r) {
+    if (!r.ativo) return '<span class="sub">—</span>';
+    const pg = pagante(r);
+    if (pg) return '<span class="badge b-verde"><i></i>Pagante</span><div class="sub">pgto ' + dataBR(r.ultimo_pagamento) + '</div>';
+    const d = r.dias + 1;
+    const cls = d > 7 ? 'b-vermelho' : d >= 6 ? 'b-amarelo' : 'b-roxo';
+    return '<span class="badge ' + cls + '"><i></i>' + (d > 7 ? 'Teste vencido · dia ' + d : 'Dia ' + d + ' de 7') + '</span>';
+  }
+
+  function filtrados() {
+    const q = $('#busca').value.trim().toLowerCase();
+    const resp = $('#f-resp').value, sit = $('#f-sit').value, per = Number($('#f-per').value || 0), ativo = $('#f-ativo').value;
+    return dados.filter(r => {
+      if (ativo === 'ativos' && !r.ativo) return false;
+      if (per && r.dias >= per) return false;
+      if (resp && (r.responsavel || '(sem responsável)') !== resp) return false;
+      if (sit && r._sit.id !== sit) return false;
+      if (kpiSel >= 0 && !KPIS[kpiSel][1](r)) return false;
+      if (q && ![r.nome, r.slug, r.lead_nome, r.lead_telefone, r.owner_email, r.grupo_nome, r.whatsapp].some(v => String(v || '').toLowerCase().includes(q))) return false;
+      return true;
+    }).sort((a, b) => {
+      const va = ord.campo === 'sit' ? a._sit.peso : a[ord.campo], vb = ord.campo === 'sit' ? b._sit.peso : b[ord.campo];
+      if (va == null && vb == null) return 0; if (va == null) return 1; if (vb == null) return -1;
+      return (va > vb ? 1 : va < vb ? -1 : 0) * ord.dir;
+    });
+  }
+
+  function kpis() {
+    $('#kpis').innerHTML = KPIS.map((k, i) => '<div class="kpi' + (kpiSel === i ? ' on' : '') + '" data-i="' + i + '"><b>' + dados.filter(k[1]).length + '</b><span>' + k[0] + '</span></div>').join('');
+    $('#kpis').querySelectorAll('.kpi').forEach(el => el.onclick = () => {
+      const i = +el.dataset.i;
+      kpiSel = (kpiSel === i || i === 0) ? -1 : i;
+      if (kpiSel >= 0) $('#f-per').value = '';
+      render();
+    });
+  }
+
+  function render() {
+    kpis();
+    const L = filtrados();
+    if (!L.length) { $('#linhas').innerHTML = '<tr><td colspan="8" class="vazio">Nenhum catálogo com esses filtros.</td></tr>'; return; }
+    $('#linhas').innerHTML = L.map(r => {
+      const tel = String(r.lead_telefone || '').replace(/\D/g, '');
+      const lead = r.lead_nome
+        ? '<b>' + esc(r.lead_nome) + '</b>' + (tel ? '<div class="sub"><a class="link" target="_blank" rel="noopener" href="https://wa.me/' + tel + '">' + esc(tel) + '</a></div>' : '')
+          + (r.lead_etapa ? '<div class="sub">CRM: ' + esc(ETAPA[r.lead_etapa] || r.lead_etapa) + '</div>' : '')
+        : '<span class="sub">não ligado ao CRM</span>';
+      const grupo = r.grupo_nome ? esc(r.grupo_nome.replace(/^Provou Levou\s*&\s*/i, '')) + '<div class="sub">' + esc(r.grupo_jid || '') + '</div>' : '<span class="badge b-cinza"><i></i>sem grupo</span>';
+      return '<tr>'
+        + '<td class="loja"><b><a class="link" target="_blank" rel="noopener" href="https://provoulevou.com.br/catalogo/?loja=' + encodeURIComponent(r.slug) + '">' + esc(r.nome) + '</a></b>'
+        + '<div class="sub">criado ' + dataBR(r.criado_em) + ' · ' + esc(r.owner_email || '') + '</div>'
+        + (r.criado_por === 'agente' ? '<div class="sub">🤖 criado pelo agente</div>' : '') + '</td>'
+        + '<td>' + teste(r) + '</td>'
+        + '<td>' + lead + '</td>'
+        + '<td class="resp">' + esc(r.responsavel || '—') + '</td>'
+        + '<td>' + grupo + '</td>'
+        + '<td class="num"><b>' + r.produtos + '</b>' + (r.produtos_7d ? ' <span class="sub">+' + r.produtos_7d + ' na semana</span>' : '') + '<div class="sub">último ' + quando(r.ultimo_produto) + '</div></td>'
+        + '<td class="num"><b>' + r.provas_7d + '</b> <span class="sub">na semana</span><div class="sub">' + r.provas + ' no total · última ' + quando(r.ultima_prova) + '</div></td>'
+        + '<td><span class="badge ' + r._sit.cls + '"><i></i>' + esc(r._sit.txt) + '</span></td>'
+        + '</tr>';
+    }).join('');
+  }
+
+  async function carregar() {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) { $('#aviso').innerHTML = '<div class="aviso">Entre no painel de gestão para ver os catálogos. <a class="link" href="index.html">Fazer login</a></div>'; $('#linhas').innerHTML = ''; return; }
+    const { data, error } = await db.rpc('pl_catalog_painel');
+    if (error) { $('#aviso').innerHTML = '<div class="aviso">Não consegui carregar: ' + esc(error.message) + '</div>'; return; }
+    dados = (data || []).map(r => Object.assign(r, { _sit: situacao(r) }));
+    const resps = [...new Set(dados.map(r => r.responsavel || '(sem responsável)'))].sort();
+    $('#f-resp').innerHTML = '<option value="">Todos os responsáveis</option>' + resps.map(x => '<option>' + esc(x) + '</option>').join('');
+    const sits = [['testando','Testando de fato'],['sem_produto','Sem produto'],['novo','Recém-criado'],['sem_prova','Tem produto, sem prova'],['parado','Parado'],['desativado','Desativado']];
+    $('#f-sit').innerHTML = '<option value="">Todas as situações</option>' + sits.map(s => '<option value="' + s[0] + '">' + s[1] + '</option>').join('');
+    $('#atualizado').textContent = dados.length + ' catálogos · atualizado ' + new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+    render();
+  }
+
+  ['#busca','#f-resp','#f-sit','#f-per','#f-ativo'].forEach(s => $(s).addEventListener('input', () => { kpiSel = -1; render(); }));
+  document.querySelectorAll('th[data-ord]').forEach(th => th.onclick = () => {
+    const c = th.dataset.ord; ord = { campo:c, dir: ord.campo === c ? -ord.dir : -1 }; render();
+  });
+  carregar();
+})();
+</script>
+</body>
+</html>
