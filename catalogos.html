@@ -100,7 +100,7 @@
   const dataBR = d => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone:'America/Sao_Paulo' }) : '—';
   const haDias = d => { if (!d) return null; return Math.floor((Date.now() - new Date(d).getTime()) / 86400000); };
   const quando = d => { const n = haDias(d); if (n == null) return 'nunca'; return n === 0 ? 'hoje' : n === 1 ? 'ontem' : 'há ' + n + ' dias'; };
-  const ETAPA = { testando:'Teste grátis', testando_ativo:'Testando', teste_catalogo_7_dias:'Teste 7 dias', fechou:'Convertido', perdida:'Perdido', stand_by:'Stand by', testou_e_saiu:'Testou e saiu', passou_prazo:'Passou do prazo', aguardando_cadastro:'Aguardando cadastro', interessado:'Interessado', proposta_enviada:'Proposta enviada', negociando:'Negociando', parou_responder:'Parou de responder', respondeu:'Respondeu', meta:'Meta', contatar:'Contatar' };
+  const ETAPA = { novo:'Novo', respondeu:'Em conversa', interessado:'Interessado', testando:'Aguardando dados', testando_ativo:'Em teste', passou_prazo:'Teste parado', proposta_enviada:'Proposta enviada', aguardando_pagamento:'Aguardando pagamento', fechou:'Convertido', stand_by:'Stand-by', perdida:'Perdido' };
   let dados = [], ord = { campo:'criado_em', dir:-1 }, kpiSel = -1;
   // [rótulo, filtro] — fixos, para o clique no número do topo saber qual está selecionado
   const KPIS = [
