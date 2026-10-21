@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Tracing · Gestão Provou Levou</title>
+<link rel="icon" href="logo.png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="env-config.js"></script>
+<style>
+  /* Tracing: tudo que deu errado no provador — erros do n8n, execuções travadas, falhas no widget
+     (lado do cliente) e provas paradas. Coleta: n8n "[PL] Vigia" (a cada 2 min) + pl_evento_widget().
+     Dados: rpc pl_tracing_painel(p_horas) — security definer, só admins. */
+  :root { --bg:#F5F4F0; --card:#fff; --ink:#0A0A0A; --muted:#6b6b6b; --line:rgba(0,0,0,.08);
+          --roxo:#7C3AED; --roxo-soft:rgba(124,58,237,.08); --verde:#0d9668; --amarelo:#b45309; --vermelho:#dc2626; --cinza:#9CA3AF; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:'Inter',system-ui,sans-serif; font-size:14px; }
+  header { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:18px 28px; border-bottom:1px solid var(--line); background:var(--card); position:sticky; top:0; z-index:5; }
+  header a.voltar { color:var(--muted); text-decoration:none; font-size:13px; }
+  header h1 { font-size:20px; margin:0; letter-spacing:-.02em; }
+  .sub { color:var(--muted); font-size:12px; }
+  .periodo { display:flex; gap:6px; }
+  .periodo button { background:#fff; border:1px solid var(--line); color:var(--muted); font:inherit; font-size:12.5px; padding:7px 12px; border-radius:8px; cursor:pointer; }
+  .periodo button[aria-pressed="true"] { background:var(--roxo); border-color:var(--roxo); color:#fff; }
+  main { max-width:1280px; margin:0 auto; padding:22px 28px 70px; }
+  .saude { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin-bottom:14px; }
+  .k { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; }
+  .k .n { display:block; font-size:28px; font-weight:500; letter-spacing:-.04em; font-variant-numeric:tabular-nums; }
+  .k .l { display:block; margin-top:6px; font-size:12px; color:var(--muted); line-height:1.4; }
+  .k.ok .n { color:var(--verde); } .k.mau .n { color:var(--vermelho); } .k.atencao .n { color:var(--amarelo); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px 20px; margin-top:12px; }
+  .card h2 { margin:0 0 14px; font-size:13px; font-weight:600; display:flex; justify-content:space-between; gap:10px; }
+  .card h2 span { font-weight:400; color:var(--muted); font-size:12px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .grid .card { margin-top:0; }
+  @media (max-width:860px) { .grid { grid-template-columns:1fr; } main, header { padding-left:16px; padding-right:16px; } }
+  .serie { display:flex; align-items:flex-end; gap:2px; height:140px; }
+  .serie .col { flex:1; min-width:0; height:100%; display:flex; flex-direction:column; justify-content:flex-end; position:relative; }
+  .serie .p { background:rgba(124,58,237,.28); border-radius:2px 2px 0 0; min-height:1px; }
+  .serie .e { background:var(--vermelho); border-radius:2px; min-height:0; margin-bottom:1px; }
+  .serie .col .tip { display:none; position:absolute; bottom:100%; left:50%; transform:translateX(-50%); background:#fff; border:1px solid var(--line); border-radius:8px; padding:6px 9px; white-space:nowrap; font-size:11px; color:var(--muted); box-shadow:0 6px 18px rgba(0,0,0,.1); z-index:3; }
+  .serie .col:hover .tip { display:block; }
+  .legenda { display:flex; gap:16px; margin-top:10px; font-size:11.5px; color:var(--muted); }
+  .legenda i { width:9px; height:9px; border-radius:2px; display:inline-block; margin-right:6px; }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  th { text-align:left; font-weight:600; color:var(--muted); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; padding:0 10px 8px 0; border-bottom:1px solid var(--line); }
+  td { padding:9px 10px 9px 0; border-bottom:1px solid rgba(0,0,0,.05); vertical-align:top; }
+  td.num { text-align:right; font-variant-numeric:tabular-nums; font-weight:600; white-space:nowrap; }
+  .msg { color:var(--muted); font-size:12px; margin-top:2px; word-break:break-word; }
+  .tag { display:inline-block; font-size:10.5px; font-weight:600; padding:2px 7px; border-radius:20px; white-space:nowrap; }
+  .t-n8n { background:rgba(124,58,237,.1); color:var(--roxo); }
+  .t-widget { background:rgba(220,38,38,.1); color:var(--vermelho); }
+  .t-vigia { background:rgba(180,83,9,.12); color:var(--amarelo); }
+  .t-travada { background:rgba(0,0,0,.07); color:var(--ink); }
+  .filtros { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+  .filtros input, .filtros select { font:inherit; font-size:13px; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+  .filtros input { flex:1; min-width:200px; }
+  .ev { border-bottom:1px solid rgba(0,0,0,.05); padding:9px 0; }
+  .ev summary { cursor:pointer; list-style:none; display:grid; grid-template-columns:118px 64px minmax(0,1fr); gap:10px; align-items:start; }
+  .ev summary::-webkit-details-marker { display:none; }
+  .ev .quando { color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums; }
+  .ev .tit { font-weight:600; font-size:13px; }
+  .ev pre { margin:8px 0 0 192px; background:#faf9f7; border:1px solid var(--line); border-radius:8px; padding:10px; font-size:11.5px; white-space:pre-wrap; word-break:break-word; }
+  @media (max-width:700px) { .ev summary { grid-template-columns:1fr; gap:3px; } .ev pre { margin-left:0; } }
+  a.link { color:var(--roxo); text-decoration:none; } a.link:hover { text-decoration:underline; }
+  .aviso { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; border-radius:10px; padding:12px 14px; font-size:13px; margin-bottom:12px; }
+  .vazio { color:var(--muted); text-align:center; padding:22px 0; font-size:12.5px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <a class="voltar" href="index.html">← Gestão</a>
+    <h1>Tracing</h1>
+    <div class="sub" id="atualizado">carregando…</div>
+  </div>
+  <div class="periodo" id="periodo">
+    <button data-h="6">6 h</button>
+    <button data-h="24" aria-pressed="true">24 h</button>
+    <button data-h="72">3 dias</button>
+    <button data-h="168">7 dias</button>
+  </div>
+</header>
+<main>
+  <div id="aviso"></div>
+  <div class="saude" id="saude"></div>
+  <div class="card"><h2>Hora a hora <span>provas gravadas × erros</span></h2><div id="serie"></div></div>
+  <div class="grid" style="margin-top:12px">
+    <div class="card"><h2>Onde está quebrando <span>por fluxo / origem</span></h2><div id="fluxos"></div></div>
+    <div class="card"><h2>Por loja <span>quando dá pra saber</span></h2><div id="lojas"></div></div>
+  </div>
+  <div class="card">
+    <h2>Tudo que aconteceu <span id="qtd"></span></h2>
+    <div class="filtros">
+      <input id="busca" type="search" placeholder="Buscar fluxo, loja, nó ou mensagem…">
+      <select id="f-fonte">
+        <option value="">Todas as origens</option>
+        <option value="n8n">n8n (erros)</option>
+        <option value="travada">Execuções travadas</option>
+        <option value="widget">Widget (cliente)</option>
+        <option value="vigia">Vigia (provas paradas / sobrecarga)</option>
+      </select>
+    </div>
+    <div id="eventos"></div>
+  </div>
+</main>
+<script>
+(() => {
+  'use strict';
+  const db = window.supabase.createClient(window.LOCAL_SUPABASE_URL, window.LOCAL_SUPABASE_KEY);
+  const $ = s => document.querySelector(s);
+  const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  const nf = new Intl.NumberFormat('pt-BR');
+  const hora = d => new Date(d).toLocaleString('pt-BR', { timeZone:'America/Sao_Paulo', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+  const ha = d => { if (!d) return 'nunca'; const m = Math.round((Date.now() - new Date(d)) / 60000); return m < 1 ? 'agora' : m < 60 ? 'há ' + m + ' min' : m < 1440 ? 'há ' + Math.round(m / 60) + ' h' : 'há ' + Math.round(m / 1440) + ' d'; };
+  let horas = 24, dados = null;
+
+  function tagDe(e) {
+    if (e.nivel === 'travada') return '<span class="tag t-travada">travada</span>';
+    return '<span class="tag t-' + esc(e.fonte) + '">' + esc(e.fonte) + '</span>';
+  }
+
+  function saude(d) {
+    const r = d.resumo || {}, p = d.provas || {};
+    const minUlt = p.ultima ? (Date.now() - new Date(p.ultima)) / 60000 : 1e9;
+    const k = (n, l, cls) => '<div class="k ' + (cls || '') + '"><span class="n">' + n + '</span><span class="l">' + l + '</span></div>';
+    $('#saude').innerHTML =
+      k(ha(p.ultima).replace('há ', ''), 'desde a última prova gravada', minUlt > 30 ? 'mau' : minUlt > 15 ? 'atencao' : 'ok') +
+      k(nf.format(p.ultima_hora || 0), 'provas na última hora') +
+      k(nf.format(r.n8n || 0), 'erros no n8n', r.n8n ? 'atencao' : 'ok') +
+      k(nf.format(r.travadas || 0), 'execuções travadas', r.travadas ? 'mau' : 'ok') +
+      k(nf.format(r.widget || 0), 'falhas vistas pelo cliente (widget)', r.widget ? 'mau' : 'ok') +
+      k(nf.format(r.vigia || 0), 'alertas do vigia', r.vigia ? 'mau' : 'ok');
+  }
+
+  function serie(d) {
+    const err = {}; (d.por_hora || []).forEach(x => { err[x.h] = (x.n8n || 0) + (x.widget || 0) + (x.outros || 0); });
+    const prov = d.provas_hora || {};
+    const hs = [...new Set(Object.keys(err).concat(Object.keys(prov)))].sort();
+    if (!hs.length) { $('#serie').innerHTML = '<p class="vazio">Sem dados no período.</p>'; return; }
+    const maxP = Math.max(1, ...hs.map(h => prov[h] || 0)), maxE = Math.max(1, ...hs.map(h => err[h] || 0));
+    $('#serie').innerHTML = '<div class="serie">' + hs.map(h => {
+      const pp = prov[h] || 0, ee = err[h] || 0;
+      return '<div class="col"><span class="tip">' + h.slice(8, 10) + '/' + h.slice(5, 7) + ' ' + h.slice(11) + 'h · ' + pp + ' provas · ' + ee + ' erros</span>' +
+        '<span class="e" style="height:' + (ee / maxE * 35) + '%"></span>' +
+        '<span class="p" style="height:' + (pp / maxP * 62) + '%"></span></div>';
+    }).join('') + '</div><div class="legenda"><span><i style="background:rgba(124,58,237,.28)"></i>Provas gravadas</span><span><i style="background:#dc2626"></i>Erros (escala própria)</span></div>';
+  }
+
+  function fluxos(d) {
+    const L = d.por_fluxo || [];
+    if (!L.length) { $('#fluxos').innerHTML = '<p class="vazio">Nada quebrou no período. 🎉</p>'; return; }
+    $('#fluxos').innerHTML = '<table><thead><tr><th>Fluxo</th><th style="text-align:right">Vezes</th></tr></thead><tbody>' + L.map(x =>
+      '<tr><td><b>' + esc(x.nome) + '</b> <span class="tag t-' + esc(x.fonte) + '">' + esc(x.fonte) + '</span>' +
+      '<div class="msg">' + (x.no ? esc(x.no) + ': ' : '') + esc((x.msg || '').slice(0, 160)) + ' · ' + ha(x.ultimo) + '</div></td>' +
+      '<td class="num">' + nf.format(x.n) + '</td></tr>').join('') + '</tbody></table>';
+  }
+
+  function lojas(d) {
+    const L = d.por_loja || [];
+    $('#lojas').innerHTML = !L.length ? '<p class="vazio">Nenhum erro ligado a uma loja no período.</p>' :
+      '<table><thead><tr><th>Loja</th><th style="text-align:right">Eventos</th></tr></thead><tbody>' + L.map(x =>
+        '<tr><td><b>' + esc(x.loja) + '</b><div class="msg">último ' + ha(x.ultimo) + '</div></td><td class="num">' + nf.format(x.n) + '</td></tr>').join('') + '</tbody></table>';
+  }
+
+  function eventos() {
+    const t = $('#busca').value.trim().toLowerCase(), f = $('#f-fonte').value;
+    const L = (dados.eventos || []).filter(e => {
+      if (f === 'travada' && e.nivel !== 'travada') return false;
+      if (f && f !== 'travada' && (e.fonte !== f || e.nivel === 'travada')) return false;
+      if (t && ![e.workflow, e.loja, e.no, e.mensagem].join(' ').toLowerCase().includes(t)) return false;
+      return true;
+    });
+    $('#qtd').textContent = L.length + ' de ' + (dados.eventos || []).length + ' (mais recentes)';
+    $('#eventos').innerHTML = !L.length ? '<p class="vazio">Nada com esse filtro.</p>' : L.map(e =>
+      '<details class="ev"><summary><span class="quando">' + hora(e.ts) + '</span><span>' + tagDe(e) + '</span>' +
+      '<span><span class="tit">' + esc(e.workflow || '—') + '</span>' + (e.loja ? ' · <span class="sub">' + esc(e.loja) + '</span>' : '') +
+      '<div class="msg">' + (e.no ? '<b>' + esc(e.no) + '</b>: ' : '') + esc(e.mensagem) + '</div></span></summary>' +
+      '<pre>' + esc(JSON.stringify(e.detalhe || {}, null, 2)) + (e.url ? '\n\n' : '') + '</pre>' +
+      (e.url ? '<div style="margin:6px 0 0 192px"><a class="link" target="_blank" rel="noopener" href="' + esc(e.url) + '">' + (e.fonte === 'widget' ? 'Abrir página onde aconteceu' : 'Abrir execução no n8n') + ' ↗</a></div>' : '') +
+      '</details>').join('');
+  }
+
+  async function carregar() {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) { $('#aviso').innerHTML = '<div class="aviso">Entre no painel de gestão para ver o tracing. <a class="link" href="index.html">Fazer login</a></div>'; return; }
+    const { data, error } = await db.rpc('pl_tracing_painel', { p_horas: horas });
+    if (error) { $('#aviso').innerHTML = '<div class="aviso">Não consegui carregar: ' + esc(error.message) + '</div>'; return; }
+    $('#aviso').innerHTML = '';
+    dados = data;
+    $('#atualizado').textContent = 'Últimas ' + horas + ' h · atualiza sozinho a cada minuto · ' + new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+    saude(data); serie(data); fluxos(data); lojas(data); eventos();
+  }
+
+  $('#periodo').addEventListener('click', ev => {
+    const b = ev.target.closest('button'); if (!b) return;
+    horas = parseInt(b.dataset.h, 10);
+    document.querySelectorAll('#periodo button').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+    carregar();
+  });
+  ['#busca', '#f-fonte'].forEach(s => $(s).addEventListener('input', () => dados && eventos()));
+  carregar();
+  setInterval(() => { if (!document.hidden) carregar(); }, 60000);
+})();
+</script>
+</body>
+</html>
