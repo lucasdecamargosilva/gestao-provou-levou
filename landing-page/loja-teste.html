@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <script src="env.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>Provou Levou — Como Funciona</title>
+  <link rel="icon" type="image/jpeg" href="assets/favicon.jpg">
+
+  <!-- Google Analytics 4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-HDH9028QL5"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-HDH9028QL5', { 'anonymize_ip': true });
+  </script>
+  <style>
+    @font-face {
+      font-family: 'HelveticaNow';
+      src: url('helveticanowdisplay-medium.ttf') format('truetype');
+      font-weight: 500;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #fafaf8;
+      --bg-elevated: #ffffff;
+      --text: #0a0a0a;
+      --text-sub: #999;
+      --border: rgba(0,0,0,0.08);
+      --purple: #7c3aed;
+      --purple-soft: rgba(124,58,237,0.06);
+      --green: #10b981;
+      --red: #ef4444;
+      --radius: 16px;
+      --pill: 9999px;
+      --font: 'HelveticaNow', system-ui, -apple-system, sans-serif;
+      --ease: cubic-bezier(.22,1,.36,1);
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      font-weight: 500;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top bar */
+    .topbar {
+      padding: 24px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .topbar a {
+      color: var(--text);
+      text-decoration: none;
+      font-size: 13px;
+      transition: color .15s ease;
+    }
+    .topbar a:hover { color: var(--purple); }
+    .topbar-brand img { height: 32px; width: auto; display: block; }
+    .topbar-back { color: var(--text-sub); }
+
+    /* Progress bar */
+    .progress-wrap {
+      width: 100%;
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+    .progress-track {
+      height: 2px;
+      background: rgba(0,0,0,0.06);
+      border-radius: 2px;
+      overflow: hidden;
+      transition: opacity .25s ease;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--purple);
+      border-radius: 2px;
+      transition: width .4s var(--ease);
+      width: 0%;
+    }
+    .progress-wrap.hidden .progress-track { opacity: 0; }
+
+    /* Main */
+    main {
+      flex: 1;
+      width: 100%;
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+      position: relative;
+    }
+
+    /* Steps */
+    .step {
+      display: none;
+    }
+
+    /* ── Liquid glass no passo do site da loja (embed sobre fundo escuro) ── */
+    body.embed-mode #step-1.step {
+      position: relative;
+      isolation: isolate;
+      border-radius: 26px;
+      padding: 34px 30px 36px;
+      background: linear-gradient(150deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 100%);
+      -webkit-backdrop-filter: blur(26px) saturate(180%);
+      backdrop-filter: blur(26px) saturate(180%);
+      border: 1px solid rgba(255,255,255,0.16);
+      box-shadow:
+        0 24px 60px -22px rgba(0,0,0,0.7),
+        inset 0 1px 0 rgba(255,255,255,0.22);
+    }
+    /* luz colorida por tras: e ela que o blur dissolve e faz o vidro "acontecer" */
+    body.embed-mode #step-1.step::before {
+      content: '';
+      position: absolute; inset: 0;
+      z-index: -1;
+      background:
+        radial-gradient(closest-side at 22% 18%, rgba(124,58,237,0.55) 0%, transparent 72%),
+        radial-gradient(closest-side at 82% 26%, rgba(167,139,250,0.40) 0%, transparent 74%),
+        radial-gradient(closest-side at 62% 92%, rgba(109,40,217,0.34) 0%, transparent 72%);
+      filter: blur(30px);
+      animation: glass-drift 22s ease-in-out infinite alternate;
+    }
+    /* reflexo especular na aresta de cima */
+    body.embed-mode #step-1.step::after {
+      content: '';
+      position: absolute; left: 14%; right: 14%; top: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.85), transparent);
+      pointer-events: none;
+    }
+    body.embed-mode #step-1 h1 { color: #fff; }
+    body.embed-mode #step-1 .lead { color: rgba(255,255,255,0.66); }
+    body.embed-mode #step-1 .q-input {
+      background: rgba(255,255,255,0.08) !important;
+      border-color: rgba(255,255,255,0.18) !important;
+      color: #fff !important;
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+    }
+    body.embed-mode #step-1 .q-input::placeholder { color: rgba(255,255,255,0.42); }
+    body.embed-mode #step-1 .q-input:focus {
+      border-color: rgba(167,139,250,0.6) !important;
+      box-shadow: 0 0 0 3px rgba(124,58,237,0.22);
+      outline: none;
+    }
+    @keyframes glass-drift {
+      from { transform: translate3d(0,0,0) scale(1); }
+      to   { transform: translate3d(3%, -3%, 0) scale(1.07); }
+    }
+    @media (prefers-reduced-motion: reduce) { body.embed-mode #step-1.step::before { animation: none; } }
+    @supports not (backdrop-filter: blur(1px)) {
+      body.embed-mode #step-1.step { background: rgba(20,14,38,0.86); }
+    }
+
+    .step.active {
+      display: block;
+      animation: stepIn .4s var(--ease);
+    }
+    .step.active.back {
+      animation: stepInBack .4s var(--ease);
+    }
+    @keyframes stepIn {
+      from { opacity: 0; transform: translateX(24px); }
+      to { opacity: 1; transform: none; }
+    }
+    @keyframes stepInBack {
+      from { opacity: 0; transform: translateX(-24px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    /* Step header */
+    .step-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+      min-height: 22px;
+    }
+    .step-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: none;
+      font-family: var(--font);
+      font-size: 13px;
+      color: var(--text-sub);
+      cursor: pointer;
+      padding: 4px 0;
+      transition: color .15s ease;
+    }
+    .step-back:hover { color: var(--text); }
+    .step-back svg { width: 14px; height: 14px; }
+    .step-counter {
+      font-size: 12px;
+      color: var(--text-sub);
+      letter-spacing: 0.04em;
+    }
+
+    /* Step title */
+    .step h1 {
+      font-size: clamp(1.7rem, 4vw, 2.2rem);
+      font-weight: 500;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    .step p.lead {
+      font-size: 14px;
+      color: var(--text-sub);
+      font-weight: 400;
+      text-align: center;
+      margin-bottom: 36px;
+    }
+
+    /* Type grid */
+    .type-pick-label {
+      font-size: 11px;
+      letter-spacing: 2.2px;
+      text-transform: uppercase;
+      color: rgba(0,0,0,0.5);
+      font-weight: 600;
+      margin: 0 0 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .type-pick-label::before,
+    .type-pick-label::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: rgba(0,0,0,0.1);
+    }
+    body.embed-mode .type-pick-label { margin-top: 4px; }
+    .type-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .type-card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 36px 20px 28px;
+      cursor: pointer;
+      transition: border-color .18s ease, transform .18s ease, background .18s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      font-family: var(--font);
+      color: var(--text);
+      text-align: center;
+    }
+    .type-card:hover {
+      border-color: rgba(124,58,237,0.4);
+      transform: translateY(-2px);
+    }
+    .type-card:active { transform: translateY(0); }
+    .type-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--purple-soft);
+      color: var(--purple);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .18s ease;
+    }
+    .type-card:hover .type-icon { background: rgba(124,58,237,0.12); }
+    .type-icon svg {
+      width: 28px;
+      height: 28px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .type-card h3 {
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+    }
+    .type-card span {
+      font-size: 12px;
+      color: var(--text-sub);
+      font-weight: 400;
+    }
+
+    /* Upload */
+    .upload-wrap {
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    .upload-box {
+      position: relative;
+      background: var(--bg-elevated);
+      border: 1.5px dashed rgba(0,0,0,0.12);
+      border-radius: var(--radius);
+      cursor: pointer;
+      overflow: hidden;
+      transition: border-color .18s ease, background .18s ease;
+      aspect-ratio: 4 / 3;
+      margin-bottom: 24px;
+    }
+    .upload-box:hover {
+      border-color: var(--purple);
+      border-style: solid;
+    }
+    .upload-box.drag-over {
+      border-color: var(--purple);
+      border-style: solid;
+      background: var(--purple-soft);
+    }
+    .upload-box.has-image {
+      border-color: var(--purple);
+      border-style: solid;
+    }
+    .upload-label {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      padding: 24px;
+      cursor: pointer;
+      text-align: center;
+    }
+    .upload-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.04);
+      color: var(--text-sub);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .18s ease, color .18s ease;
+    }
+    .upload-box:hover .upload-icon,
+    .upload-box.has-image .upload-icon {
+      background: var(--purple);
+      color: #fff;
+    }
+    .upload-icon svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .upload-hint {
+      font-size: 13px;
+      color: var(--text-sub);
+      font-weight: 400;
+    }
+    .upload-preview {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .file-input { display: none; }
+
+    /* CTA */
+    .btn-main {
+      display: block;
+      width: 100%;
+      padding: 16px 24px;
+      background: var(--purple);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-family: var(--font);
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background .15s ease, transform .15s ease, opacity .15s ease;
+    }
+    .btn-main:hover:not(:disabled) {
+      background: #6d28d9;
+      transform: translateY(-1px);
+    }
+    .btn-main:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+      margin-top: 16px;
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: rgba(0,0,0,0.04);
+      border-color: rgba(0,0,0,0.16);
+    }
+
+    .upload-status {
+      text-align: center;
+      margin-top: 14px;
+      font-size: 13px;
+      min-height: 18px;
+      color: var(--text-sub);
+      font-weight: 400;
+    }
+
+    /* Result */
+    .result-img-wrap {
+      width: 100%;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--bg-elevated);
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .result-img-wrap img {
+      width: 100%;
+      max-height: 70vh;
+      object-fit: contain;
+      display: block;
+    }
+
+    /* Loading modal */
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(250,250,248,0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      text-align: center;
+      padding: 32px;
+    }
+    .modal.active { display: flex; }
+    .modal-spinner {
+      width: 36px;
+      height: 36px;
+      border: 2px solid rgba(0,0,0,0.08);
+      border-top-color: var(--purple);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      margin-bottom: 24px;
+    }
+    .modal h3 {
+      font-size: 17px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    .modal p {
+      font-size: 13px;
+      color: var(--text-sub);
+      font-weight: 400;
+      max-width: 320px;
+    }
+    /* Barra de progresso da geração (roxa) */
+    .modal-progress {
+      width: 100%;
+      max-width: 320px;
+      height: 4px;
+      margin-top: 22px;
+      background: rgba(0,0,0,0.08);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .modal-progress-fill {
+      height: 100%;
+      width: 100%;
+      background: var(--purple);
+      border-radius: 99px;
+      transform: scaleX(0);
+      transform-origin: left center;
+      transition: transform .6s cubic-bezier(.4,0,.2,1);
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Footer */
+    .footer {
+      padding: 24px 32px 32px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-sub);
+      font-weight: 400;
+    }
+    .footer a {
+      color: var(--text-sub);
+      text-decoration: none;
+      transition: color .15s ease;
+    }
+    .footer a:hover { color: var(--text); }
+
+    /* Mobile */
+    @media (max-width: 600px) {
+      .topbar { padding: 16px 20px; }
+      .topbar-brand img { height: 28px; }
+      .progress-wrap { padding: 0 20px; }
+      main { padding: 28px 20px 60px; }
+      .type-grid { gap: 10px; }
+      .type-card { padding: 28px 16px 22px; }
+      .type-icon { width: 48px; height: 48px; }
+      .upload-box { aspect-ratio: 1 / 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="topbar">
+    <a href="index.html" class="topbar-brand" aria-label="Provou Levou">
+      <img src="https://i.ibb.co/MD3B4FQf/Logo-provou-preto-1.png" alt="Provou Levou">
+    </a>
+    <a href="index.html" class="topbar-back">← voltar</a>
+  </header>
+
+  <div class="progress-wrap" id="progress-wrap">
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+  </div>
+
+  <main>
+
+    <!-- STEP 1 — Site da loja -->
+    <section class="step active" id="step-1" data-step="1">
+      <div class="step-meta">
+        <span></span>
+        <span class="step-counter">1 de 4</span>
+      </div>
+      <h1>Qual o site da sua loja?</h1>
+      <p class="lead">Pra gente liberar a demonstração. Pode ser só o domínio (ex: minhaloja.com.br).</p>
+      <div class="upload-wrap">
+        <input type="text" id="site-input" class="q-input" placeholder="minhaloja.com.br" autocomplete="url" inputmode="url"
+               style="width:100%;padding:14px 16px;font-size:16px;border:1px solid var(--line,#e5e5e5);border-radius:10px;background:#fff;color:var(--ink,#111);box-sizing:border-box;">
+        <p id="site-error" class="upload-status" style="display:none;color:var(--red,#cc3333);margin:10px 0 0;"></p>
+        <button type="button" class="btn-main" id="btn-site-next" style="margin-top:28px;" disabled>Continuar</button>
+      </div>
+    </section>
+
+    <!-- STEP 2 — Tipo -->
+    <section class="step" id="step-2" data-step="2">
+      <div class="step-meta">
+        <button type="button" class="step-back" data-back>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          voltar
+        </button>
+        <span class="step-counter">2 de 4</span>
+      </div>
+      <h1>Que prova quer gerar?</h1>
+      <p class="lead">Escolha o tipo pra começarmos.</p>
+      <div class="type-pick-label">Selecione uma opção</div>
+      <div class="type-grid">
+        <button type="button" class="type-card" data-type="roupa">
+          <span class="type-icon">
+            <svg viewBox="0 0 24 24"><path d="M16 3l4 2.5-2 4-2-1v13H8V8.5l-2 1-2-4L8 3l2 2h4l2-2z"/></svg>
+          </span>
+          <h3>Roupa</h3>
+          <span>provador de moda</span>
+        </button>
+        <button type="button" class="type-card" data-type="oculos">
+          <span class="type-icon">
+            <svg viewBox="0 0 24 24"><circle cx="6.5" cy="14" r="3.5"/><circle cx="17.5" cy="14" r="3.5"/><path d="M10 14h4"/><path d="M3 14l1.5-5h2"/><path d="M21 14l-1.5-5h-2"/></svg>
+          </span>
+          <h3>Óculos</h3>
+          <span>provador de armações</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- STEP 3 — Foto produto -->
+    <section class="step" id="step-3" data-step="3">
+      <div class="step-meta">
+        <button type="button" class="step-back" data-back>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          voltar
+        </button>
+        <span class="step-counter">3 de 4</span>
+      </div>
+      <h1 id="step2-title">Foto do produto</h1>
+      <p class="lead" id="step2-sub">a peça de roupa que vai provar</p>
+      <div class="upload-wrap">
+        <div class="upload-box" id="product-upload-box">
+          <input type="file" id="product-image" accept="image/*" class="file-input">
+          <label for="product-image" class="upload-label">
+            <span class="upload-icon">
+              <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </span>
+            <span class="upload-hint">clique, arraste ou cole (Ctrl+V)</span>
+            <img id="product-preview" class="upload-preview" alt="" style="display:none;">
+          </label>
+        </div>
+        <button type="button" class="btn-main" id="btn-step2-next" disabled>Continuar</button>
+      </div>
+    </section>
+
+    <!-- STEP 4 — Foto modelo -->
+    <section class="step" id="step-4" data-step="4">
+      <div class="step-meta">
+        <button type="button" class="step-back" data-back>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          voltar
+        </button>
+        <span class="step-counter">4 de 4</span>
+      </div>
+      <h1 id="step3-title">Foto da modelo</h1>
+      <p class="lead" id="step3-sub">quem vai vestir</p>
+      <div class="upload-wrap">
+        <div class="upload-box" id="model-upload-box">
+          <input type="file" id="model-image" accept="image/*" class="file-input">
+          <label for="model-image" class="upload-label">
+            <span class="upload-icon">
+              <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </span>
+            <span class="upload-hint">clique, arraste ou cole (Ctrl+V)</span>
+            <img id="model-preview" class="upload-preview" alt="" style="display:none;">
+          </label>
+        </div>
+        <button type="button" class="btn-main" id="btn-materialize" disabled>Provar agora</button>
+        <p id="upload-status" class="upload-status"></p>
+      </div>
+    </section>
+
+    <!-- STEP 5 — Resultado -->
+    <section class="step" id="step-5" data-step="5">
+      <div class="step-meta">
+        <span></span>
+        <span class="step-counter"></span>
+      </div>
+      <h1>Pronto.</h1>
+      <p class="lead" id="step4-sub">veja o resultado abaixo.</p>
+      <div class="upload-wrap">
+        <div class="result-img-wrap">
+          <img id="result-image" src="" alt="Resultado">
+        </div>
+        <button type="button" class="btn-main btn-secondary" id="btn-restart">Provar de novo</button>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <span>&copy; 2026 Provou Levou — by <a href="https://www.instagram.com/quanticflowai/" target="_blank" rel="noopener">Quantic</a></span>
+  </footer>
+
+  <div id="loading-modal" class="modal">
+    <div class="modal-spinner"></div>
+    <h3>Provando...</h3>
+    <p>Estou ajustando o caimento e a luz.</p>
+    <div class="modal-progress"><div class="modal-progress-fill" id="gen-progress-fill"></div></div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var productInput = document.getElementById('product-image');
+      var modelInput = document.getElementById('model-image');
+      var productPreview = document.getElementById('product-preview');
+      var modelPreview = document.getElementById('model-preview');
+      var productBox = document.getElementById('product-upload-box');
+      var modelBox = document.getElementById('model-upload-box');
+      var btnStep2Next = document.getElementById('btn-step2-next');
+      var btnMaterialize = document.getElementById('btn-materialize');
+      var btnRestart = document.getElementById('btn-restart');
+      var uploadStatus = document.getElementById('upload-status');
+      var progressFill = document.getElementById('progress-fill');
+      var progressWrap = document.getElementById('progress-wrap');
+
+      // ---- Barra de progresso da GERAÇÃO (roxa) ----
+      // A geração leva ~20-50s e não tem progresso real do servidor, então
+      // avançamos suave até 92% e completamos pra 100% quando a foto chega.
+      var _genTimer = null;
+      function genProgressSet(pct) {
+        var el = document.getElementById('gen-progress-fill');
+        if (el) el.style.transform = 'scaleX(' + (Math.max(0, Math.min(100, pct)) / 100) + ')';
+      }
+      function genProgressStart() {
+        if (_genTimer) clearInterval(_genTimer);
+        var pct = 0;
+        genProgressSet(0);
+        // pequeno atraso pro browser aplicar o scaleX(0) antes de animar
+        setTimeout(function () { pct = 8; genProgressSet(pct); }, 60);
+        _genTimer = setInterval(function () {
+          // desacelera conforme se aproxima de 92% (nunca "trava" em 100 antes da hora)
+          var passo = pct < 40 ? 4 : (pct < 70 ? 2 : (pct < 85 ? 1 : 0.4));
+          pct = Math.min(92, pct + passo);
+          genProgressSet(pct);
+        }, 700);
+      }
+      function genProgressStop() {
+        if (_genTimer) { clearInterval(_genTimer); _genTimer = null; }
+        genProgressSet(100);
+        setTimeout(function () { genProgressSet(0); }, 600);
+      }
+
+      var productBase64 = null;
+      var modelBase64 = null;
+      var currentMode = null;
+      var currentStep = 1;
+
+      var MODES = {
+        roupa: {
+          endpoint: 'https://n8n.segredosdodrop.com/webhook/materialize-generico',
+          step2Title: 'Foto do produto',
+          step2Sub: 'a peça de roupa que vai provar',
+          step3Title: 'Foto da modelo',
+          step3Sub: 'quem vai vestir',
+          step4Sub: 'Veja como ficou a peça na modelo.',
+          loadingTitle: 'Provando...',
+          loadingSub: 'Estou ajustando o caimento e a luz.'
+        },
+        oculos: {
+          endpoint: 'https://n8n.segredosdodrop.com/webhook/gerador-oculos-teste',
+          step2Title: 'Foto do óculos',
+          step2Sub: 'a armação',
+          step3Title: 'Foto da pessoa',
+          step3Sub: 'quem vai usar',
+          step4Sub: 'Veja como ficou o óculos na pessoa.',
+          loadingTitle: 'Provando...',
+          loadingSub: 'Estou ajustando o ângulo e a luz.'
+        }
+      };
+
+      // ========= Step navigation =========
+      function setProgress(step) {
+        if (step === 5) {
+          progressWrap.classList.add('hidden');
+        } else {
+          progressWrap.classList.remove('hidden');
+          var pct = ((step - 1) / 3) * 100;
+          progressFill.style.width = pct + '%';
+        }
+      }
+
+      function goToStep(n, direction) {
+        var sections = document.querySelectorAll('.step');
+        sections.forEach(function(s) {
+          s.classList.remove('active', 'back');
+        });
+        var target = document.getElementById('step-' + n);
+        if (!target) return;
+        if (direction === 'back') target.classList.add('back');
+        // Force reflow so animation re-runs
+        void target.offsetWidth;
+        target.classList.add('active');
+        currentStep = n;
+        setProgress(n);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      function applyMode(mode) {
+        currentMode = mode;
+        var cfg = MODES[mode];
+        document.getElementById('step2-title').textContent = cfg.step2Title;
+        document.getElementById('step2-sub').textContent = cfg.step2Sub;
+        document.getElementById('step3-title').textContent = cfg.step3Title;
+        document.getElementById('step3-sub').textContent = cfg.step3Sub;
+        document.getElementById('step4-sub').textContent = cfg.step4Sub;
+        var lm = document.getElementById('loading-modal');
+        lm.querySelector('h3').textContent = cfg.loadingTitle;
+        lm.querySelector('p').textContent = cfg.loadingSub;
+      }
+
+      function resetAll() {
+        productBase64 = null;
+        modelBase64 = null;
+        productPreview.style.display = 'none';
+        modelPreview.style.display = 'none';
+        productPreview.src = '';
+        modelPreview.src = '';
+        productBox.classList.remove('has-image');
+        modelBox.classList.remove('has-image');
+        productInput.value = '';
+        modelInput.value = '';
+        btnStep2Next.disabled = true;
+        btnMaterialize.disabled = true;
+        uploadStatus.textContent = '';
+      }
+
+      // ========= Step 2: Tipo selection =========
+      document.querySelectorAll('.type-card').forEach(function(card) {
+        card.addEventListener('click', function() {
+          applyMode(card.dataset.type);
+          goToStep(3);
+        });
+      });
+
+      // ========= Back buttons =========
+      document.querySelectorAll('[data-back]').forEach(function(b) {
+        b.addEventListener('click', function() {
+          if (currentStep > 1) goToStep(currentStep - 1, 'back');
+        });
+      });
+
+      // ========= Upload logic =========
+      function processFile(file, previewElement, type) {
+        if (!file || !file.type || file.type.indexOf('image/') !== 0) {
+          uploadStatus.textContent = 'Envie um arquivo de imagem válido.';
+          uploadStatus.style.color = 'var(--red)';
+          return;
+        }
+        var reader = new FileReader();
+        reader.onload = function(event) {
+          previewElement.src = event.target.result;
+          previewElement.style.display = 'block';
+          previewElement.closest('.upload-box').classList.add('has-image');
+          if (type === 'product') {
+            productBase64 = event.target.result;
+            btnStep2Next.disabled = false;
+          } else {
+            modelBase64 = event.target.result;
+            btnMaterialize.disabled = false;
+          }
+          uploadStatus.textContent = '';
+        };
+        reader.readAsDataURL(file);
+      }
+
+      function bindUpload(box, input, previewElement, type) {
+        input.addEventListener('change', function(e) {
+          var file = e.target.files && e.target.files[0];
+          if (file) processFile(file, previewElement, type);
+        });
+        ['dragenter', 'dragover'].forEach(function(evt) {
+          box.addEventListener(evt, function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            box.classList.add('drag-over');
+          });
+        });
+        ['dragleave', 'dragend'].forEach(function(evt) {
+          box.addEventListener(evt, function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (evt === 'dragleave' && box.contains(e.relatedTarget)) return;
+            box.classList.remove('drag-over');
+          });
+        });
+        box.addEventListener('drop', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          box.classList.remove('drag-over');
+          var dt = e.dataTransfer;
+          var file = dt && dt.files && dt.files[0];
+          if (file) processFile(file, previewElement, type);
+        });
+      }
+
+      bindUpload(productBox, productInput, productPreview, 'product');
+      bindUpload(modelBox, modelInput, modelPreview, 'model');
+
+      ['dragover', 'drop'].forEach(function(evt) {
+        window.addEventListener(evt, function(e) {
+          if (!e.target.closest('.upload-box')) e.preventDefault();
+        });
+      });
+
+      // ========= Paste support =========
+      document.addEventListener('paste', function(e) {
+        // step 3 = foto do produto, step 4 = foto da pessoa
+        if (currentStep !== 3 && currentStep !== 4) return;
+        var items = e.clipboardData && e.clipboardData.items;
+        if (!items) return;
+        for (var i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf('image/') === 0) {
+            var file = items[i].getAsFile();
+            if (!file) continue;
+            if (currentStep === 3) {
+              processFile(file, productPreview, 'product');
+            } else {
+              processFile(file, modelPreview, 'model');
+            }
+            break;
+          }
+        }
+      });
+
+      // ========= Step 1 (Site da loja) → Step 2 =========
+      var siteInput = document.getElementById('site-input');
+      var btnSiteNext = document.getElementById('btn-site-next');
+      var siteError = document.getElementById('site-error');
+      var siteUrl = '';
+
+      // Validação robusta: usa URL nativa do browser
+      function normalizeSite(v) {
+        v = (v || '').trim().replace(/\s+/g, '');
+        if (!v) return null;
+        try {
+          var u = new URL(v.includes('://') ? v : 'https://' + v);
+          var host = u.hostname.toLowerCase();
+          if (!host.includes('.')) return null;
+          var parts = host.split('.');
+          var tld = parts[parts.length - 1];
+          if (tld.length < 2) return null;
+          // Cada label só letras/dígitos/hífen, hífen não nas pontas
+          var validLabel = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
+          for (var i = 0; i < parts.length; i++) {
+            if (!validLabel.test(parts[i])) return null;
+          }
+          return host + (u.pathname && u.pathname !== '/' ? u.pathname : '');
+        } catch (e) {
+          return null;
+        }
+      }
+
+      siteInput.addEventListener('input', function() {
+        btnSiteNext.disabled = normalizeSite(siteInput.value) === null;
+        if (siteError.style.display !== 'none') siteError.style.display = 'none';
+      });
+
+      siteInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !btnSiteNext.disabled) {
+          e.preventDefault();
+          btnSiteNext.click();
+        }
+      });
+
+      btnSiteNext.addEventListener('click', function() {
+        var normalized = normalizeSite(siteInput.value);
+        if (!normalized) {
+          siteError.textContent = 'Coloca um domínio válido (ex: minhaloja.com.br)';
+          siteError.style.display = 'block';
+          return;
+        }
+        siteUrl = normalized;
+        // Captura o lead anonimamente em landing_leads (best-effort)
+        try {
+          fetch('https://quantic-supabase.k5jwra.easypanel.host/rest/v1/landing_leads', {
+            method: 'POST',
+            headers: {
+              'apikey': ((window.ENV && window.ENV.SUPABASE_KEY) || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJhbm9uIiwKICAgICJpc3MiOiAic3VwYWJhc2UtZGVtbyIsCiAgICAiaWF0IjogMTY0MTc2OTIwMCwKICAgICJleHAiOiAxNzk5NTM1NjAwCn0.pCFnSnrlSUM2EwXi9gxAegpoC-9U0Mjx3iAtROR-E20'),
+              'Authorization': 'Bearer ' + ((window.ENV && window.ENV.SUPABASE_KEY) || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJhbm9uIiwKICAgICJpc3MiOiAic3VwYWJhc2UtZGVtbyIsCiAgICAiaWF0IjogMTY0MTc2OTIwMCwKICAgICJleHAiOiAxNzk5NTM1NjAwCn0.pCFnSnrlSUM2EwXi9gxAegpoC-9U0Mjx3iAtROR-E20'),
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({
+              utm_source: 'loja-teste',
+              utm_medium: 'demo',
+              utm_campaign: 'pre-tipo',
+              page_path: window.location.pathname + window.location.search,
+              referrer: document.referrer || null,
+              user_agent: navigator.userAgent,
+              utm_content: normalized
+            }),
+            keepalive: true
+          }).catch(function(){});
+        } catch(e) {}
+        goToStep(2);
+      });
+
+      // ========= Step 3 (Foto produto) → Step 4 =========
+      btnStep2Next.addEventListener('click', function() {
+        if (!productBase64) return;
+        goToStep(4);
+      });
+
+      // ========= Step 3 → Provar =========
+      btnMaterialize.addEventListener('click', async function() {
+        if (!productBase64 || !modelBase64) return;
+
+        btnMaterialize.disabled = true;
+        btnMaterialize.textContent = 'Processando...';
+        uploadStatus.textContent = '';
+
+        var loadingModal = document.getElementById('loading-modal');
+        loadingModal.classList.add('active');
+        genProgressStart();
+
+        try {
+          var response = await fetch(MODES[currentMode].endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ produto: productBase64, modelo: modelBase64 })
+          });
+
+          var contentType = response.headers.get('content-type');
+          var imageUrl = '';
+
+          // Trata 429/limite ANTES de checar response.ok (body tem a mensagem real)
+          if (contentType && contentType.indexOf('application/json') !== -1) {
+            var responseData = await response.json();
+            if (responseData && responseData.error === 'limite_atingido') {
+              genProgressStop(); loadingModal.classList.remove('active');
+              uploadStatus.textContent = responseData.mensagem || 'Você atingiu o limite de testes grátis. Entre em contato pra liberar mais.';
+              uploadStatus.style.color = 'var(--red,#cc3333)';
+              btnMaterialize.textContent = 'Provar agora';
+              btnMaterialize.disabled = !modelBase64;
+              return;
+            }
+            if (!response.ok) throw new Error('http ' + response.status);
+            imageUrl = responseData.url || responseData.image_url || responseData.imagem || responseData.image || responseData.resultado || responseData.result || '';
+            if (!imageUrl && typeof responseData === 'object') {
+              var keys = Object.keys(responseData);
+              if (keys.length > 0 && typeof responseData[keys[0]] === 'string') {
+                imageUrl = responseData[keys[0]];
+              }
+            }
+          } else if (contentType && (contentType.indexOf('image/') !== -1 || contentType === 'application/octet-stream')) {
+            var blob = await response.blob();
+            imageUrl = URL.createObjectURL(blob);
+          } else {
+            imageUrl = await response.text();
+          }
+
+          if (imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('data:image') || imageUrl.startsWith('blob:'))) {
+            document.getElementById('result-image').src = imageUrl;
+            genProgressStop(); loadingModal.classList.remove('active');
+            goToStep(5);
+          } else {
+            uploadStatus.textContent = 'Resposta inesperada. Tente novamente.';
+            uploadStatus.style.color = 'var(--red)';
+            genProgressStop(); loadingModal.classList.remove('active');
+          }
+        } catch (error) {
+          console.error('Error:', error);
+          uploadStatus.textContent = 'Erro ao processar. Tente novamente.';
+          uploadStatus.style.color = 'var(--red)';
+          genProgressStop(); loadingModal.classList.remove('active');
+        } finally {
+          btnMaterialize.textContent = 'Provar agora';
+          btnMaterialize.disabled = !modelBase64;
+        }
+      });
+
+      // ========= Step 4 → Restart =========
+      btnRestart.addEventListener('click', function() {
+        resetAll();
+        currentMode = null;
+        goToStep(1, 'back');
+      });
+
+      // Init: support ?start=type to skip step 1 (site input) and start at type selection
+      var urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('start') === 'type') {
+        siteUrl = 'demo.provoulevou.com.br';
+        goToStep(2);
+      } else {
+        setProgress(1);
+      }
+
+      // Embed mode: hide topbar, footer, progress and back button on step 2 (no step to go back to)
+      if (urlParams.get('embed') === '1') {
+        document.body.classList.add('embed-mode');
+        var styleEl = document.createElement('style');
+        styleEl.textContent = `
+          html, body { min-height: 0 !important; }
+          body.embed-mode { background: transparent; min-height: auto !important; overflow: hidden; }
+          html { overflow: hidden; }
+          body.embed-mode .topbar, body.embed-mode .footer, body.embed-mode #progress-wrap { display: none !important; }
+          body.embed-mode main { padding: 0; max-width: 640px; }
+          body.embed-mode #step-1 .step-meta,
+          body.embed-mode #step-2 .step-meta,
+          body.embed-mode #step-2 > h1,
+          body.embed-mode #step-2 > .lead { display: none !important; }
+          body.embed-mode .step h1 { font-size: clamp(1.4rem, 3.5vw, 1.8rem); }
+          body.embed-mode .step .lead { font-size: 14px; }
+          @media (max-width: 600px) {
+            body.embed-mode main { padding: 0; }
+          }
+        `;
+        document.head.appendChild(styleEl);
+
+        // Auto-resize: send height to parent
+        function postHeight() {
+          var activeStep = document.querySelector('.step.active');
+          if (!activeStep) return;
+          var rect = activeStep.getBoundingClientRect();
+          var h = Math.ceil(rect.height) + 2;   // main sem padding no embed: so a folga da borda
+          try {
+            window.parent.postMessage({ type: 'pl-embed-height', height: h }, '*');
+          } catch (e) {}
+        }
+        // Post on load, after step changes, and on resize
+        window.addEventListener('load', function () { postHeight(); setTimeout(postHeight, 300); setTimeout(postHeight, 1200); });
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(postHeight);
+        window.addEventListener('resize', postHeight);
+        // Observe step changes
+        var observer = new MutationObserver(function() { setTimeout(postHeight, 50); });
+        document.querySelectorAll('.step').forEach(function(s) {
+          observer.observe(s, { attributes: true, attributeFilter: ['class'] });
+        });
+        // Initial post
+        setTimeout(postHeight, 100);
+      }
+    });
+  </script>
+</body>
+</html>
