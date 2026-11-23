@@ -1428,10 +1428,14 @@ async function addClient(event) {
                     implementation_date: payload.implementation_date
                 };
 
+                // 23/11/2026 segurança: o cadastro de loja só aceita o time logado (token do login)
+                let _tokCad = '';
+                try { const { data } = await db.auth.getSession(); _tokCad = (data && data.session && data.session.access_token) || ''; } catch (e) {}
                 const response = await fetch('https://n8n.segredosdodrop.com/webhook/cadastro-lojista', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + _tokCad
                     },
                     body: JSON.stringify(webhookPayload)
                 });
