@@ -1307,7 +1307,7 @@ async function loadClients() {
     try {
         const { data, error } = await db
             .from('provou_levou_stores')
-            .select('*')
+            .select('id,name,domain,email,active,created_at,updated_at,company,phone,plan,status,last_payment,implementation_date,api_key_hash,api_key_prefix,api_key_last4,api_key_created_at,api_key_last_used_at,api_key_active,token_expiration,store_id,api_address,platform,categoria,plano_personalizado,valor_personalizado,fotos_extras,extras_cobrados,limite_personalizado,forma_pagamento,observacao,afiliado_slug,afiliado_sem_recorrencia')   // 27/11/2026 segurança: sem access_token/refresh_token (colunas fechadas no banco)
             .order('created_at', { ascending: false });
 
         if (error) throw error;
